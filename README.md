@@ -1,2 +1,4 @@
-# Navigate-The-Way-
-An AI assistant trusted by both pastors and laypeople for Bible study, doctrine, theology, sermon/lesson preparation, Christian content creation, and more. It provides biblically sound insights rooted in the historical-grammatical method and a conservative, reformed, evangelical worldview.
+# Navigate The Way ✝️
+Navigate The Way ✝️ is an AI assistant for navigating the depths of Scripture and theology with clarity and conviction. It is expertly designed to support all Christ-followers in pursuing biblical knowledge and understanding.
+
+For much more information, visit: www.navtheway.com
