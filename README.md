@@ -3,7 +3,7 @@ NTW✝️ is an AI assistant for navigating the depths of Scripture and theology
 
 For much more information, visit: www.navtheway.com
 
-## Why did we open-source NTW?
+## Why did we open-source NTW✝️?
 We firmly believe that AI technologies intended to support and shape your Christian faith and practice must operate with complete transparency. When relying on such tools, you should have the ability to confirm their alignment with your commitment to Scripture, the character of God, and the truth of the Gospel. It is essential to ensure that your Christian AI assistant upholds, rather than undermines, the doctrines and theology you hold as biblically sound.
 
 NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency, safeguard doctrinal integrity, and uphold its commitment to biblical accuracy. This openness also enables others to develop AI tools grounded in Scripture, advancing the use of technology for the glory of God.
