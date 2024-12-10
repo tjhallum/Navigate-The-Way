@@ -10,8 +10,8 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
 
 ### Key Points About the AGPL-3.0 License:
 
- - Strong Copyleft: Any modifications or derivative works must remain open-source and use the same AGPL-3.0 license.
- - SaaS Protection: If the prompt is modified and used in a hosted service (e.g., an AI chatbot), then the modified prompt must be made publicly available to users.
- - Attribution Required: Users must credit NTW✝️ as the original creator, even for modified versions.
- - Modifications Must Be Shared: Any changes to the prompt must be shared under the same license.
- - No Proprietary Use: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
+ - *Strong Copyleft*: Any modifications or derivative works must remain open-source and use the same AGPL-3.0 license.
+ - *SaaS Protection*: If the prompt is modified and used in a hosted service (e.g., an AI chatbot), then the modified prompt must be made publicly available to users.
+ - *Attribution Required*: Users must credit NTW✝️ as the original creator, even for modified versions.
+ - *Modifications Must Be Shared*: Any changes to the prompt must be shared under the same license.
+ - *No Proprietary Use*: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
