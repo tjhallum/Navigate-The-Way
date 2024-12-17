@@ -1,3 +1,5 @@
+## Modifiers
+
 To modify the response style of "core" NTW✝️, use one of these modifiers as a drop-in replacement for the section in the base prompt that reads as follows:
 
 > ## RESPONSE STRUCTURE:
