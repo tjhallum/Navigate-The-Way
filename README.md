@@ -16,7 +16,7 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
  - **Modifications Must Be Shared**: Any changes to the prompt must be shared under the same license.
  - **No Proprietary Use**: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
 
-Proper Attribution Notice:
+### Proper Attribution Notice:
 
 ===========================================
 
