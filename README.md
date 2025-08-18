@@ -24,7 +24,7 @@ Attribution Notice
 
 This work is derived from the system prompt of
 Navigate The Way ✝️ – www.navtheway.com,  
-originally created by Ted Hallum.  
+originally created by Ted Hallum (www.linkedin.com/in/tedhallum).
 
 The original NTW✝️ prompt is licensed under the 
 AGPL-3.0 license and is available on GitHub:
