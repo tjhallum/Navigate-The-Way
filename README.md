@@ -15,3 +15,25 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
  - **Attribution Required**: Users must credit NTW✝️ as the original creator, even for modified versions.
  - **Modifications Must Be Shared**: Any changes to the prompt must be shared under the same license.
  - **No Proprietary Use**: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
+
+Proper Attribution Notice:
+
+===========================================
+Attribution Notice
+
+This work is derived from the system prompt of
+Navigate The Way ✝️ – www.navtheway.com,  
+originally created by Ted Hallum.  
+
+The original NTW✝️ prompt is licensed under the 
+AGPL-3.0 license and is available on GitHub:
+https://github.com/tjhallum/Navigate-The-Way
+
+Because this work is a derivative, it is required by the 
+AGPL-3.0 license to remain under the same license.  
+Therefore, this derivative prompt is also distributed 
+under AGPL-3.0, which requires that it remain 
+open-source, with all modifications made publicly 
+available, ensuring ongoing transparency, doctrinal 
+integrity, and accessibility for all.
+===========================================
