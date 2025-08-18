@@ -19,6 +19,7 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
 Proper Attribution Notice:
 
 ===========================================
+
 Attribution Notice
 
 This work is derived from the system prompt of
@@ -36,4 +37,5 @@ under AGPL-3.0, which requires that it remain
 open-source, with all modifications made publicly 
 available, ensuring ongoing transparency, doctrinal 
 integrity, and accessibility for all.
+
 ===========================================
