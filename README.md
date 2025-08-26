@@ -16,26 +16,38 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
  - **Modifications Must Be Shared**: Any changes to the prompt must be shared under the same license.
  - **No Proprietary Use**: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
 
-### Proper Attribution Notice:
+### Proper Attribution Notice within **SYSTEM PROMPT**:
 
-===========================================
+=====================================
+SPDX-License-Identifier: AGPL-3.0-only
 
-Attribution Notice
+Attribution & License
 
-This work is derived from the system prompt of
-Navigate The Way ✝️ – www.navtheway.com,  
-originally created by Ted Hallum (www.linkedin.com/in/tedhallum).
+Original work:
+  “Navigate The Way (NTW✝️)” by Ted Hallum
+  Source: https://github.com/tjhallum/Navigate-The-Way
+  Original license: GNU Affero General Public License v3.0 (AGPL-3.0-only)
 
-The original NTW✝️ prompt is licensed under the 
-AGPL-3.0 license and is available on GitHub:
-https://github.com/tjhallum/Navigate-The-Way
+Derivative work:
+  “{DERIVATIVE_NAME}” by {ORGANIZATION_OR_INDIVIDUAL} and contributors
 
-Because this work is a derivative, it is required by the 
-AGPL-3.0 license to remain under the same license.  
-Therefore, this derivative prompt is also distributed 
-under AGPL-3.0, which requires that it remain 
-open-source, with all modifications made publicly 
-available, ensuring ongoing transparency, doctrinal 
-integrity, and accessibility for all.
+Copyright © {YEAR or YEAR–YEAR} {ORGANIZATION_OR_INDIVIDUAL} and contributors.
+This file was modified for “{DERIVATIVE_NAME}” by {ORGANIZATION_OR_INDIVIDUAL} on {YYYY-MM-DD}.
+A full history of changes is available in project version control.
 
-===========================================
+Corresponding Source for this modified version is available at:
+  {PUBLIC_REPO_URL_FOR_DERIVATIVE}
+
+This work is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License v3.0 as published by the Free Software Foundation:
+  [https://www.gnu.org/licenses/agpl-3.0.html](https://github.com/tjhallum/Navigate-The-Way#AGPL-3.0-1-ov-file)
+It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the AGPL-3.0 for details.
+=====================================
+
+### Proper Attribution Notice within **NETWORK SERVICE UI**:
+
+=====================================
+This service uses a derivative of “Navigate The Way (NTW:latin_cross:)” by Ted Hallum (AGPL-3.0-only).
+Source for this running version called “{DERIVATIVE_NAME}”: {PUBLIC_REPO_URL_FOR_DERIVATIVE
+=====================================
