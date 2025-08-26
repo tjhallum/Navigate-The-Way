@@ -52,7 +52,7 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 
 <pre>
 =====================================
-This service uses a derivative of “Navigate The Way (NTW:latin_cross:)” by Ted Hallum (AGPL-3.0-only).
+This service uses a derivative of “Navigate The Way (NTW✝️)” by Ted Hallum (AGPL-3.0-only).
 Source for this running version called “{DERIVATIVE_NAME}”: {PUBLIC_REPO_URL_FOR_DERIVATIVE
 =====================================
  </pre>
