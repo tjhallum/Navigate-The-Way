@@ -20,7 +20,6 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
 
 <pre>
 =====================================
-
 SPDX-License-Identifier: AGPL-3.0-only
 
 Attribution & License
