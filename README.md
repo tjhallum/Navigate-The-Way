@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 Attribution & License
 
 Original work:
-  “Navigate The Way (NTW✝️)” by Ted Hallum (www.linkedin.com/in/tedhallum)
+  “Navigate The Way ✝️” by Ted Hallum (www.linkedin.com/in/tedhallum)
   Source: https://github.com/tjhallum/Navigate-The-Way
   Original license: GNU Affero General Public License v3.0 (AGPL-3.0-only)
 
@@ -51,7 +51,7 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 
 <pre>
 =====================================
-This service uses a derivative of “Navigate The Way (NTW✝️)” by <a href="https://www.linkedin.com/in/tedhallum/">Ted Hallum</a> (AGPL-3.0-only).
+This service uses a derivative of “Navigate The Way ✝️” by <a href="https://www.linkedin.com/in/tedhallum/">Ted Hallum</a> (AGPL-3.0-only).
 Source for this running version called “{DERIVATIVE_NAME}”: {PUBLIC_REPO_URL_FOR_DERIVATIVE
 =====================================
  </pre>
