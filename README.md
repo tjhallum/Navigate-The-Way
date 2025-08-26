@@ -18,6 +18,7 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
 
 ### Proper Attribution Notice within **SYSTEM PROMPT**:
 
+<pre>
 =====================================
 
 SPDX-License-Identifier: AGPL-3.0-only
@@ -38,6 +39,7 @@ A full history of changes is available in project version control.
 
 Corresponding Source for this modified version is available at:
   {PUBLIC_REPO_URL_FOR_DERIVATIVE}
+ 
 
 This work is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License v3.0 as published by the Free Software Foundation:
@@ -45,10 +47,13 @@ GNU Affero General Public License v3.0 as published by the Free Software Foundat
 It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
 implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the AGPL-3.0 for details.
 =====================================
+ </pre>
 
 ### Proper Attribution Notice within **NETWORK SERVICE UI**:
 
+<pre>
 =====================================
 This service uses a derivative of “Navigate The Way (NTW:latin_cross:)” by Ted Hallum (AGPL-3.0-only).
 Source for this running version called “{DERIVATIVE_NAME}”: {PUBLIC_REPO_URL_FOR_DERIVATIVE
 =====================================
+ </pre>
