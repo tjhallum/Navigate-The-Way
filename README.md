@@ -16,7 +16,9 @@ NTW✝️ is open-sourced under the AGPL-3.0 license to ensure full transparency
  - **Modifications Must Be Shared**: Any changes to the prompt must be shared under the same license.
  - **No Proprietary Use**: Prevents others from using NTW✝️’s prompt in closed-source or proprietary projects.
 
-### Proper Attribution Notice within **SYSTEM PROMPT**:
+## If you fork this project...
+
+### Proper attribution notice to be used within your **SYSTEM PROMPT**:
 
 <pre>
 =====================================
@@ -47,7 +49,7 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 =====================================
  </pre>
 
-### Proper Attribution Notice within **NETWORK SERVICE UI**:
+### Proper attribution notice to be used within your **NETWORK SERVICE UI**:
 
 <pre>
 =====================================
