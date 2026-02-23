@@ -145,7 +145,7 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
   max-width: 100%;
   margin: 1rem auto;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: visible;
   border-radius: 16px;
 }
 
@@ -359,7 +359,15 @@ footer {
   }
 
   #apg-inline-target iframe {
+    --apg-beacon-width: 420;
+    --apg-beacon-scale: clamp(0.72, calc((100vw - 2rem) / (var(--apg-beacon-width) * 1px)), 1);
+    display: block;
+    width: calc(var(--apg-beacon-width) * 1px) !important;
+    max-width: none !important;
     height: clamp(620px, 84vh, 900px) !important;
+    margin: 0 auto;
+    transform: scale(var(--apg-beacon-scale));
+    transform-origin: top center;
   }
 
   .verbatim-content ul,
