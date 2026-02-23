@@ -26,8 +26,8 @@ body {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--text);
   background-color: var(--bg);
-  background-image: linear-gradient(160deg, #172a56 0%, var(--bg) 46%, #050a1a 100%);
-  background-size: 100% 100%;
+  background-image: linear-gradient(160deg, #172a56 0px, #122247 260px, var(--bg) 640px, #050a1a 100%);
+  background-size: 100% 100vh;
   background-attachment: fixed;
   background-repeat: no-repeat;
   line-height: 1.65;
