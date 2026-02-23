@@ -161,6 +161,20 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
   color: #d2ddff;
 }
 .verbatim-content hr { border-color: var(--border); opacity: .5; }
+
+.video-embed-wrap {
+  margin: 1.2rem auto 0;
+  width: min(100%, 840px);
+}
+
+.video-embed-wrap iframe {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+}
+
 footer {
   margin-top: auto;
   border-top: 1px solid var(--border);
