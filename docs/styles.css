@@ -359,15 +359,12 @@ footer {
   }
 
   #apg-inline-target iframe {
-    --apg-beacon-width: 420;
-    --apg-beacon-scale: clamp(0.72, calc((100vw - 2rem) / (var(--apg-beacon-width) * 1px)), 1);
     display: block;
-    width: calc(var(--apg-beacon-width) * 1px) !important;
-    max-width: none !important;
+    width: min(100%, 420px) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     height: clamp(620px, 84vh, 900px) !important;
     margin: 0 auto;
-    transform: scale(var(--apg-beacon-scale));
-    transform-origin: top center;
   }
 
   .verbatim-content ul,
