@@ -13,11 +13,22 @@
   --theme-surface: rgba(8, 14, 34, 0.72);
 }
 * { box-sizing: border-box; }
+html {
+  min-height: 100%;
+  background-color: var(--bg);
+}
 body {
   margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--text);
-  background: linear-gradient(160deg, #172a56 0%, var(--bg) 46%, #050a1a 100%);
+  background-color: var(--bg);
+  background-image: linear-gradient(160deg, #172a56 0%, var(--bg) 46%, #050a1a 100%);
+  background-size: 100% 100%;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   line-height: 1.65;
 }
 a { color: var(--accent); text-decoration: none; }
@@ -37,7 +48,7 @@ nav li { position: relative; }
   background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem;
 }
 .dropdown:hover > ul { display: block; }
-main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
+main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
 
 .page-shell {
   padding: 1rem;
@@ -106,6 +117,18 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
 }
 .launch-panel p:first-child a:hover { filter: brightness(1.08); }
 
+.launch-panel ul {
+  margin: 0.35rem 0 0.15rem 1.15rem;
+  padding: 0;
+}
+.launch-panel li {
+  margin: 0.34rem 0;
+  color: #dfe8ff;
+  font-size: .95rem;
+}
+.launch-panel li ul {
+  margin-top: 0.4rem;
+}
 
 .card {
   background: var(--theme-surface);
@@ -139,7 +162,9 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
 }
 .verbatim-content hr { border-color: var(--border); opacity: .5; }
 footer {
+  margin-top: auto;
   border-top: 1px solid var(--border);
+  background: rgba(4, 8, 21, 0.92);
   color: var(--muted);
   text-align: center;
   padding: 1.4rem 1rem;
