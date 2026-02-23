@@ -167,12 +167,19 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
 }
 .verbatim-content h1 { margin-top: 0.25rem; font-size: 2rem; }
 .verbatim-content p { margin: 0.7rem 0; }
-.verbatim-content ul,.verbatim-content ol { margin: 0.4rem 0 1rem 1.2rem; }
+.verbatim-content ul,
+.verbatim-content ol {
+  margin: 0.4rem 0 1rem;
+  padding-left: 1.2rem;
+}
 .verbatim-content p,
 .verbatim-content li,
 .verbatim-content a {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+.verbatim-content {
+  min-width: 0;
 }
 .verbatim-content blockquote {
   margin: 0.9rem 0;
@@ -351,5 +358,10 @@ footer {
 
   #apg-inline-target iframe {
     height: clamp(620px, 84vh, 900px) !important;
+  }
+
+  .verbatim-content ul,
+  .verbatim-content ol {
+    padding-left: 1rem;
   }
 }
