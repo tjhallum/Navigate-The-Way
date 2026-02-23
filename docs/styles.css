@@ -190,94 +190,127 @@ footer {
 }
 @media (max-width: 860px){
   .nav-wrap {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "brand toggle"
-      "menu menu";
-    align-items: center;
+    position: relative;
+    justify-content: space-between;
     gap: .75rem;
   }
   .brand {
-    grid-area: brand;
     min-width: 0;
-    font-size: 1.1rem;
-    white-space: normal;
-    line-height: 1.25;
+    max-width: calc(100% - 64px);
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .mobile-nav-toggle {
-    grid-area: toggle;
     position: absolute;
     opacity: 0;
     pointer-events: none;
   }
   .mobile-nav-button {
-    grid-area: toggle;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 74px;
-    padding: .5rem .75rem;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 12px;
     background: var(--panel);
-    color: #e7efff;
-    font-size: .92rem;
-    font-weight: 600;
-    letter-spacing: .02em;
     cursor: pointer;
-    user-select: none;
+    font-size: 0;
+    flex: 0 0 auto;
+    position: relative;
   }
   .mobile-nav-button::before {
-    content: "☰ ";
-    font-size: .95rem;
+    content: "";
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: #edf3ff;
+    box-shadow: 0 -6px 0 #edf3ff, 0 6px 0 #edf3ff;
+    transition: box-shadow .2s ease, transform .2s ease;
   }
   nav {
-    grid-area: menu;
-    width: 100%;
-    max-height: 0;
+    position: absolute;
+    top: calc(100% + .55rem);
+    right: 0;
+    width: min(88vw, 360px);
+    max-height: min(70vh, 520px);
+    padding: .65rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(8, 15, 34, 0.97);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, .5);
+    overflow-y: auto;
     opacity: 0;
-    overflow: hidden;
-    transform: translateY(-6px);
-    transition: max-height .25s ease, opacity .25s ease, transform .25s ease;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px) scale(.98);
+    transform-origin: top right;
+    transition: opacity .2s ease, transform .22s ease, visibility .22s ease;
+    z-index: 90;
   }
   .mobile-nav-toggle:checked + .mobile-nav-button {
-    background: #1a2c54;
+    background: #1b2f59;
+    border-color: #37508a;
   }
   .mobile-nav-toggle:checked + .mobile-nav-button::before {
-    content: "✕ ";
+    box-shadow: 0 0 0 #edf3ff, 0 0 0 #edf3ff;
+    transform: rotate(90deg);
+  }
+  .mobile-nav-toggle:checked + .mobile-nav-button {
+    font-size: 0;
+  }
+  .mobile-nav-toggle:checked + .mobile-nav-button::after {
+    content: "✕";
+    position: absolute;
+    font-size: 1.05rem;
+    color: #edf3ff;
+    font-weight: 700;
   }
   .mobile-nav-toggle:checked ~ nav {
-    max-height: 420px;
     opacity: 1;
-    overflow-y: auto;
-    transform: translateY(0);
-    padding-top: .15rem;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
   }
   nav ul {
     display: grid;
-    gap: .5rem;
+    gap: .35rem;
+  }
+  nav li {
+    width: 100%;
   }
   nav a {
     display: block;
     width: 100%;
-    padding: .62rem .8rem;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: rgba(15, 26, 52, 0.7);
+    padding: .62rem .72rem;
+    border-radius: 10px;
     line-height: 1.3;
   }
-  .dropdown > ul{
+  nav > ul > li > a {
+    background: rgba(18, 30, 58, 0.76);
+  }
+  nav > ul > li > a:hover,
+  nav > ul > li > a:focus-visible {
+    background: rgba(24, 40, 74, 0.95);
+    text-decoration: none;
+  }
+  .dropdown > ul {
     position: static;
     display: block;
-    margin-top: .4rem;
-    padding: .3rem;
-    border-radius: 12px;
+    margin-top: .25rem;
+    margin-left: .45rem;
     min-width: 0;
-    background: rgba(10, 18, 40, 0.8);
+    border: 0;
+    border-left: 2px solid rgba(122, 168, 255, .45);
+    border-radius: 0;
+    padding: .15rem 0 0 .45rem;
+    background: transparent;
   }
   .dropdown > ul a {
+    padding: .45rem .58rem;
     font-size: .95rem;
-    padding: .52rem .7rem;
+    color: #cfe0ff;
+    background: transparent;
   }
 }
