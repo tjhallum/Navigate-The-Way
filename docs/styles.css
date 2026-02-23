@@ -36,6 +36,17 @@ nav li { position: relative; }
 .dropdown:hover > ul { display: block; }
 main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
 
+.page-shell {
+  padding: 1rem;
+  border: 1px solid #1f315d;
+  border-radius: 20px;
+  background:
+    radial-gradient(1200px 400px at 12% -22%, rgba(122,168,255,0.19), transparent 46%),
+    radial-gradient(1200px 400px at 88% -20%, rgba(170,134,255,0.16), transparent 45%),
+    rgba(6, 10, 24, 0.55);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .36);
+}
+
 .logo-hero {
   display: flex;
   justify-content: center;
@@ -50,7 +61,7 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
 
 
 .launch-context {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 18px;
