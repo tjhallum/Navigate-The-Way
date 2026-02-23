@@ -8,15 +8,16 @@
   --accent: #7aa8ff;
   --accent-2: #aa86ff;
   --border: #253763;
-  --theme-gradient: radial-gradient(1200px 400px at 12% -22%, rgba(122,168,255,0.19), transparent 46%), radial-gradient(1200px 400px at 88% -20%, rgba(170,134,255,0.16), transparent 45%);
+  --theme-gradient: linear-gradient(135deg, rgba(122,168,255,0.22) 0%, rgba(170,134,255,0.18) 50%, rgba(12,20,44,0.88) 100%);
   --theme-layered: var(--theme-gradient), rgba(8, 14, 34, 0.72);
+  --theme-surface: rgba(8, 14, 34, 0.72);
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--text);
-  background: radial-gradient(circle at top, #172a56 0%, var(--bg) 46%);
+  background: linear-gradient(160deg, #172a56 0%, var(--bg) 46%, #050a1a 100%);
   line-height: 1.65;
 }
 a { color: var(--accent); text-decoration: none; }
@@ -64,7 +65,7 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 18px;
-  background: var(--theme-layered);
+  background: var(--theme-surface);
   box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
 }
 .launch-kicker,
@@ -82,14 +83,14 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
   gap: 0.9rem;
 }
 .launch-panel {
-  border: 1px solid #2f477f;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 0.9rem;
-  background: linear-gradient(180deg, rgba(20,34,70,.72), rgba(9,16,38,.75));
+  background: var(--theme-surface);
 }
-.launch-panel--chatgpt { border-top: 3px solid #7ec1ff; }
-.launch-panel--poe { border-top: 3px solid #9d9cff; }
-.launch-panel--apologist { border-top: 3px solid #8de0c6; }
+.launch-panel--chatgpt,
+.launch-panel--poe,
+.launch-panel--apologist { border-top: 1px solid var(--border); }
 .launch-panel p { margin: 0.42rem 0; color: #dfe8ff; font-size: .95rem; }
 .launch-panel p:first-child { margin: 0 0 .65rem; }
 .launch-panel p:first-child a {
@@ -100,14 +101,14 @@ main { max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
   border-radius: 10px;
   color: #f7faff;
   text-decoration: none;
-  border: 1px solid #4365ab;
-  background: linear-gradient(180deg, rgba(122,168,255,.30), rgba(122,168,255,.16));
+  border: 1px solid var(--border);
+  background: var(--theme-surface);
 }
 .launch-panel p:first-child a:hover { filter: brightness(1.08); }
 
 
 .card {
-  background: var(--theme-layered);
+  background: var(--theme-surface);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.35rem;
