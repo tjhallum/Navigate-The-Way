@@ -61,6 +61,24 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
   box-shadow: 0 14px 36px rgba(0, 0, 0, .36);
 }
 
+.page-header {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--theme-surface);
+}
+
+.page-header h1 {
+  margin: 0 0 .4rem;
+  line-height: 1.2;
+}
+
+.page-header p {
+  margin: 0;
+  color: #dbe7ff;
+}
+
 .logo-hero {
   display: flex;
   justify-content: center;
