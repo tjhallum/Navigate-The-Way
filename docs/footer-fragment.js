@@ -1,5 +1,5 @@
 (() => {
-  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/feedback@navtheway.com";
+  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/navtheway@gmail.com";
 
   function buildFooter() {
     const footer = document.querySelector("footer[data-shared-footer]");

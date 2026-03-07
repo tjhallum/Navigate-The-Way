@@ -63,8 +63,8 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 
 The site footer feedback form is configured to use **FormSubmit** as a managed handler for static sites.
 
-- **Production form endpoint**: `https://formsubmit.co/feedback@navtheway.com`
-- **Where submissions are viewed**: Form submissions are delivered to the destination mailbox (`feedback@navtheway.com`) after FormSubmit activation/confirmation.
+- **Production form endpoint**: `https://formsubmit.co/navtheway@gmail.com`
+- **Where submissions are viewed**: Form submissions are delivered to the destination mailbox (`navtheway@gmail.com`) after FormSubmit activation/confirmation.
 - **How to rotate destination email**: Update the endpoint in `docs/footer-fragment.js` by changing `FOOTER_FORM_ENDPOINT` to the new destination email endpoint (for example, `https://formsubmit.co/new-inbox@yourdomain.com`) and redeploy.
 - **Spam controls enabled**:
   - Honeypot field via `_honey` hidden input.
