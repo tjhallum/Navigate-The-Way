@@ -22,7 +22,6 @@
           <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
 
           <button type="submit">Send Feedback</button>
-          <p class="feedback-privacy-notice">Feedback is used only to improve Navigate The Way and is retained in the designated feedback mailbox until reviewed and archived.</p>
           <p class="feedback-status" aria-live="polite"></p>
         </form>
         <div class="footer-legal">
