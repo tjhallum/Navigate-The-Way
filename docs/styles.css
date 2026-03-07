@@ -259,6 +259,14 @@ footer {
   text-align: center;
 }
 
+.footer-social-links {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
 .footer-feedback-form {
   margin: 0 auto;
   width: min(560px, 100%);
