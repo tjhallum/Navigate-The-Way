@@ -221,108 +221,81 @@ footer {
   margin-top: auto;
   background: rgba(4, 8, 21, 0.92);
   color: var(--muted);
-  padding: 1.6rem 1rem 1.2rem;
+  padding: 1.4rem 1rem;
 }
 
 .footer-content {
   margin: 0 auto;
   width: min(980px, 100%);
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
-.footer-feedback-panel {
+.footer-legal {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.footer-copyright {
+  margin: 0;
+  text-align: center;
+}
+
+.footer-feedback-form {
   margin: 0 auto;
-  width: min(680px, 100%);
-  padding: 1.1rem;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-footer[data-shared-footer] .footer-feedback-form {
+  width: min(560px, 100%);
   display: grid;
-  gap: 0.8rem;
+  gap: 0.55rem;
   text-align: left;
 }
 
-footer[data-shared-footer] .footer-feedback-form h2 {
+.footer-feedback-form h2 {
   margin: 0;
-  font-size: clamp(1.3rem, 2.6vw, 2rem);
-  line-height: 1.2;
+  font-size: 1rem;
   color: var(--text);
   text-align: center;
 }
 
-footer[data-shared-footer] .footer-feedback-field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-footer[data-shared-footer] .footer-feedback-form label {
-  display: block;
-  margin: 0;
-  color: var(--text);
-  font-size: 0.98rem;
-  font-weight: 600;
-}
-
-footer[data-shared-footer] .footer-feedback-form input,
-footer[data-shared-footer] .footer-feedback-form textarea,
-footer[data-shared-footer] .footer-feedback-form button {
-  display: block;
-  width: 100%;
+.footer-feedback-form input,
+.footer-feedback-form textarea,
+.footer-feedback-form button {
   font: inherit;
 }
 
-footer[data-shared-footer] .footer-feedback-form input,
-footer[data-shared-footer] .footer-feedback-form textarea {
-  border: 1px solid #3a4f83;
+.footer-feedback-form input,
+.footer-feedback-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #0f1b3a;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text);
-  padding: 0.62rem 0.75rem;
+  padding: 0.6rem 0.7rem;
 }
 
-footer[data-shared-footer] .footer-feedback-form textarea {
-  min-height: 120px;
-  resize: vertical;
-}
-
-footer[data-shared-footer] .footer-feedback-form input:focus,
-footer[data-shared-footer] .footer-feedback-form textarea:focus {
-  outline: 2px solid #8fb3ff;
-  outline-offset: 1px;
-  border-color: #8fb3ff;
-}
-
-footer[data-shared-footer] .footer-feedback-form button {
-  margin-top: 0.1rem;
-  border: 1px solid #4768ab;
+.footer-feedback-form button {
+  margin-top: 0.25rem;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: linear-gradient(180deg, #88b0ff 0%, #729cf2 100%);
-  color: #05122e;
-  font-weight: 700;
-  padding: 0.68rem 0.85rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.65rem 0.8rem;
   cursor: pointer;
 }
 
-footer[data-shared-footer] .footer-feedback-form button:disabled {
+.footer-feedback-form button:disabled {
   opacity: 0.7;
   cursor: wait;
 }
 
 .feedback-privacy-notice {
   margin: 0;
-  text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   color: var(--muted);
 }
 
 .feedback-status {
   margin: 0;
   min-height: 1.25rem;
-  text-align: center;
   font-size: 0.9rem;
 }
 
@@ -338,27 +311,6 @@ footer[data-shared-footer] .footer-feedback-form button:disabled {
   position: absolute;
   left: -9999px;
 }
-
-.footer-legal {
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
-}
-
-.footer-copyright {
-  margin: 0;
-  text-align: center;
-}
-
-@media (max-width: 640px) {
-  .footer-feedback-panel {
-    padding: 0.9rem;
-  }
-
-  footer[data-shared-footer] .footer-feedback-form h2 {
-    font-size: 1.5rem;
-  }
-}
-
 @media (max-width: 860px){
   .nav-wrap {
     position: relative;

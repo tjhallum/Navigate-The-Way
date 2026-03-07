@@ -9,30 +9,22 @@
 
     footer.innerHTML = `
       <div class="footer-content">
-        <section class="footer-feedback-panel" aria-label="Contact form">
-          <form class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
-            <h2>Contact Us</h2>
+        <form class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
+          <h2>Contact Us</h2>
+          <label for="footer-feedback-email">Email</label>
+          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" required />
 
-            <div class="footer-feedback-field">
-              <label for="footer-feedback-email">Email</label>
-              <input id="footer-feedback-email" name="email" type="email" autocomplete="email" required />
-            </div>
+          <label for="footer-feedback-message">Message</label>
+          <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
 
-            <div class="footer-feedback-field">
-              <label for="footer-feedback-message">Message</label>
-              <textarea id="footer-feedback-message" name="message" rows="4" required></textarea>
-            </div>
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
+          <input type="hidden" name="_captcha" value="true" />
+          <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
 
-            <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
-            <input type="hidden" name="_captcha" value="true" />
-            <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
-
-            <button type="submit">Send Feedback</button>
-            <p class="feedback-privacy-notice">Feedback is used only to improve Navigate The Way and is retained in the designated feedback mailbox until reviewed and archived.</p>
-            <p class="feedback-status" aria-live="polite"></p>
-          </form>
-        </section>
-
+          <button type="submit">Send Feedback</button>
+          <p class="feedback-privacy-notice">Feedback is used only to improve Navigate The Way and is retained in the designated feedback mailbox until reviewed and archived.</p>
+          <p class="feedback-status" aria-live="polite"></p>
+        </form>
         <div class="footer-legal">
           <p class="footer-copyright">© <a href="https://www.linkedin.com/company/shepherdpath-solutions/" target="_blank" rel="noreferrer">SheperdPath Solutions</a> <span id="current-year"></span></p>
         </div>
@@ -81,7 +73,7 @@
         status.classList.add("feedback-success");
         status.textContent = "Thank you! Your feedback was submitted successfully.";
         form.reset();
-      } catch {
+      } catch (error) {
         status.classList.add("feedback-error");
         status.textContent = "Sorry, there was a problem sending your feedback. Please try again in a moment.";
       } finally {
