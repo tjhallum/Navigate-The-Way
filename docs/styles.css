@@ -305,12 +305,6 @@ footer {
   cursor: wait;
 }
 
-.feedback-privacy-notice {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--muted);
-}
-
 .feedback-status {
   margin: 0;
   min-height: 1.25rem;
