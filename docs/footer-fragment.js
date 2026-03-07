@@ -26,6 +26,11 @@
         </form>
         <div class="footer-legal">
           <p class="footer-copyright">© <a href="https://www.linkedin.com/company/shepherdpath-solutions/" target="_blank" rel="noreferrer">SheperdPath Solutions</a> <span id="current-year"></span></p>
+          <p class="footer-social-links">
+            <a href="https://www.facebook.com/profile.php?id=61566125041701" target="_blank" rel="noreferrer">Facebook</a>
+            <span aria-hidden="true">•</span>
+            <a href="https://www.linkedin.com/showcase/102618283" target="_blank" rel="noreferrer">LinkedIn</a>
+          </p>
         </div>
       </div>
     `;
