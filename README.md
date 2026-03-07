@@ -58,3 +58,22 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 • Source for this derivative version: {PUBLIC_REPO_URL_FOR_DERIVATIVE}
 =====================================
  </pre>
+
+## Website feedback form provider configuration
+
+The site footer feedback form is configured to use **FormSubmit** as a managed handler for static sites.
+
+- **Production form endpoint**: `https://formsubmit.co/feedback@navtheway.com`
+- **Where submissions are viewed**: Form submissions are delivered to the destination mailbox (`feedback@navtheway.com`) after FormSubmit activation/confirmation.
+- **How to rotate destination email**: Update the endpoint in `docs/footer-fragment.js` by changing `FOOTER_FORM_ENDPOINT` to the new destination email endpoint (for example, `https://formsubmit.co/new-inbox@yourdomain.com`) and redeploy.
+- **Spam controls enabled**:
+  - Honeypot field via `_honey` hidden input.
+  - FormSubmit server-side filtering/captcha via `_captcha=true` hidden field.
+
+### Endpoint setup checklist
+
+1. Ensure the destination email account exists and is monitored.
+2. Deploy the site with the configured endpoint.
+3. Submit a test message from the footer form.
+4. Confirm the activation email from FormSubmit (first submission) to enable production delivery.
+5. Verify messages are received in the destination inbox.
