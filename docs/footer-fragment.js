@@ -24,12 +24,12 @@
         <form id="footer-feedback-form" name="footer_feedback_form" class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
           <h2>Contact Us</h2>
           <label for="footer-feedback-email">Email</label>
-          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" maxlength="254" aria-describedby="footer-feedback-email-help" required />
-          <p id="footer-feedback-email-help" class="field-help">Please enter a valid email address (up to 254 characters).</p>
+          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" maxlength="254" aria-describedby="footer-feedback-email-count" required />
+          <p id="footer-feedback-email-count" class="field-count" aria-live="polite">0 / 254</p>
 
           <label for="footer-feedback-message">Message</label>
-          <textarea id="footer-feedback-message" name="message" rows="3" minlength="10" maxlength="2000" aria-describedby="footer-feedback-message-help" required></textarea>
-          <p id="footer-feedback-message-help" class="field-help">Message must be between 10 and 2000 characters.</p>
+          <textarea id="footer-feedback-message" name="message" rows="3" minlength="10" maxlength="2000" aria-describedby="footer-feedback-message-count" required></textarea>
+          <p id="footer-feedback-message-count" class="field-count" aria-live="polite">0 / 2000</p>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
           <input type="hidden" name="_captcha" value="true" />
@@ -59,9 +59,34 @@
     const form = footer.querySelector(".footer-feedback-form");
     const submitButton = form?.querySelector("button[type='submit']");
     const status = form?.querySelector(".feedback-status");
+    const emailField = form?.querySelector("#footer-feedback-email");
+    const emailCount = form?.querySelector("#footer-feedback-email-count");
+    const messageField = form?.querySelector("#footer-feedback-message");
+    const messageCount = form?.querySelector("#footer-feedback-message-count");
     if (!form || !submitButton || !status) {
       return;
     }
+
+    const updateCount = (field, countElement) => {
+      if (!field || !countElement) {
+        return;
+      }
+
+      const maxLength = Number(field.getAttribute("maxlength"));
+      const currentLength = field.value.length;
+      countElement.textContent = `${currentLength} / ${maxLength}`;
+    };
+
+    updateCount(emailField, emailCount);
+    updateCount(messageField, messageCount);
+
+    emailField?.addEventListener("input", () => {
+      updateCount(emailField, emailCount);
+    });
+
+    messageField?.addEventListener("input", () => {
+      updateCount(messageField, messageCount);
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -121,6 +146,8 @@
           });
         }
         form.reset();
+        updateCount(emailField, emailCount);
+        updateCount(messageField, messageCount);
       } catch (error) {
         status.classList.add("feedback-error");
         if (error instanceof Error && error.message === "CAPTCHA challenge was not completed") {
