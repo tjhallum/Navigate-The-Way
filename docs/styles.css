@@ -14,7 +14,17 @@
   --content-max: 980px;
   --content-max-wide: 1160px;
   --gutter: 1rem;
+  --fs-body: clamp(1rem, 1rem, 1rem);
+  --lh-body: clamp(1.65, 1.65, 1.65);
+  --fs-small: clamp(0.95rem, 0.95rem, 0.95rem);
+  --fs-launch-kicker: clamp(1.06rem, 1.06rem, 1.06rem);
+  --fs-launch-cta: clamp(1.02rem, 1.02rem, 1.02rem);
+  --fs-h1: clamp(1.55rem, 1.55rem, 1.55rem);
+  --fs-v-h1: clamp(2rem, 2rem, 2rem);
+  --fs-v-h2: clamp(1.5rem, 1.5rem, 1.5rem);
+  --fs-v-h3: clamp(1.25rem, 1.25rem, 1.25rem);
 }
+
 * { box-sizing: border-box; }
 html {
   min-height: 100%;
@@ -33,7 +43,8 @@ body {
   background-size: 100% 100vh;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  line-height: 1.65;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -93,7 +104,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .hero-title {
   margin: 0;
   text-align: center;
-  font-size: clamp(1.55rem, 2.5vw, 2.15rem);
+  font-size: var(--fs-h1);
   line-height: 1.2;
   color: #f3f8ff;
   text-wrap: balance;
@@ -122,8 +133,8 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   color: #f3f7ff;
   letter-spacing: .2px;
 }
-.launch-kicker { margin-bottom: .9rem; font-size: 1.06rem; }
-.launch-cta { margin-top: .95rem; font-size: 1.02rem; color: #dbe8ff; }
+.launch-kicker { margin-bottom: .9rem; font-size: var(--fs-launch-kicker); }
+.launch-cta { margin-top: .95rem; font-size: var(--fs-launch-cta); color: #dbe8ff; }
 .launch-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -138,7 +149,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .launch-panel--chatgpt,
 .launch-panel--poe,
 .launch-panel--apologist { border-top: 1px solid var(--border); }
-.launch-panel p { margin: 0.42rem 0; color: #dfe8ff; font-size: .95rem; }
+.launch-panel p { margin: 0.42rem 0; color: #dfe8ff; font-size: var(--fs-small); }
 .launch-panel p:first-child { margin: 0 0 .65rem; }
 .launch-panel p:first-child a {
   display: inline-block;
@@ -160,7 +171,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .launch-panel li {
   margin: 0.34rem 0;
   color: #dfe8ff;
-  font-size: .95rem;
+  font-size: var(--fs-small);
 }
 .launch-panel li ul {
   margin-top: 0.4rem;
@@ -208,12 +219,17 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   margin-top: 1.6rem;
   margin-bottom: 0.5rem;
 }
-.verbatim-content h1 { margin-top: 0.25rem; font-size: 2rem; }
-.verbatim-content p { margin: 0.7rem 0; }
+.verbatim-content h1 { margin-top: 0.25rem; font-size: var(--fs-v-h1); }
+.verbatim-content h2 { font-size: var(--fs-v-h2); }
+.verbatim-content h3 { font-size: var(--fs-v-h3); }
+.verbatim-content p { margin: 0.7rem 0; font-size: var(--fs-body); }
 .verbatim-content ul,
 .verbatim-content ol {
   margin: 0.4rem 0 1rem;
   padding-left: 1.2rem;
+}
+.verbatim-content li {
+  font-size: var(--fs-body);
 }
 .verbatim-content p,
 .verbatim-content li,
@@ -271,6 +287,34 @@ footer {
   padding-inline: var(--gutter);
   display: grid;
   gap: 1rem;
+}
+
+
+@media (min-width: 1024px) {
+  :root {
+    --fs-body: clamp(1rem, 0.95rem + 0.28vw, 1.08rem);
+    --lh-body: clamp(1.65, 1.6 + 0.2vw, 1.72);
+    --fs-small: clamp(0.95rem, 0.9rem + 0.2vw, 1rem);
+    --fs-launch-kicker: clamp(1.06rem, 0.95rem + 0.45vw, 1.18rem);
+    --fs-launch-cta: clamp(1.02rem, 0.92rem + 0.35vw, 1.12rem);
+    --fs-h1: clamp(1.55rem, 1.2rem + 1.2vw, 2.15rem);
+    --fs-v-h1: clamp(2rem, 1.72rem + 0.9vw, 2.4rem);
+    --fs-v-h2: clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem);
+    --fs-v-h3: clamp(1.25rem, 1.18rem + 0.25vw, 1.4rem);
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --fs-body: clamp(1.06rem, 0.98rem + 0.3vw, 1.14rem);
+    --fs-small: clamp(0.98rem, 0.92rem + 0.22vw, 1.04rem);
+    --fs-launch-kicker: clamp(1.12rem, 1rem + 0.35vw, 1.24rem);
+    --fs-launch-cta: clamp(1.08rem, 0.96rem + 0.3vw, 1.18rem);
+    --fs-h1: clamp(1.85rem, 1.35rem + 1vw, 2.35rem);
+    --fs-v-h1: clamp(2.2rem, 1.9rem + 0.8vw, 2.6rem);
+    --fs-v-h2: clamp(1.6rem, 1.42rem + 0.4vw, 1.88rem);
+    --fs-v-h3: clamp(1.3rem, 1.2rem + 0.25vw, 1.5rem);
+  }
 }
 
 @media (min-width: 1200px) {
