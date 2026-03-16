@@ -395,6 +395,58 @@ footer {
     --fs-v-h2: clamp(1.54rem, calc(1.36rem + (0.98 * var(--desktop-scale))), 2rem);
     --fs-v-h3: clamp(1.3rem, calc(1.18rem + (0.68 * var(--desktop-scale))), 1.62rem);
   }
+
+  .page-header {
+    max-width: min(100%, 84ch);
+    margin-inline: auto;
+  }
+
+  .page-header p {
+    max-width: 72ch;
+    line-height: 1.72;
+  }
+
+  .card > :is(p, ul, ol, blockquote, pre, .verbatim-content) {
+    max-width: 74ch;
+  }
+
+  .card > :is(p, ul, ol, blockquote, pre) {
+    margin-inline: auto;
+  }
+
+  .launch-panel p,
+  .launch-panel li,
+  .verbatim-content p,
+  .verbatim-content li {
+    line-height: 1.72;
+  }
+
+  .launch-panel ul {
+    margin: 0.65rem 0 0.3rem 1.4rem;
+  }
+
+  .launch-panel li {
+    margin: 0.46rem 0;
+  }
+
+  .verbatim-content {
+    max-width: 78ch;
+    margin-inline: auto;
+  }
+
+  .verbatim-content p {
+    margin: 0.92rem 0;
+  }
+
+  .verbatim-content ul,
+  .verbatim-content ol {
+    margin: 0.68rem 0 1.2rem;
+    padding-left: 1.35rem;
+  }
+
+  .verbatim-content li + li {
+    margin-top: 0.32rem;
+  }
 }
 
 @media (min-width: 1440px) {
@@ -492,7 +544,7 @@ footer {
   }
 
   .page-header {
-    max-width: min(100%, 110ch);
+    max-width: min(100%, 92ch);
     margin-inline: auto;
   }
 
