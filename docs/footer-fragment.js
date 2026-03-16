@@ -1,5 +1,17 @@
 (() => {
   const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/ajax/4113a97af286d9c7a1a1f79c97ddf8f7";
+  const FOOTER_FORM_TIMEOUT_MS = 12000;
+
+  function trackFooterFeedbackFailure(failureType) {
+    if (typeof gtag !== "function") {
+      return;
+    }
+
+    gtag("event", "footer_feedback_submit_failed", {
+      event_category: "footer_feedback_form",
+      failure_type: failureType,
+    });
+  }
 
   function buildFooter() {
     const footer = document.querySelector("footer[data-shared-footer]");
@@ -53,6 +65,9 @@
       status.textContent = "";
 
       if (!form.checkValidity()) {
+        status.classList.add("feedback-error");
+        status.textContent = "Please complete all required fields before submitting.";
+        trackFooterFeedbackFailure("validation_failed");
         form.reportValidity();
         return;
       }
@@ -61,6 +76,11 @@
       submitButton.disabled = true;
       submitButton.textContent = "Sending...";
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => {
+        controller.abort("timeout");
+      }, FOOTER_FORM_TIMEOUT_MS);
+
       try {
         const response = await fetch(form.action, {
           method: "POST",
@@ -68,6 +88,7 @@
           headers: {
             Accept: "application/json",
           },
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -83,15 +104,23 @@
         status.classList.add("feedback-success");
         status.textContent = "Thank you! Your feedback was submitted successfully.";
         if (typeof gtag === "function") {
-          gtag('event', 'generate_lead', {
-            lead_source: 'footer_feedback_form'
+          gtag("event", "generate_lead", {
+            lead_source: "footer_feedback_form"
           });
         }
         form.reset();
       } catch (error) {
         status.classList.add("feedback-error");
-        status.textContent = "Sorry, there was a problem sending your feedback. Please try again in a moment.";
+
+        if (error?.name === "AbortError") {
+          status.textContent = "The request timed out. Please try again.";
+          trackFooterFeedbackFailure("timeout");
+        } else {
+          status.textContent = "Sorry, we could not send your feedback due to a server issue. Please try again shortly.";
+          trackFooterFeedbackFailure("server_failure");
+        }
       } finally {
+        window.clearTimeout(timeoutId);
         submitButton.disabled = false;
         submitButton.textContent = "Send Feedback";
       }
