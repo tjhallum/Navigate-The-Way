@@ -158,10 +158,18 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
   padding: 1.35rem;
 }
 
+
+#apg-inline-shell {
+  margin: 1rem auto;
+  padding: 2px;
+  border-radius: 18px;
+  background: repeating-linear-gradient(135deg, #ffce48 0 4px, transparent 4px 8px);
+}
+
 #apg-inline-target {
   width: 100%;
   max-width: 100%;
-  margin: 1rem auto;
+  margin: 0;
   min-width: 0;
   overflow-x: visible;
   border-radius: 16px;
