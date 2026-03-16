@@ -1,5 +1,17 @@
 (() => {
   const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/ajax/4113a97af286d9c7a1a1f79c97ddf8f7";
+  const FOOTER_FORM_TIMEOUT_MS = 12000;
+
+  function trackFooterFeedbackFailure(failureType) {
+    if (typeof gtag !== "function") {
+      return;
+    }
+
+    gtag("event", "footer_feedback_submit_failed", {
+      event_category: "footer_feedback_form",
+      failure_type: failureType,
+    });
+  }
 
   function buildFooter() {
     const footer = document.querySelector("footer[data-shared-footer]");
@@ -12,10 +24,12 @@
         <form id="footer-feedback-form" name="footer_feedback_form" class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
           <h2>Contact Us</h2>
           <label for="footer-feedback-email">Email</label>
-          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" required />
+          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" maxlength="254" aria-describedby="footer-feedback-email-help" required />
+          <p id="footer-feedback-email-help" class="field-help">Please enter a valid email address (up to 254 characters).</p>
 
           <label for="footer-feedback-message">Message</label>
-          <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
+          <textarea id="footer-feedback-message" name="message" rows="3" minlength="10" maxlength="2000" aria-describedby="footer-feedback-message-help" required></textarea>
+          <p id="footer-feedback-message-help" class="field-help">Message must be between 10 and 2000 characters.</p>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
           <input type="hidden" name="_captcha" value="true" />
@@ -55,6 +69,9 @@
       status.textContent = "";
 
       if (!form.checkValidity()) {
+        status.classList.add("feedback-error");
+        status.textContent = "Please complete all required fields before submitting.";
+        trackFooterFeedbackFailure("validation_failed");
         form.reportValidity();
         return;
       }
@@ -63,6 +80,11 @@
       submitButton.disabled = true;
       submitButton.textContent = "Sending...";
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => {
+        controller.abort("timeout");
+      }, FOOTER_FORM_TIMEOUT_MS);
+
       try {
         const response = await fetch(form.action, {
           method: "POST",
@@ -70,6 +92,7 @@
           headers: {
             Accept: "application/json",
           },
+          signal: controller.signal,
         });
 
         if (response.status === 422) {
@@ -93,8 +116,8 @@
         status.classList.add("feedback-success");
         status.textContent = "Thank you! Your feedback was submitted successfully.";
         if (typeof gtag === "function") {
-          gtag('event', 'generate_lead', {
-            lead_source: 'footer_feedback_form'
+          gtag("event", "generate_lead", {
+            lead_source: "footer_feedback_form"
           });
         }
         form.reset();
@@ -108,6 +131,7 @@
           status.textContent = "Sorry, there was a problem sending your feedback. Please try again in a moment.";
         }
       } finally {
+        window.clearTimeout(timeoutId);
         submitButton.disabled = false;
         submitButton.textContent = "Send Feedback";
       }
