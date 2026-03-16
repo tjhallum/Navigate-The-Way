@@ -7,7 +7,18 @@ OUTPUT_FILE="${DOCS_DIR}/sitemap.xml"
 HOME_PAGE="${DOCS_DIR}/index.html"
 
 lastmod_date() {
-  date -u -r "$1" '+%Y-%m-%d'
+  local file_path="$1"
+  local git_lastmod
+
+  # Prefer commit history so sitemap dates are stable across fresh checkouts/CI.
+  git_lastmod="$(git log -1 --format=%cs -- "${file_path}" 2>/dev/null || true)"
+  if [[ -n "${git_lastmod}" ]]; then
+    echo "${git_lastmod}"
+    return
+  fi
+
+  # Fallback for untracked files (or non-git contexts).
+  date -u -r "${file_path}" '+%Y-%m-%d'
 }
 
 {
