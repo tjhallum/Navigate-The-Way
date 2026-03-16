@@ -1,5 +1,5 @@
 (() => {
-  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/4113a97af286d9c7a1a1f79c97ddf8f7";
+  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/ajax/4113a97af286d9c7a1a1f79c97ddf8f7";
 
   function buildFooter() {
     const footer = document.querySelector("footer[data-shared-footer]");
@@ -75,7 +75,8 @@
         }
 
         const payload = await response.json().catch(() => null);
-        if (payload?.success !== "true") {
+        const acknowledgedSuccess = payload?.success === true || payload?.success === "true";
+        if (!acknowledgedSuccess) {
           throw new Error("FormSubmit did not acknowledge success");
         }
 
