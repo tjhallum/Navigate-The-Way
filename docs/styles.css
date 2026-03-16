@@ -350,9 +350,6 @@ footer {
     width: min(100%, 1080px);
   }
 
-  .footer-feedback-form {
-    width: min(640px, 100%);
-  }
 }
 
 @media (min-width: 1920px) {
@@ -377,9 +374,6 @@ footer {
     width: min(100%, 1240px);
   }
 
-  .footer-feedback-form {
-    width: min(720px, 100%);
-  }
 }
 
 @media (min-width: 1200px) {
@@ -467,6 +461,12 @@ footer {
   display: grid;
   gap: 0.55rem;
   text-align: left;
+}
+
+@media (min-width: 1024px) {
+  .footer-feedback-form {
+    width: min(100%, clamp(560px, 55vw, var(--content-max)));
+  }
 }
 
 .footer-feedback-form h2 {
