@@ -56,6 +56,7 @@
   --fs-v-h1: clamp(2rem, 2rem, 2rem);
   --fs-v-h2: clamp(1.5rem, 1.5rem, 1.5rem);
   --fs-v-h3: clamp(1.25rem, 1.25rem, 1.25rem);
+  --fs-v-body: var(--fs-body);
 }
 
 * { box-sizing: border-box; }
@@ -277,14 +278,14 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .verbatim-content h1 { margin-top: 0.25rem; font-size: var(--fs-v-h1); }
 .verbatim-content h2 { font-size: var(--fs-v-h2); }
 .verbatim-content h3 { font-size: var(--fs-v-h3); }
-.verbatim-content p { margin: 0.7rem 0; font-size: var(--fs-body); }
+.verbatim-content p { margin: 0.7rem 0; font-size: var(--fs-v-body); }
 .verbatim-content ul,
 .verbatim-content ol {
   margin: 0.4rem 0 1rem;
   padding-left: 1.2rem;
 }
 .verbatim-content li {
-  font-size: var(--fs-body);
+  font-size: var(--fs-v-body);
 }
 .verbatim-content p,
 .verbatim-content li,
@@ -384,14 +385,15 @@ footer {
     --fs-body: var(--fs-body-reading);
     --lh-body: var(--lh-body-reading);
     --fs-small: var(--fs-body-secondary);
+    --fs-v-body: var(--fs-body-reading);
     --fs-brand: clamp(1rem, calc(0.95rem + (0.4 * var(--desktop-scale))), 1.1rem);
     --fs-nav-label: clamp(0.98rem, calc(0.94rem + (0.36 * var(--desktop-scale))), 1.08rem);
     --fs-launch-kicker: clamp(1.06rem, calc(0.98rem + (0.72 * var(--desktop-scale))), 1.25rem);
     --fs-launch-cta: clamp(1.02rem, calc(0.95rem + (0.62 * var(--desktop-scale))), 1.18rem);
     --fs-h1: clamp(1.6rem, calc(1.26rem + (1.96 * var(--desktop-scale))), 2.42rem);
     --fs-v-h1: clamp(2rem, calc(1.76rem + (1.58 * var(--desktop-scale))), 2.68rem);
-    --fs-v-h2: clamp(1.5rem, calc(1.34rem + (0.92 * var(--desktop-scale))), 1.94rem);
-    --fs-v-h3: clamp(1.25rem, calc(1.15rem + (0.62 * var(--desktop-scale))), 1.54rem);
+    --fs-v-h2: clamp(1.54rem, calc(1.36rem + (0.98 * var(--desktop-scale))), 2rem);
+    --fs-v-h3: clamp(1.3rem, calc(1.18rem + (0.68 * var(--desktop-scale))), 1.62rem);
   }
 }
 
@@ -421,14 +423,15 @@ footer {
     --fs-body: var(--fs-body-reading);
     --lh-body: var(--lh-body-reading);
     --fs-small: var(--fs-body-secondary);
+    --fs-v-body: var(--fs-body-reading);
     --fs-brand: clamp(1.06rem, calc(0.96rem + (0.52 * var(--desktop-scale))), 1.2rem);
     --fs-nav-label: clamp(1.02rem, calc(0.93rem + (0.46 * var(--desktop-scale))), 1.16rem);
     --fs-launch-kicker: clamp(1.12rem, calc(1.01rem + (0.8 * var(--desktop-scale))), 1.4rem);
     --fs-launch-cta: clamp(1.08rem, calc(0.98rem + (0.7 * var(--desktop-scale))), 1.32rem);
     --fs-h1: clamp(1.9rem, calc(1.34rem + (2.24 * var(--desktop-scale))), 2.78rem);
     --fs-v-h1: clamp(2.2rem, calc(1.9rem + (1.86 * var(--desktop-scale))), 3.12rem);
-    --fs-v-h2: clamp(1.62rem, calc(1.4rem + (1.2 * var(--desktop-scale))), 2.2rem);
-    --fs-v-h3: clamp(1.3rem, calc(1.16rem + (0.78 * var(--desktop-scale))), 1.8rem);
+    --fs-v-h2: clamp(1.68rem, calc(1.42rem + (1.28 * var(--desktop-scale))), 2.3rem);
+    --fs-v-h3: clamp(1.36rem, calc(1.18rem + (0.86 * var(--desktop-scale))), 1.92rem);
   }
 
   .site-logo {
@@ -464,14 +467,15 @@ footer {
     --fs-body: var(--fs-body-reading);
     --lh-body: var(--lh-body-reading);
     --fs-small: var(--fs-body-secondary);
+    --fs-v-body: var(--fs-body-reading);
     --fs-brand: clamp(1.12rem, calc(0.98rem + (0.56 * var(--desktop-scale))), 1.3rem);
     --fs-nav-label: clamp(1.08rem, calc(0.96rem + (0.5 * var(--desktop-scale))), 1.26rem);
     --fs-launch-kicker: clamp(1.2rem, calc(1.05rem + (0.86 * var(--desktop-scale))), 1.52rem);
     --fs-launch-cta: clamp(1.14rem, calc(1.02rem + (0.76 * var(--desktop-scale))), 1.42rem);
     --fs-h1: clamp(2.12rem, calc(1.58rem + (2.46 * var(--desktop-scale))), 3.14rem);
     --fs-v-h1: clamp(2.48rem, calc(2.06rem + (2.12 * var(--desktop-scale))), 3.56rem);
-    --fs-v-h2: clamp(1.78rem, calc(1.52rem + (1.28 * var(--desktop-scale))), 2.44rem);
-    --fs-v-h3: clamp(1.42rem, calc(1.24rem + (0.86 * var(--desktop-scale))), 2.04rem);
+    --fs-v-h2: clamp(1.86rem, calc(1.56rem + (1.38 * var(--desktop-scale))), 2.58rem);
+    --fs-v-h3: clamp(1.5rem, calc(1.28rem + (0.94 * var(--desktop-scale))), 2.2rem);
   }
 
   .site-logo {
@@ -538,14 +542,15 @@ footer {
     --fs-body: var(--fs-body-reading);
     --lh-body: var(--lh-body-reading);
     --fs-small: var(--fs-body-secondary);
+    --fs-v-body: var(--fs-body-reading);
     --fs-brand: clamp(1.18rem, calc(0.94rem + (0.98 * var(--desktop-scale))), 1.5rem);
     --fs-nav-label: clamp(1.14rem, calc(0.92rem + (0.9 * var(--desktop-scale))), 1.46rem);
     --fs-launch-kicker: clamp(1.28rem, calc(1.02rem + (1.16 * var(--desktop-scale))), 1.72rem);
     --fs-launch-cta: clamp(1.22rem, calc(0.99rem + (1.02 * var(--desktop-scale))), 1.6rem);
     --fs-h1: clamp(2.32rem, calc(1.62rem + (2.9 * var(--desktop-scale))), 3.56rem);
     --fs-v-h1: clamp(2.72rem, calc(1.96rem + (3.1 * var(--desktop-scale))), 4.08rem);
-    --fs-v-h2: clamp(1.94rem, calc(1.42rem + (2.2 * var(--desktop-scale))), 2.82rem);
-    --fs-v-h3: clamp(1.52rem, calc(1.06rem + (1.82 * var(--desktop-scale))), 2.24rem);
+    --fs-v-h2: clamp(2.04rem, calc(1.48rem + (2.32 * var(--desktop-scale))), 3rem);
+    --fs-v-h3: clamp(1.62rem, calc(1.12rem + (1.96 * var(--desktop-scale))), 2.44rem);
     --content-max: min(86vw, 3040px);
     --content-max-wide: min(92vw, 3380px);
   }
@@ -579,14 +584,15 @@ footer {
     --fs-body: var(--fs-body-reading);
     --lh-body: var(--lh-body-reading);
     --fs-small: var(--fs-body-secondary);
+    --fs-v-body: var(--fs-body-reading);
     --fs-brand: clamp(1.5rem, calc(-0.2rem + (0.0759 * var(--desktop-scale))), 1.84rem);
     --fs-nav-label: clamp(1.46rem, calc(-0.17rem + (0.0728 * var(--desktop-scale))), 1.78rem);
     --fs-launch-kicker: clamp(1.74rem, calc(0.14rem + (0.0714 * var(--desktop-scale))), 2.06rem);
     --fs-launch-cta: clamp(1.64rem, calc(0.09rem + (0.0692 * var(--desktop-scale))), 1.95rem);
     --fs-h1: clamp(3.72rem, calc(0.72rem + (0.1339 * var(--desktop-scale))), 4.32rem);
     --fs-v-h1: clamp(4.2rem, calc(0.6rem + (0.1607 * var(--desktop-scale))), 4.92rem);
-    --fs-v-h2: clamp(2.9rem, calc(0.7rem + (0.0982 * var(--desktop-scale))), 3.34rem);
-    --fs-v-h3: clamp(2.36rem, calc(0.56rem + (0.0804 * var(--desktop-scale))), 2.72rem);
+    --fs-v-h2: clamp(3.02rem, calc(0.74rem + (0.1018 * var(--desktop-scale))), 3.48rem);
+    --fs-v-h3: clamp(2.48rem, calc(0.62rem + (0.0839 * var(--desktop-scale))), 2.86rem);
     --content-max: min(84vw, 3560px);
     --content-max-wide: min(90vw, 3780px);
   }
