@@ -44,7 +44,10 @@
   --fs-body: clamp(1rem, 1rem, 1rem);
   --lh-body: clamp(1.65rem, 1.65rem, 1.65rem);
   --fs-small: clamp(0.95rem, 0.95rem, 0.95rem);
+  --fs-brand: var(--fs-body);
+  --fs-nav-label: var(--fs-body);
   --fs-nav-submenu: var(--fs-small);
+  --fs-mono-body: var(--fs-small);
   --fs-field-count: 0.88rem;
   --fs-feedback-status: 0.9rem;
   --fs-launch-kicker: clamp(1.06rem, 1.06rem, 1.06rem);
@@ -85,11 +88,17 @@ header {
   border-bottom: 1px solid var(--border);
 }
 .nav-wrap { width: min(var(--content-max-wide), 100%); margin: 0 auto; padding-block: var(--nav-wrap-padding-block); padding-inline: var(--gutter); display: flex; align-items: center; gap: var(--nav-wrap-gap); }
-.brand { font-weight: 700; color: #fff; white-space: nowrap; }
+.brand {
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  font-size: var(--fs-brand);
+}
 .mobile-nav-toggle,
 .mobile-nav-button { display: none; }
 nav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: var(--nav-list-gap); align-items: center; flex-wrap: wrap; }
 nav li { position: relative; }
+nav a { font-size: var(--fs-nav-label); }
 .dropdown > ul {
   display: none; position: absolute; top: 100%; left: 0; min-width: var(--nav-dropdown-min-width);
   background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: var(--nav-dropdown-padding);
@@ -291,6 +300,19 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 .verbatim-content hr { border-color: var(--border); opacity: .5; }
 
+.system-prompt-content {
+  width: 100%;
+  height: 2600px;
+  overflow: auto;
+  padding: 0.625rem;
+  white-space: pre-wrap;
+  background-color: #000;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  font-size: var(--fs-mono-body);
+  line-height: 1.45;
+}
+
 .video-embed-wrap {
   margin: 1.2rem auto 0;
   width: 100%;
@@ -346,6 +368,8 @@ footer {
     --fs-body: clamp(1rem, calc(0.96rem + (0.46 * var(--desktop-scale))), 1.11rem);
     --lh-body: clamp(1.65rem, calc(1.6rem + (0.36 * var(--desktop-scale))), 1.84rem);
     --fs-small: clamp(0.95rem, calc(0.91rem + (0.38 * var(--desktop-scale))), 1.03rem);
+    --fs-brand: clamp(1rem, calc(0.95rem + (0.4 * var(--desktop-scale))), 1.1rem);
+    --fs-nav-label: clamp(0.98rem, calc(0.94rem + (0.36 * var(--desktop-scale))), 1.08rem);
     --fs-launch-kicker: clamp(1.06rem, calc(0.98rem + (0.72 * var(--desktop-scale))), 1.25rem);
     --fs-launch-cta: clamp(1.02rem, calc(0.95rem + (0.62 * var(--desktop-scale))), 1.18rem);
     --fs-h1: clamp(1.6rem, calc(1.26rem + (1.96 * var(--desktop-scale))), 2.42rem);
@@ -378,6 +402,8 @@ footer {
     --fs-body: clamp(1.06rem, calc(0.97rem + (0.58 * var(--desktop-scale))), 1.24rem);
     --lh-body: clamp(1.72rem, calc(1.64rem + (0.46 * var(--desktop-scale))), 1.98rem);
     --fs-small: clamp(0.99rem, calc(0.92rem + (0.46 * var(--desktop-scale))), 1.13rem);
+    --fs-brand: clamp(1.06rem, calc(0.96rem + (0.52 * var(--desktop-scale))), 1.2rem);
+    --fs-nav-label: clamp(1.02rem, calc(0.93rem + (0.46 * var(--desktop-scale))), 1.16rem);
     --fs-launch-kicker: clamp(1.12rem, calc(1.01rem + (0.8 * var(--desktop-scale))), 1.4rem);
     --fs-launch-cta: clamp(1.08rem, calc(0.98rem + (0.7 * var(--desktop-scale))), 1.32rem);
     --fs-h1: clamp(1.9rem, calc(1.34rem + (2.24 * var(--desktop-scale))), 2.78rem);
@@ -402,6 +428,8 @@ footer {
     --fs-body: clamp(1.14rem, calc(1.02rem + (0.62 * var(--desktop-scale))), 1.36rem);
     --lh-body: clamp(1.82rem, calc(1.72rem + (0.58 * var(--desktop-scale))), 2.2rem);
     --fs-small: clamp(1.04rem, calc(0.96rem + (0.5 * var(--desktop-scale))), 1.22rem);
+    --fs-brand: clamp(1.12rem, calc(0.98rem + (0.56 * var(--desktop-scale))), 1.3rem);
+    --fs-nav-label: clamp(1.08rem, calc(0.96rem + (0.5 * var(--desktop-scale))), 1.26rem);
     --fs-launch-kicker: clamp(1.2rem, calc(1.05rem + (0.86 * var(--desktop-scale))), 1.52rem);
     --fs-launch-cta: clamp(1.14rem, calc(1.02rem + (0.76 * var(--desktop-scale))), 1.42rem);
     --fs-h1: clamp(2.12rem, calc(1.58rem + (2.46 * var(--desktop-scale))), 3.14rem);
@@ -452,6 +480,8 @@ footer {
     --fs-body: clamp(1.22rem, calc(1rem + (0.92 * var(--desktop-scale))), 1.48rem);
     --lh-body: clamp(1.96rem, calc(1.72rem + (1.08 * var(--desktop-scale))), 2.42rem);
     --fs-small: clamp(1.1rem, calc(0.94rem + (0.72 * var(--desktop-scale))), 1.34rem);
+    --fs-brand: clamp(1.18rem, calc(0.94rem + (0.98 * var(--desktop-scale))), 1.5rem);
+    --fs-nav-label: clamp(1.14rem, calc(0.92rem + (0.9 * var(--desktop-scale))), 1.46rem);
     --fs-launch-kicker: clamp(1.28rem, calc(1.02rem + (1.16 * var(--desktop-scale))), 1.72rem);
     --fs-launch-cta: clamp(1.22rem, calc(0.99rem + (1.02 * var(--desktop-scale))), 1.6rem);
     --fs-h1: clamp(2.32rem, calc(1.62rem + (2.9 * var(--desktop-scale))), 3.56rem);
@@ -470,6 +500,8 @@ footer {
     --fs-body: clamp(1.56rem, calc(-0.24rem + (0.0804 * var(--desktop-scale))), 1.92rem);
     --lh-body: clamp(2.55rem, calc(0.05rem + (0.1116 * var(--desktop-scale))), 3.05rem);
     --fs-small: clamp(1.4rem, calc(-0.2rem + (0.0714 * var(--desktop-scale))), 1.72rem);
+    --fs-brand: clamp(1.5rem, calc(-0.2rem + (0.0759 * var(--desktop-scale))), 1.84rem);
+    --fs-nav-label: clamp(1.46rem, calc(-0.17rem + (0.0728 * var(--desktop-scale))), 1.78rem);
     --fs-launch-kicker: clamp(1.74rem, calc(0.14rem + (0.0714 * var(--desktop-scale))), 2.06rem);
     --fs-launch-cta: clamp(1.64rem, calc(0.09rem + (0.0692 * var(--desktop-scale))), 1.95rem);
     --fs-h1: clamp(3.72rem, calc(0.72rem + (0.1339 * var(--desktop-scale))), 4.32rem);
@@ -586,7 +618,7 @@ footer {
   .brand {
     min-width: 0;
     max-width: calc(100% - 64px);
-    font-size: 1.05rem;
+    font-size: var(--fs-brand);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
