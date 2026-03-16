@@ -18,7 +18,7 @@
           <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
-          <input type="hidden" name="_captcha" value="true" />
+          <input type="hidden" name="_captcha" value="false" />
           <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
 
           <button type="submit">Send Feedback</button>
@@ -72,6 +72,11 @@
 
         if (!response.ok) {
           throw new Error(`Request failed with ${response.status}`);
+        }
+
+        const payload = await response.json().catch(() => null);
+        if (payload?.success !== "true") {
+          throw new Error("FormSubmit did not acknowledge success");
         }
 
         status.classList.add("feedback-success");
