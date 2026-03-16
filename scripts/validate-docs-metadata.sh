@@ -12,6 +12,8 @@ required_tokens = [
     ('og:url', 'property="og:url"'),
     ('og:image', 'property="og:image"'),
     ('twitter:card', 'name="twitter:card"'),
+    ('canonical', 'rel="canonical"'),
+    ('json-ld', 'application/ld+json'),
 ]
 
 errors = []
