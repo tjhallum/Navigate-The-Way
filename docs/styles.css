@@ -558,7 +558,7 @@ footer {
     --footer-feedback-control-padding-inline: 1rem;
     --footer-feedback-button-padding-block: 0.84rem;
     --footer-feedback-button-padding-inline: 1.1rem;
-    --fs-body: clamp(1.56rem, calc(-0.24rem + (0.0804 * var(--desktop-scale))), 1.92rem);
+    --fs-body: clamp(1.56rem, calc(-0.24rem + (1.2857 * var(--desktop-scale))), 1.92rem);
     --lh-body: clamp(2.55rem, calc(0.05rem + (0.1116 * var(--desktop-scale))), 3.05rem);
     --fs-small: clamp(1.4rem, calc(-0.2rem + (0.0714 * var(--desktop-scale))), 1.72rem);
     --fs-brand: clamp(1.5rem, calc(-0.2rem + (0.0759 * var(--desktop-scale))), 1.84rem);
