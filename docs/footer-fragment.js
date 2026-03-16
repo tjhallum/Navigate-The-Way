@@ -1,5 +1,5 @@
 (() => {
-  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/navtheway@gmail.com";
+  const FOOTER_FORM_ENDPOINT = "https://formsubmit.co/ajax/4113a97af286d9c7a1a1f79c97ddf8f7";
 
   function buildFooter() {
     const footer = document.querySelector("footer[data-shared-footer]");
@@ -18,7 +18,7 @@
           <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
-          <input type="hidden" name="_captcha" value="true" />
+          <input type="hidden" name="_captcha" value="false" />
           <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
 
           <button type="submit">Send Feedback</button>
@@ -72,6 +72,12 @@
 
         if (!response.ok) {
           throw new Error(`Request failed with ${response.status}`);
+        }
+
+        const payload = await response.json().catch(() => null);
+        const acknowledgedSuccess = payload?.success === true || payload?.success === "true";
+        if (!acknowledgedSuccess) {
+          throw new Error("FormSubmit did not acknowledge success");
         }
 
         status.classList.add("feedback-success");
