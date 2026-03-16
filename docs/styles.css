@@ -200,13 +200,16 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 .launch-panel--chatgpt,
 .launch-panel--apologist { border-top: 1px solid var(--border); }
-.launch-panel p { margin: 0.42rem 0; color: #dfe8ff; font-size: var(--fs-small); }
+.launch-panel p { margin: 0.46rem 0; color: #dfe8ff; font-size: var(--fs-body); }
 .launch-panel p:first-child { margin: 0 0 .65rem; }
 .launch-panel p:first-child a {
   display: inline-block;
   width: 100%;
   text-align: center;
   padding: .52rem .65rem;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0.01em;
   border-radius: 10px;
   color: #f7faff;
   text-decoration: none;
@@ -216,16 +219,16 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .launch-panel p:first-child a:hover { filter: brightness(1.08); }
 
 .launch-panel ul {
-  margin: 0.35rem 0 0.15rem 1.15rem;
+  margin: 0.4rem 0 0.2rem 1.3rem;
   padding: 0;
 }
 .launch-panel li {
-  margin: 0.34rem 0;
+  margin: 0.4rem 0;
   color: #dfe8ff;
-  font-size: var(--fs-small);
+  font-size: var(--fs-body);
 }
 .launch-panel li ul {
-  margin-top: 0.4rem;
+  margin-top: 0.45rem;
 }
 
 .card {
