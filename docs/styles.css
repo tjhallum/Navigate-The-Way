@@ -349,15 +349,22 @@ footer {
 
 @media (min-width: 1200px) {
   :root {
-    --content-max: 1080px; /* desktop expansion: readable main content width */
-    --content-max-wide: 1240px; /* desktop expansion: nav/footer can breathe wider */
+    --content-max: 1160px; /* desktop expansion: readable main content width */
+    --content-max-wide: 1360px; /* desktop expansion: nav/footer can breathe wider */
   }
 }
 
 @media (min-width: 1600px) {
   :root {
-    --content-max: 1180px; /* desktop expansion: ultra-wide content limit */
-    --content-max-wide: 1360px; /* desktop expansion: ultra-wide shell limit */
+    --content-max: 1320px; /* desktop expansion: ultra-wide content limit */
+    --content-max-wide: 1540px; /* desktop expansion: ultra-wide shell limit */
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --content-max: 1480px; /* desktop expansion: 2K+ screens can use more horizontal room */
+    --content-max-wide: 1760px; /* desktop expansion: 2K+ shell cap for nav/footer consistency */
   }
 }
 
