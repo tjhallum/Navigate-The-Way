@@ -60,7 +60,15 @@ run_expect_fail "name-og-url" 'missing og:url meta with property="og:url"' <<EOF
 $(base_html '<meta name="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
+run_expect_fail "name-og-url-wrong-attr" 'og:url meta must use property="og:url" (not name)' <<EOFCASE
+$(base_html '<meta name="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+EOFCASE
+
 run_expect_fail "property-twitter-card" 'missing twitter:card meta with name="twitter:card"' <<EOFCASE
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta property="twitter:card" content="summary_large_image" />')
+EOFCASE
+
+run_expect_fail "property-twitter-card-wrong-attr" 'twitter:card meta must use name="twitter:card" (not property)' <<EOFCASE
 $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta property="twitter:card" content="summary_large_image" />')
 EOFCASE
 

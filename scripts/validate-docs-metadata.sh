@@ -36,6 +36,12 @@ for html_file in html_files:
             metas_by_attr['property'][attrs['property'].lower()] = attrs['content']
 
     for label, attr, key in required_meta:
+        wrong_attr = 'property' if attr == 'name' else 'name'
+        if key in metas_by_attr[wrong_attr]:
+            errors.append(
+                f"{html_file}: {label} meta must use {attr}=\"{key}\" (not {wrong_attr})"
+            )
+
         value = metas_by_attr[attr].get(key)
         if not value:
             errors.append(f"{html_file}: missing {label} meta with {attr}=\"{key}\"")
