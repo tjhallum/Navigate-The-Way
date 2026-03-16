@@ -328,14 +328,15 @@ footer {
     --header-padding-block: 1.15rem;
     --header-padding-inline: 1.25rem;
     --card-padding: 1.5rem;
-    --fs-body: clamp(1.06rem, 0.98rem + 0.3vw, 1.14rem);
-    --fs-small: clamp(0.98rem, 0.92rem + 0.22vw, 1.04rem);
-    --fs-launch-kicker: clamp(1.12rem, 1rem + 0.35vw, 1.24rem);
-    --fs-launch-cta: clamp(1.08rem, 0.96rem + 0.3vw, 1.18rem);
-    --fs-h1: clamp(1.85rem, 1.35rem + 1vw, 2.35rem);
-    --fs-v-h1: clamp(2.2rem, 1.9rem + 0.8vw, 2.6rem);
-    --fs-v-h2: clamp(1.6rem, 1.42rem + 0.4vw, 1.88rem);
-    --fs-v-h3: clamp(1.3rem, 1.2rem + 0.25vw, 1.5rem);
+    --fs-body: clamp(1.06rem, 0.96rem + 0.35vw, 1.2rem);
+    --lh-body: clamp(1.68, 1.7, 1.74);
+    --fs-small: clamp(0.98rem, 0.9rem + 0.25vw, 1.08rem);
+    --fs-launch-kicker: clamp(1.12rem, 0.98rem + 0.42vw, 1.3rem);
+    --fs-launch-cta: clamp(1.08rem, 0.95rem + 0.35vw, 1.22rem);
+    --fs-h1: clamp(1.85rem, 1.25rem + 1.15vw, 2.5rem);
+    --fs-v-h1: clamp(2.2rem, 1.84rem + 0.95vw, 2.8rem);
+    --fs-v-h2: clamp(1.6rem, 1.38rem + 0.5vw, 2rem);
+    --fs-v-h3: clamp(1.3rem, 1.15rem + 0.3vw, 1.62rem);
   }
 
   .site-logo {
@@ -344,6 +345,20 @@ footer {
 
   .video-embed-wrap iframe {
     width: min(100%, 960px);
+  }
+}
+
+@media (min-width: 2200px) {
+  :root {
+    --fs-body: clamp(1.12rem, 1rem + 0.25vw, 1.28rem);
+    --lh-body: clamp(1.72, 1.74, 1.78);
+    --fs-small: clamp(1.02rem, 0.94rem + 0.2vw, 1.14rem);
+    --fs-launch-kicker: clamp(1.18rem, 1.04rem + 0.28vw, 1.4rem);
+    --fs-launch-cta: clamp(1.12rem, 1rem + 0.24vw, 1.3rem);
+    --fs-h1: clamp(2.05rem, 1.5rem + 0.95vw, 2.8rem);
+    --fs-v-h1: clamp(2.4rem, 2.02rem + 0.7vw, 3.05rem);
+    --fs-v-h2: clamp(1.72rem, 1.5rem + 0.35vw, 2.2rem);
+    --fs-v-h3: clamp(1.38rem, 1.22rem + 0.22vw, 1.75rem);
   }
 }
 
