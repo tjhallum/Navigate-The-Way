@@ -11,6 +11,9 @@
   --theme-gradient: linear-gradient(135deg, rgba(122,168,255,0.22) 0%, rgba(170,134,255,0.18) 50%, rgba(12,20,44,0.88) 100%);
   --theme-layered: var(--theme-gradient), rgba(8, 14, 34, 0.72);
   --theme-surface: rgba(8, 14, 34, 0.72);
+  --content-max: 980px;
+  --content-max-wide: 1160px;
+  --gutter: 1rem;
 }
 * { box-sizing: border-box; }
 html {
@@ -40,7 +43,7 @@ header {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
-.nav-wrap { max-width: 1160px; margin: 0 auto; padding: 0.8rem 1rem; display: flex; align-items: center; gap: 1rem; }
+.nav-wrap { max-width: var(--content-max-wide); margin: 0 auto; padding-block: 0.8rem; padding-inline: var(--gutter); display: flex; align-items: center; gap: 1rem; }
 .brand { font-weight: 700; color: #fff; white-space: nowrap; }
 .mobile-nav-toggle,
 .mobile-nav-button { display: none; }
@@ -51,7 +54,7 @@ nav li { position: relative; }
   background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem;
 }
 .dropdown:hover > ul { display: block; }
-main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1rem 3rem; }
+main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding-block: 0 3rem; padding-inline: var(--gutter); }
 
 .page-shell {
   padding: 1rem;
@@ -264,9 +267,24 @@ footer {
 
 .footer-content {
   margin: 0 auto;
-  width: min(980px, 100%);
+  width: min(var(--content-max), 100%);
+  padding-inline: var(--gutter);
   display: grid;
   gap: 1rem;
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --content-max: 1080px;
+    --content-max-wide: 1240px;
+  }
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --content-max: 1180px;
+    --content-max-wide: 1360px;
+  }
 }
 
 .footer-legal {
