@@ -18,10 +18,12 @@
           <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
-          <input type="hidden" name="_captcha" value="false" />
+          <input type="hidden" name="_captcha" value="true" />
           <input type="hidden" name="_subject" value="Navigate The Way website feedback" />
+          <!-- FormSubmit rate limiting must be configured at the provider/account level. -->
 
           <button type="submit">Send Feedback</button>
+          <p class="feedback-captcha-note">Spam protection may require a CAPTCHA check before your message is sent.</p>
           <p class="feedback-status" aria-live="polite"></p>
         </form>
         <div class="footer-legal">
@@ -70,6 +72,14 @@
           },
         });
 
+        if (response.status === 422) {
+          throw new Error("CAPTCHA challenge was not completed");
+        }
+
+        if (response.status === 429) {
+          throw new Error("Rate limit reached");
+        }
+
         if (!response.ok) {
           throw new Error(`Request failed with ${response.status}`);
         }
@@ -90,7 +100,13 @@
         form.reset();
       } catch (error) {
         status.classList.add("feedback-error");
-        status.textContent = "Sorry, there was a problem sending your feedback. Please try again in a moment.";
+        if (error instanceof Error && error.message === "CAPTCHA challenge was not completed") {
+          status.textContent = "Please complete the CAPTCHA challenge and submit again.";
+        } else if (error instanceof Error && error.message === "Rate limit reached") {
+          status.textContent = "You have submitted too many messages in a short time. Please wait a moment and try again.";
+        } else {
+          status.textContent = "Sorry, there was a problem sending your feedback. Please try again in a moment.";
+        }
       } finally {
         submitButton.disabled = false;
         submitButton.textContent = "Send Feedback";
