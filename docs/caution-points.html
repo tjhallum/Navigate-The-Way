@@ -27,34 +27,47 @@
   <meta property="og:image:height" content="1112" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": "https://www.navtheway.com/#organization",
-        "name": "Navigate The Way ✝️",
-        "url": "https://www.navtheway.com/",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://www.navtheway.com/images/Bigger_from_vector.png"
-        },
-        "sameAs": [
-          "https://www.facebook.com/profile.php?id=61566125041701",
-          "https://www.linkedin.com/showcase/102618283"
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.navtheway.com/#organization",
+      "name": "Navigate The Way ✝️",
+      "url": "https://www.navtheway.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.navtheway.com/images/Bigger_from_vector.png"
       },
-      {
-        "@type": "WebSite",
-        "@id": "https://www.navtheway.com/#website",
-        "url": "https://www.navtheway.com/",
-        "name": "Navigate The Way ✝️",
-        "publisher": {
-          "@id": "https://www.navtheway.com/#organization"
-        }
+      "sameAs": [
+        "https://www.facebook.com/profile.php?id=61566125041701",
+        "https://www.linkedin.com/showcase/102618283"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.navtheway.com/#website",
+      "url": "https://www.navtheway.com/",
+      "name": "Navigate The Way ✝️",
+      "publisher": {
+        "@id": "https://www.navtheway.com/#organization"
       }
-    ]
-  }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://www.navtheway.com/caution-points.html#webpage",
+      "url": "https://www.navtheway.com/caution-points.html",
+      "name": "⚠️ Caution Points — Navigate The Way ✝️",
+      "description": "Review caution points for using Navigate The Way ✝️ wisely, including guidance on verification, discernment, and spiritual accountability.",
+      "isPartOf": {
+        "@id": "https://www.navtheway.com/#website"
+      },
+      "about": {
+        "@id": "https://www.navtheway.com/#organization"
+      }
+    }
+  ]
+}
   </script>
   <script type="application/ld+json">
 {
@@ -70,7 +83,9 @@
     "name": "Ted Hallum"
   },
   "dateModified": "2026-03-16T00:44:08-04:00",
-  "mainEntityOfPage": "https://www.navtheway.com/caution-points.html",
+  "mainEntityOfPage": {
+    "@id": "https://www.navtheway.com/caution-points.html#webpage"
+  },
   "publisher": {
     "@id": "https://www.navtheway.com/#organization"
   }
