@@ -41,6 +41,7 @@ for html_file in html_files:
             errors.append(
                 f"{html_file}: {label} meta must use {attr}=\"{key}\" (not {wrong_attr})"
             )
+            continue
 
         value = metas_by_attr[attr].get(key)
         if not value:

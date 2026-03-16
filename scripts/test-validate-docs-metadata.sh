@@ -46,6 +46,34 @@ run_expect_fail() {
   fi
 }
 
+
+run_expect_fail_only() {
+  local case_name="$1"
+  local expected_present="$2"
+  local expected_absent="$3"
+  local case_dir="$TMP_DIR/$case_name"
+  mkdir -p "$case_dir"
+  cat > "$case_dir/test.html"
+
+  if DOCS_DIR="$case_dir" "$VALIDATOR" >"$case_dir/out.txt" 2>&1; then
+    echo "Expected failure for $case_name but command succeeded"
+    cat "$case_dir/out.txt"
+    exit 1
+  fi
+
+  if ! rg -F "$expected_present" "$case_dir/out.txt" >/dev/null; then
+    echo "Did not find expected error for $case_name: $expected_present"
+    cat "$case_dir/out.txt"
+    exit 1
+  fi
+
+  if rg -F "$expected_absent" "$case_dir/out.txt" >/dev/null; then
+    echo "Found unexpected error for $case_name: $expected_absent"
+    cat "$case_dir/out.txt"
+    exit 1
+  fi
+}
+
 run_expect_pass() {
   local case_name="$1"
   local case_dir="$TMP_DIR/$case_name"
@@ -57,18 +85,18 @@ run_expect_pass() {
 }
 
 run_expect_fail "name-og-url" 'missing og:url meta with property="og:url"' <<EOFCASE
-$(base_html '<meta name="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
-run_expect_fail "name-og-url-wrong-attr" 'og:url meta must use property="og:url" (not name)' <<EOFCASE
+run_expect_fail_only "name-og-url-wrong-attr" 'og:url meta must use property="og:url" (not name)' 'missing og:url meta with property="og:url"' <<EOFCASE
 $(base_html '<meta name="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
 run_expect_fail "property-twitter-card" 'missing twitter:card meta with name="twitter:card"' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta property="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '')
 EOFCASE
 
-run_expect_fail "property-twitter-card-wrong-attr" 'twitter:card meta must use name="twitter:card" (not property)' <<EOFCASE
+run_expect_fail_only "property-twitter-card-wrong-attr" 'twitter:card meta must use name="twitter:card" (not property)' 'missing twitter:card meta with name="twitter:card"' <<EOFCASE
 $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta property="twitter:card" content="summary_large_image" />')
 EOFCASE
 
