@@ -37,7 +37,6 @@
           <!-- FormSubmit rate limiting must be configured at the provider/account level. -->
 
           <button type="submit">Send Feedback</button>
-          <p class="feedback-captcha-note">Spam protection may require a CAPTCHA check before your message is sent.</p>
           <p class="feedback-status" aria-live="polite"></p>
         </form>
         <div class="footer-legal">
