@@ -46,6 +46,8 @@
             <a href="https://www.facebook.com/profile.php?id=61566125041701" target="_blank" rel="noreferrer">Facebook</a>
             <span aria-hidden="true">•</span>
             <a href="https://www.linkedin.com/showcase/102618283" target="_blank" rel="noreferrer">LinkedIn</a>
+            <span aria-hidden="true">•</span>
+            <a href="/llms.txt">llms.txt</a>
           </p>
         </div>
       </div>

@@ -1,0 +1,25 @@
+# Navigate The Way (NTW) — llms.txt
+
+## Site purpose and scope
+Navigate The Way is a Bible-centered, conservative, reformed, evangelical AI ministry resource.
+This site explains NTW's purpose, guardrails, and usage guidance for church leaders, lay leaders,
+and Christ-followers seeking doctrinally grounded support for study, discipleship, and application.
+
+## Canonical base URL
+https://www.navtheway.com
+
+## Priority URLs
+- /
+- /faqs.html
+- /system-prompt.html
+- /caution-points.html
+- /citing-ntw.html
+- /feedback.html
+- /creator.html
+- /meet-ntw.html
+
+## Licensing and usage notes
+- Site code and content are available under the repository license: /LICENSE.
+- NTW is provided as a discipleship aid, not a replacement for Scripture, the local church,
+  qualified pastors/elders, or faithful biblical counseling.
+- Verify important claims against Scripture and trusted theological sources.
