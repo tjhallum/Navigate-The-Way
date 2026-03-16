@@ -180,7 +180,6 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   background: var(--theme-surface);
 }
 .launch-panel--chatgpt,
-.launch-panel--poe,
 .launch-panel--apologist { border-top: 1px solid var(--border); }
 .launch-panel p { margin: 0.42rem 0; color: #dfe8ff; font-size: var(--fs-small); }
 .launch-panel p:first-child { margin: 0 0 .65rem; }
