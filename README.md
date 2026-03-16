@@ -58,3 +58,24 @@ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 • Source for this derivative version: {PUBLIC_REPO_URL_FOR_DERIVATIVE}
 =====================================
  </pre>
+
+## Docs metadata release checklist
+
+Use this checklist before announcing updates to pages in `docs/*.html`:
+
+1. Verify each page has required Open Graph and sharing fields with absolute URLs (`canonical`, `description`, `og:title`, `og:description`, `og:url`, `og:image`, `og:image:width`, `og:image:height`, `twitter:card`).
+2. Run Facebook Sharing Debugger on changed URLs and trigger **Scrape Again**.
+3. Run LinkedIn Post Inspector on changed URLs to refresh cache.
+4. Confirm card title, description, and image render correctly in both tools before announcing content.
+
+Validation command:
+
+```bash
+./scripts/validate-docs-metadata.sh
+```
+
+Canonical URL policy for docs pages:
+
+- Use a single authoritative absolute URL per page.
+- Keep `link rel="canonical"` and `og:url` identical.
+- Use no trailing slash for non-home pages (home remains `https://www.navtheway.com/`).
