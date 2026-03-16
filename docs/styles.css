@@ -11,12 +11,20 @@
   --theme-gradient: linear-gradient(135deg, rgba(122,168,255,0.22) 0%, rgba(170,134,255,0.18) 50%, rgba(12,20,44,0.88) 100%);
   --theme-layered: var(--theme-gradient), rgba(8, 14, 34, 0.72);
   --theme-surface: rgba(8, 14, 34, 0.72);
-  --content-max: 980px;
-  --content-max-wide: 1160px;
-  --gutter: 1rem;
+  --content-max: 980px; /* mobile baseline: default page/content width */
+  --content-max-wide: 1160px; /* mobile baseline: nav/footer wider shell */
+  --gutter: 1rem; /* mobile baseline: shared horizontal breathing room */
+  --shell-padding: 1rem;
+  --shell-radius: 20px;
+  --header-padding-block: 1rem;
+  --header-padding-inline: 1.1rem;
+  --card-padding: 1.35rem;
   --fs-body: clamp(1rem, 1rem, 1rem);
   --lh-body: clamp(1.65, 1.65, 1.65);
   --fs-small: clamp(0.95rem, 0.95rem, 0.95rem);
+  --fs-nav-submenu: var(--fs-small);
+  --fs-field-count: 0.88rem;
+  --fs-feedback-status: 0.9rem;
   --fs-launch-kicker: clamp(1.06rem, 1.06rem, 1.06rem);
   --fs-launch-cta: clamp(1.02rem, 1.02rem, 1.02rem);
   --fs-h1: clamp(1.55rem, 1.55rem, 1.55rem);
@@ -54,7 +62,7 @@ header {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
-.nav-wrap { max-width: var(--content-max-wide); margin: 0 auto; padding-block: 0.8rem; padding-inline: var(--gutter); display: flex; align-items: center; gap: 1rem; }
+.nav-wrap { width: min(var(--content-max-wide), 100%); margin: 0 auto; padding-block: 0.8rem; padding-inline: var(--gutter); display: flex; align-items: center; gap: 1rem; }
 .brand { font-weight: 700; color: #fff; white-space: nowrap; }
 .mobile-nav-toggle,
 .mobile-nav-button { display: none; }
@@ -68,16 +76,18 @@ nav li { position: relative; }
 main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding-block: 0 3rem; padding-inline: var(--gutter); }
 
 .page-shell {
-  padding: 1rem;
+  width: 100%;
+  padding: var(--shell-padding);
   border: 1px solid #1f315d;
-  border-radius: 20px;
+  border-radius: var(--shell-radius);
   background: var(--theme-layered);
   box-shadow: 0 14px 36px rgba(0, 0, 0, .36);
 }
 
 .page-header {
   margin: 0 0 1rem;
-  padding: 1rem 1.1rem;
+  width: 100%;
+  padding: var(--header-padding-block) var(--header-padding-inline);
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--theme-surface);
@@ -179,10 +189,11 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 
 .card {
+  width: 100%;
   background: var(--theme-surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 1.35rem;
+  padding: var(--card-padding);
 }
 
 
@@ -293,6 +304,11 @@ footer {
 
 @media (min-width: 1024px) {
   :root {
+    --gutter: 1.1rem; /* desktop expansion: slightly larger horizontal gutter */
+    --shell-padding: 1.1rem;
+    --header-padding-block: 1.1rem;
+    --header-padding-inline: 1.2rem;
+    --card-padding: 1.4rem;
     --fs-body: clamp(1rem, 0.95rem + 0.28vw, 1.08rem);
     --lh-body: clamp(1.65, 1.6 + 0.2vw, 1.72);
     --fs-small: clamp(0.95rem, 0.9rem + 0.2vw, 1rem);
@@ -307,6 +323,11 @@ footer {
 
 @media (min-width: 1440px) {
   :root {
+    --gutter: 1.25rem; /* desktop expansion: extra width with larger side gutters */
+    --shell-padding: 1.2rem;
+    --header-padding-block: 1.15rem;
+    --header-padding-inline: 1.25rem;
+    --card-padding: 1.5rem;
     --fs-body: clamp(1.06rem, 0.98rem + 0.3vw, 1.14rem);
     --fs-small: clamp(0.98rem, 0.92rem + 0.22vw, 1.04rem);
     --fs-launch-kicker: clamp(1.12rem, 1rem + 0.35vw, 1.24rem);
@@ -328,15 +349,15 @@ footer {
 
 @media (min-width: 1200px) {
   :root {
-    --content-max: 1080px;
-    --content-max-wide: 1240px;
+    --content-max: 1080px; /* desktop expansion: readable main content width */
+    --content-max-wide: 1240px; /* desktop expansion: nav/footer can breathe wider */
   }
 }
 
 @media (min-width: 1600px) {
   :root {
-    --content-max: 1180px;
-    --content-max-wide: 1360px;
+    --content-max: 1180px; /* desktop expansion: ultra-wide content limit */
+    --content-max-wide: 1360px; /* desktop expansion: ultra-wide shell limit */
   }
 }
 
@@ -407,7 +428,7 @@ footer {
 
 .field-count {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-field-count);
   color: var(--text-dim);
   text-align: right;
 }
@@ -415,7 +436,7 @@ footer {
 .feedback-status {
   margin: 0;
   min-height: 1.25rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-feedback-status);
 }
 
 .feedback-status.feedback-success {
@@ -558,7 +579,7 @@ footer {
   }
   .dropdown > ul a {
     padding: .45rem .58rem;
-    font-size: .95rem;
+    font-size: var(--fs-nav-submenu);
     color: #cfe0ff;
     background: transparent;
   }
