@@ -81,9 +81,21 @@ main { flex: 1; width: 100%; max-width: 980px; margin: 2rem auto; padding: 0 1re
 
 .logo-hero {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
   margin: 0 0 1rem;
 }
+
+.hero-title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.55rem, 2.5vw, 2.15rem);
+  line-height: 1.2;
+  color: #f3f8ff;
+  text-wrap: balance;
+}
+
 .site-logo {
   width: min(380px, 70vw);
   height: auto;
