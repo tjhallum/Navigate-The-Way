@@ -12,10 +12,12 @@
         <form id="footer-feedback-form" name="footer_feedback_form" class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
           <h2>Contact Us</h2>
           <label for="footer-feedback-email">Email</label>
-          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" required />
+          <input id="footer-feedback-email" name="email" type="email" autocomplete="email" maxlength="254" aria-describedby="footer-feedback-email-help" required />
+          <p id="footer-feedback-email-help" class="field-help">Please enter a valid email address (up to 254 characters).</p>
 
           <label for="footer-feedback-message">Message</label>
-          <textarea id="footer-feedback-message" name="message" rows="3" required></textarea>
+          <textarea id="footer-feedback-message" name="message" rows="3" minlength="10" maxlength="2000" aria-describedby="footer-feedback-message-help" required></textarea>
+          <p id="footer-feedback-message-help" class="field-help">Message must be between 10 and 2000 characters.</p>
 
           <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="hidden-honeypot" aria-hidden="true" />
           <input type="hidden" name="_captcha" value="false" />
