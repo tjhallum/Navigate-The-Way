@@ -68,4 +68,21 @@ run_expect_pass "correct-attributes" <<EOFCASE
 $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
+run_expect_fail "duplicate-canonical" 'expected exactly one canonical link, found 2' <<EOFCASE
+<!doctype html>
+<html>
+<head>
+  <meta name="description" content="Description" />
+  <meta property="og:title" content="Title" />
+  <meta property="og:description" content="OG Description" />
+  <meta property="og:url" content="https://www.navtheway.com/page.html" />
+  <meta property="og:image" content="https://www.navtheway.com/image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://www.navtheway.com/page.html" />
+  <link rel="canonical" href="https://www.navtheway.com/page.html" />
+</head>
+<body></body>
+</html>
+EOFCASE
+
 echo "All metadata validator fixture checks passed."

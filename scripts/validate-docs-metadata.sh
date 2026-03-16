@@ -40,12 +40,16 @@ for html_file in html_files:
         if not value:
             errors.append(f"{html_file}: missing {label} meta with {attr}=\"{key}\"")
 
-    canonical_match = canonical_pattern.search(text)
-    if not canonical_match:
+    canonical_matches = list(canonical_pattern.finditer(text))
+    canonical_count = len(canonical_matches)
+    if canonical_count == 0:
         errors.append(f"{html_file}: missing canonical link")
         canonical_url = None
+    elif canonical_count > 1:
+        errors.append(f"{html_file}: expected exactly one canonical link, found {canonical_count}")
+        canonical_url = None
     else:
-        attrs = {k.lower(): v.strip() for k, v in attr_pattern.findall(canonical_match.group(0))}
+        attrs = {k.lower(): v.strip() for k, v in attr_pattern.findall(canonical_matches[0].group(0))}
         canonical_url = attrs.get('href')
         if not canonical_url:
             errors.append(f"{html_file}: canonical link missing href")
