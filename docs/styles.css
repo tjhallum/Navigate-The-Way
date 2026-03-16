@@ -340,11 +340,15 @@ footer {
   }
 
   .site-logo {
-    width: min(440px, 60vw);
+    width: min(520px, 55vw);
   }
 
   .video-embed-wrap iframe {
-    width: min(100%, 960px);
+    width: min(100%, 1080px);
+  }
+
+  .footer-feedback-form {
+    width: min(640px, 100%);
   }
 }
 
@@ -359,6 +363,18 @@ footer {
     --fs-v-h1: clamp(2.4rem, 2.02rem + 0.7vw, 3.05rem);
     --fs-v-h2: clamp(1.72rem, 1.5rem + 0.35vw, 2.2rem);
     --fs-v-h3: clamp(1.38rem, 1.22rem + 0.22vw, 1.75rem);
+  }
+
+  .site-logo {
+    width: min(600px, 48vw);
+  }
+
+  .video-embed-wrap iframe {
+    width: min(100%, 1240px);
+  }
+
+  .footer-feedback-form {
+    width: min(720px, 100%);
   }
 }
 
