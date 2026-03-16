@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://www.navtheway.com/sitemap.xml
