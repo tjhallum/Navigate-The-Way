@@ -9,7 +9,7 @@
 
     footer.innerHTML = `
       <div class="footer-content">
-        <form class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
+        <form id="footer-feedback-form" name="footer_feedback_form" class="footer-feedback-form" method="POST" action="${FOOTER_FORM_ENDPOINT}" novalidate>
           <h2>Contact Us</h2>
           <label for="footer-feedback-email">Email</label>
           <input id="footer-feedback-email" name="email" type="email" autocomplete="email" required />
@@ -76,6 +76,11 @@
 
         status.classList.add("feedback-success");
         status.textContent = "Thank you! Your feedback was submitted successfully.";
+        if (typeof gtag === "function") {
+          gtag('event', 'generate_lead', {
+            lead_source: 'footer_feedback_form'
+          });
+        }
         form.reset();
       } catch (error) {
         status.classList.add("feedback-error");
