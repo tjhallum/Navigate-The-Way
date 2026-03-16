@@ -3,18 +3,17 @@ set -euo pipefail
 
 python - <<'PY'
 from pathlib import Path
+import os
 import re
 import sys
 
-required_tokens = [
-    ('description', 'name="description"'),
-    ('og:title', 'property="og:title"'),
-    ('og:description', 'property="og:description"'),
-    ('og:url', 'property="og:url"'),
-    ('og:image', 'property="og:image"'),
-    ('twitter:card', 'name="twitter:card"'),
-    ('canonical', 'rel="canonical"'),
-    ('json-ld', 'application/ld+json'),
+required_meta = [
+    ('description', 'name', 'description'),
+    ('og:title', 'property', 'og:title'),
+    ('og:description', 'property', 'og:description'),
+    ('og:url', 'property', 'og:url'),
+    ('og:image', 'property', 'og:image'),
+    ('twitter:card', 'name', 'twitter:card'),
 ]
 
 meta_pattern = re.compile(r'<meta\s+[^>]*?>', re.IGNORECASE)
@@ -22,22 +21,24 @@ attr_pattern = re.compile(r'([:\w-]+)\s*=\s*"([^"]*)"', re.IGNORECASE)
 canonical_pattern = re.compile(r'<link\s+[^>]*rel="canonical"[^>]*>', re.IGNORECASE)
 
 errors = []
-html_files = sorted(Path('docs').glob('*.html'))
+docs_dir = Path(os.environ.get('DOCS_DIR', 'docs'))
+html_files = sorted(docs_dir.glob('*.html'))
 
 for html_file in html_files:
     text = html_file.read_text(encoding='utf-8')
 
-    metas = {}
+    metas_by_attr = {'name': {}, 'property': {}}
     for match in meta_pattern.finditer(text):
         attrs = {k.lower(): v.strip() for k, v in attr_pattern.findall(match.group(0))}
-        key_attr = attrs.get('name') or attrs.get('property')
-        if key_attr and 'content' in attrs:
-            metas[key_attr.lower()] = attrs['content']
+        if 'content' in attrs and 'name' in attrs:
+            metas_by_attr['name'][attrs['name'].lower()] = attrs['content']
+        if 'content' in attrs and 'property' in attrs:
+            metas_by_attr['property'][attrs['property'].lower()] = attrs['content']
 
     for label, attr, key in required_meta:
-        value = metas.get(key)
+        value = metas_by_attr[attr].get(key)
         if not value:
-            errors.append(f"{html_file}: missing {label}")
+            errors.append(f"{html_file}: missing {label} meta with {attr}=\"{key}\"")
 
     canonical_match = canonical_pattern.search(text)
     if not canonical_match:
@@ -49,9 +50,10 @@ for html_file in html_files:
         if not canonical_url:
             errors.append(f"{html_file}: canonical link missing href")
 
-    og_url = metas.get('og:url')
+    og_url = metas_by_attr['property'].get('og:url')
+    og_image = metas_by_attr['property'].get('og:image')
 
-    for label, url in [('canonical', canonical_url), ('og:url', og_url), ('og:image', metas.get('og:image'))]:
+    for label, url in [('canonical', canonical_url), ('og:url', og_url), ('og:image', og_image)]:
         if url and not url.startswith('https://'):
             errors.append(f"{html_file}: {label} must be an absolute https URL")
 
