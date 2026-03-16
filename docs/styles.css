@@ -87,7 +87,7 @@ header {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
-.nav-wrap { width: min(var(--content-max-wide), 100%); margin: 0 auto; padding-block: var(--nav-wrap-padding-block); padding-inline: var(--gutter); display: flex; align-items: center; gap: var(--nav-wrap-gap); }
+.nav-wrap { width: min(var(--content-max-wide), 100%); margin: 0 auto; padding-block: var(--nav-wrap-padding-block); padding-inline: var(--gutter); display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: var(--nav-wrap-gap); }
 .brand {
   font-weight: 700;
   color: #fff;
@@ -96,7 +96,11 @@ header {
 }
 .mobile-nav-toggle,
 .mobile-nav-button { display: none; }
-nav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: var(--nav-list-gap); align-items: center; flex-wrap: wrap; }
+nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+nav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: var(--nav-list-gap); align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
 nav li { position: relative; }
 nav a { font-size: var(--fs-nav-label); }
 .dropdown > ul {
@@ -104,6 +108,12 @@ nav a { font-size: var(--fs-nav-label); }
   background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: var(--nav-dropdown-padding);
 }
 .dropdown:hover > ul { display: block; }
+.dropdown > ul a {
+  display: block;
+  padding: 0.4rem 0.55rem;
+  font-size: var(--fs-nav-submenu);
+  line-height: 1.35;
+}
 main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding-block: 0 3rem; padding-inline: var(--gutter); }
 
 .page-shell {
@@ -185,7 +195,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .launch-panel {
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 0.9rem;
+  padding: calc(var(--card-padding) - 0.35rem);
   background: var(--theme-surface);
 }
 .launch-panel--chatgpt,
@@ -425,6 +435,20 @@ footer {
 @media (min-width: 1920px) {
   :root {
     --desktop-scale: 0.5vw;
+    --gutter: 1.3rem;
+    --shell-padding: 1.25rem;
+    --header-padding-block: 1.2rem;
+    --header-padding-inline: 1.35rem;
+    --card-padding: 1.55rem;
+    --nav-wrap-padding-block: 1rem;
+    --nav-wrap-gap: 1.35rem;
+    --nav-list-gap: 1.3rem;
+    --footer-feedback-max-width: 640px;
+    --footer-feedback-gap: 0.7rem;
+    --footer-feedback-control-padding-block: 0.68rem;
+    --footer-feedback-control-padding-inline: 0.85rem;
+    --footer-feedback-button-padding-block: 0.74rem;
+    --footer-feedback-button-padding-inline: 0.95rem;
     --fs-body: clamp(1.14rem, calc(1.02rem + (0.62 * var(--desktop-scale))), 1.36rem);
     --lh-body: clamp(1.82rem, calc(1.72rem + (0.58 * var(--desktop-scale))), 2.2rem);
     --fs-small: clamp(1.04rem, calc(0.96rem + (0.5 * var(--desktop-scale))), 1.22rem);
@@ -446,6 +470,16 @@ footer {
     width: min(100%, 1240px);
   }
 
+  .launch-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.05rem;
+  }
+
+  .page-header {
+    max-width: min(100%, 110ch);
+    margin-inline: auto;
+  }
+
 }
 
 @media (min-width: 1200px) {
@@ -464,19 +498,28 @@ footer {
 
 @media (min-width: 1920px) {
   :root {
-    --content-max: min(90vw, 2440px); /* desktop expansion: 2K+ screens avoid narrow center-column feel */
-    --content-max-wide: min(94vw, 2760px); /* desktop expansion: top/bottom chrome stays visually proportional */
+    --content-max: min(89vw, 2480px); /* desktop expansion: 2K+ screens avoid narrow center-column feel */
+    --content-max-wide: min(93vw, 2820px); /* desktop expansion: top/bottom chrome stays visually proportional */
   }
 }
 
 @media (min-width: 2560px) {
   :root {
     --desktop-scale: 0.58vw;
-    --gutter: 1.4rem;
-    --shell-padding: 1.35rem;
-    --header-padding-block: 1.25rem;
-    --header-padding-inline: 1.4rem;
-    --card-padding: 1.6rem;
+    --gutter: 1.55rem;
+    --shell-padding: 1.5rem;
+    --header-padding-block: 1.35rem;
+    --header-padding-inline: 1.55rem;
+    --card-padding: 1.8rem;
+    --nav-wrap-padding-block: 1.1rem;
+    --nav-wrap-gap: 1.55rem;
+    --nav-list-gap: 1.5rem;
+    --footer-feedback-max-width: 700px;
+    --footer-feedback-gap: 0.8rem;
+    --footer-feedback-control-padding-block: 0.74rem;
+    --footer-feedback-control-padding-inline: 0.94rem;
+    --footer-feedback-button-padding-block: 0.78rem;
+    --footer-feedback-button-padding-inline: 1rem;
     --fs-body: clamp(1.22rem, calc(1rem + (0.92 * var(--desktop-scale))), 1.48rem);
     --lh-body: clamp(1.96rem, calc(1.72rem + (1.08 * var(--desktop-scale))), 2.42rem);
     --fs-small: clamp(1.1rem, calc(0.94rem + (0.72 * var(--desktop-scale))), 1.34rem);
@@ -488,15 +531,33 @@ footer {
     --fs-v-h1: clamp(2.72rem, calc(1.96rem + (3.1 * var(--desktop-scale))), 4.08rem);
     --fs-v-h2: clamp(1.94rem, calc(1.42rem + (2.2 * var(--desktop-scale))), 2.82rem);
     --fs-v-h3: clamp(1.52rem, calc(1.06rem + (1.82 * var(--desktop-scale))), 2.24rem);
-    --content-max: min(88vw, 2960px);
-    --content-max-wide: min(93vw, 3320px);
+    --content-max: min(86vw, 3040px);
+    --content-max-wide: min(92vw, 3380px);
+  }
+
+  .launch-grid {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.2rem;
   }
 }
 
 @media (min-width: 3200px) {
   :root {
     --desktop-scale: 0.7vw;
-    --gutter: 1.6rem;
+    --gutter: 1.8rem;
+    --shell-padding: 1.75rem;
+    --header-padding-block: 1.5rem;
+    --header-padding-inline: 1.8rem;
+    --card-padding: 2rem;
+    --nav-wrap-padding-block: 1.2rem;
+    --nav-wrap-gap: 1.8rem;
+    --nav-list-gap: 1.8rem;
+    --footer-feedback-max-width: 760px;
+    --footer-feedback-gap: 0.9rem;
+    --footer-feedback-control-padding-block: 0.8rem;
+    --footer-feedback-control-padding-inline: 1rem;
+    --footer-feedback-button-padding-block: 0.84rem;
+    --footer-feedback-button-padding-inline: 1.1rem;
     --fs-body: clamp(1.56rem, calc(-0.24rem + (0.0804 * var(--desktop-scale))), 1.92rem);
     --lh-body: clamp(2.55rem, calc(0.05rem + (0.1116 * var(--desktop-scale))), 3.05rem);
     --fs-small: clamp(1.4rem, calc(-0.2rem + (0.0714 * var(--desktop-scale))), 1.72rem);
@@ -508,8 +569,17 @@ footer {
     --fs-v-h1: clamp(4.2rem, calc(0.6rem + (0.1607 * var(--desktop-scale))), 4.92rem);
     --fs-v-h2: clamp(2.9rem, calc(0.7rem + (0.0982 * var(--desktop-scale))), 3.34rem);
     --fs-v-h3: clamp(2.36rem, calc(0.56rem + (0.0804 * var(--desktop-scale))), 2.72rem);
-    --content-max: min(87vw, 3440px);
-    --content-max-wide: min(92vw, 3700px);
+    --content-max: min(84vw, 3560px);
+    --content-max-wide: min(90vw, 3780px);
+  }
+
+  .launch-grid {
+    grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+    gap: 1.35rem;
+  }
+
+  .launch-panel ul {
+    margin-left: 1.45rem;
   }
 }
 
@@ -533,7 +603,7 @@ footer {
 
 .footer-feedback-form {
   margin: 0 auto;
-  width: min(var(--footer-feedback-max-width), 100%);
+  width: min(var(--footer-feedback-max-width), 72ch, 100%);
   display: grid;
   gap: var(--footer-feedback-gap);
   text-align: left;
