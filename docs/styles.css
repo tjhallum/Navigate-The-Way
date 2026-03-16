@@ -112,6 +112,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 .site-logo {
   width: min(380px, 70vw);
+  max-width: 100%;
   height: auto;
   display: block;
   filter: drop-shadow(0 10px 24px rgba(0,0,0,.45));
@@ -314,6 +315,14 @@ footer {
     --fs-v-h1: clamp(2.2rem, 1.9rem + 0.8vw, 2.6rem);
     --fs-v-h2: clamp(1.6rem, 1.42rem + 0.4vw, 1.88rem);
     --fs-v-h3: clamp(1.3rem, 1.2rem + 0.25vw, 1.5rem);
+  }
+
+  .site-logo {
+    width: min(440px, 60vw);
+  }
+
+  .video-embed-wrap iframe {
+    width: min(100%, 960px);
   }
 }
 
