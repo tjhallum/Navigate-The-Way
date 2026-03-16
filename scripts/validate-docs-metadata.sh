@@ -6,15 +6,15 @@ from pathlib import Path
 import re
 import sys
 
-required_meta = [
-    ('description', 'name', 'description'),
-    ('og:title', 'property', 'og:title'),
-    ('og:description', 'property', 'og:description'),
-    ('og:url', 'property', 'og:url'),
-    ('og:image', 'property', 'og:image'),
-    ('og:image:width', 'property', 'og:image:width'),
-    ('og:image:height', 'property', 'og:image:height'),
-    ('twitter:card', 'name', 'twitter:card'),
+required_tokens = [
+    ('description', 'name="description"'),
+    ('og:title', 'property="og:title"'),
+    ('og:description', 'property="og:description"'),
+    ('og:url', 'property="og:url"'),
+    ('og:image', 'property="og:image"'),
+    ('twitter:card', 'name="twitter:card"'),
+    ('canonical', 'rel="canonical"'),
+    ('json-ld', 'application/ld+json'),
 ]
 
 meta_pattern = re.compile(r'<meta\s+[^>]*?>', re.IGNORECASE)
