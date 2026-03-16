@@ -19,8 +19,9 @@
   --header-padding-block: 1rem;
   --header-padding-inline: 1.1rem;
   --card-padding: 1.35rem;
+  --desktop-scale: 0vw;
   --fs-body: clamp(1rem, 1rem, 1rem);
-  --lh-body: clamp(1.65, 1.65, 1.65);
+  --lh-body: clamp(1.65rem, 1.65rem, 1.65rem);
   --fs-small: clamp(0.95rem, 0.95rem, 0.95rem);
   --fs-nav-submenu: var(--fs-small);
   --fs-field-count: 0.88rem;
@@ -304,39 +305,41 @@ footer {
 
 @media (min-width: 1024px) {
   :root {
+    --desktop-scale: 0.32vw;
     --gutter: 1.1rem; /* desktop expansion: slightly larger horizontal gutter */
     --shell-padding: 1.1rem;
     --header-padding-block: 1.1rem;
     --header-padding-inline: 1.2rem;
     --card-padding: 1.4rem;
-    --fs-body: clamp(1rem, 0.95rem + 0.28vw, 1.08rem);
-    --lh-body: clamp(1.65, 1.68, 1.72);
-    --fs-small: clamp(0.95rem, 0.9rem + 0.2vw, 1rem);
-    --fs-launch-kicker: clamp(1.06rem, 0.95rem + 0.45vw, 1.18rem);
-    --fs-launch-cta: clamp(1.02rem, 0.92rem + 0.35vw, 1.12rem);
-    --fs-h1: clamp(1.55rem, 1.2rem + 1.2vw, 2.15rem);
-    --fs-v-h1: clamp(2rem, 1.72rem + 0.9vw, 2.4rem);
-    --fs-v-h2: clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem);
-    --fs-v-h3: clamp(1.25rem, 1.18rem + 0.25vw, 1.4rem);
+    --fs-body: clamp(1rem, calc(0.96rem + (0.44 * var(--desktop-scale))), 1.1rem);
+    --lh-body: clamp(1.65rem, calc(1.6rem + (0.34 * var(--desktop-scale))), 1.82rem);
+    --fs-small: clamp(0.95rem, calc(0.91rem + (0.36 * var(--desktop-scale))), 1.02rem);
+    --fs-launch-kicker: clamp(1.06rem, calc(0.98rem + (0.68 * var(--desktop-scale))), 1.23rem);
+    --fs-launch-cta: clamp(1.02rem, calc(0.95rem + (0.58 * var(--desktop-scale))), 1.16rem);
+    --fs-h1: clamp(1.6rem, calc(1.26rem + (1.85 * var(--desktop-scale))), 2.35rem);
+    --fs-v-h1: clamp(2rem, calc(1.76rem + (1.5 * var(--desktop-scale))), 2.62rem);
+    --fs-v-h2: clamp(1.5rem, calc(1.34rem + (0.86 * var(--desktop-scale))), 1.9rem);
+    --fs-v-h3: clamp(1.25rem, calc(1.15rem + (0.55 * var(--desktop-scale))), 1.5rem);
   }
 }
 
 @media (min-width: 1440px) {
   :root {
+    --desktop-scale: 0.42vw;
     --gutter: 1.25rem; /* desktop expansion: extra width with larger side gutters */
     --shell-padding: 1.2rem;
     --header-padding-block: 1.15rem;
     --header-padding-inline: 1.25rem;
     --card-padding: 1.5rem;
-    --fs-body: clamp(1.06rem, 0.96rem + 0.35vw, 1.2rem);
-    --lh-body: clamp(1.68, 1.7, 1.74);
-    --fs-small: clamp(0.98rem, 0.9rem + 0.25vw, 1.08rem);
-    --fs-launch-kicker: clamp(1.12rem, 0.98rem + 0.42vw, 1.3rem);
-    --fs-launch-cta: clamp(1.08rem, 0.95rem + 0.35vw, 1.22rem);
-    --fs-h1: clamp(1.85rem, 1.25rem + 1.15vw, 2.5rem);
-    --fs-v-h1: clamp(2.2rem, 1.84rem + 0.95vw, 2.8rem);
-    --fs-v-h2: clamp(1.6rem, 1.38rem + 0.5vw, 2rem);
-    --fs-v-h3: clamp(1.3rem, 1.15rem + 0.3vw, 1.62rem);
+    --fs-body: clamp(1.06rem, calc(0.97rem + (0.54 * var(--desktop-scale))), 1.22rem);
+    --lh-body: clamp(1.72rem, calc(1.64rem + (0.42 * var(--desktop-scale))), 1.95rem);
+    --fs-small: clamp(0.99rem, calc(0.92rem + (0.42 * var(--desktop-scale))), 1.11rem);
+    --fs-launch-kicker: clamp(1.12rem, calc(1.01rem + (0.74 * var(--desktop-scale))), 1.36rem);
+    --fs-launch-cta: clamp(1.08rem, calc(0.98rem + (0.62 * var(--desktop-scale))), 1.28rem);
+    --fs-h1: clamp(1.9rem, calc(1.34rem + (2.1 * var(--desktop-scale))), 2.68rem);
+    --fs-v-h1: clamp(2.2rem, calc(1.9rem + (1.75 * var(--desktop-scale))), 3rem);
+    --fs-v-h2: clamp(1.62rem, calc(1.4rem + (1.08 * var(--desktop-scale))), 2.12rem);
+    --fs-v-h3: clamp(1.3rem, calc(1.16rem + (0.68 * var(--desktop-scale))), 1.72rem);
   }
 
   .site-logo {
@@ -352,17 +355,18 @@ footer {
   }
 }
 
-@media (min-width: 2200px) {
+@media (min-width: 1920px) {
   :root {
-    --fs-body: clamp(1.12rem, 1rem + 0.25vw, 1.28rem);
-    --lh-body: clamp(1.72, 1.74, 1.78);
-    --fs-small: clamp(1.02rem, 0.94rem + 0.2vw, 1.14rem);
-    --fs-launch-kicker: clamp(1.18rem, 1.04rem + 0.28vw, 1.4rem);
-    --fs-launch-cta: clamp(1.12rem, 1rem + 0.24vw, 1.3rem);
-    --fs-h1: clamp(2.05rem, 1.5rem + 0.95vw, 2.8rem);
-    --fs-v-h1: clamp(2.4rem, 2.02rem + 0.7vw, 3.05rem);
-    --fs-v-h2: clamp(1.72rem, 1.5rem + 0.35vw, 2.2rem);
-    --fs-v-h3: clamp(1.38rem, 1.22rem + 0.22vw, 1.75rem);
+    --desktop-scale: 0.5vw;
+    --fs-body: clamp(1.12rem, calc(1rem + (0.56 * var(--desktop-scale))), 1.32rem);
+    --lh-body: clamp(1.8rem, calc(1.7rem + (0.52 * var(--desktop-scale))), 2.15rem);
+    --fs-small: clamp(1.03rem, calc(0.95rem + (0.44 * var(--desktop-scale))), 1.2rem);
+    --fs-launch-kicker: clamp(1.18rem, calc(1.04rem + (0.76 * var(--desktop-scale))), 1.48rem);
+    --fs-launch-cta: clamp(1.12rem, calc(1.01rem + (0.67 * var(--desktop-scale))), 1.38rem);
+    --fs-h1: clamp(2.06rem, calc(1.56rem + (2.24 * var(--desktop-scale))), 3.05rem);
+    --fs-v-h1: clamp(2.42rem, calc(2.04rem + (1.9 * var(--desktop-scale))), 3.45rem);
+    --fs-v-h2: clamp(1.74rem, calc(1.5rem + (1.1 * var(--desktop-scale))), 2.36rem);
+    --fs-v-h3: clamp(1.4rem, calc(1.24rem + (0.74 * var(--desktop-scale))), 1.98rem);
   }
 
   .site-logo {
@@ -401,20 +405,21 @@ footer {
 
 @media (min-width: 2560px) {
   :root {
+    --desktop-scale: 0.58vw;
     --gutter: 1.4rem;
     --shell-padding: 1.35rem;
     --header-padding-block: 1.25rem;
     --header-padding-inline: 1.4rem;
     --card-padding: 1.6rem;
-    --fs-body: clamp(1.16rem, 1.02rem + 0.23vw, 1.34rem);
-    --lh-body: clamp(1.72, 1.75, 1.8);
-    --fs-small: clamp(1.04rem, 0.96rem + 0.18vw, 1.18rem);
-    --fs-launch-kicker: clamp(1.22rem, 1.05rem + 0.22vw, 1.46rem);
-    --fs-launch-cta: clamp(1.16rem, 1.02rem + 0.2vw, 1.36rem);
-    --fs-h1: clamp(2.2rem, 1.72rem + 0.8vw, 3rem);
-    --fs-v-h1: clamp(2.55rem, 2.12rem + 0.58vw, 3.3rem);
-    --fs-v-h2: clamp(1.84rem, 1.58rem + 0.3vw, 2.4rem);
-    --fs-v-h3: clamp(1.44rem, 1.24rem + 0.2vw, 1.92rem);
+    --fs-body: clamp(1.16rem, calc(1.02rem + (0.58 * var(--desktop-scale))), 1.42rem);
+    --lh-body: clamp(1.9rem, calc(1.76rem + (0.58 * var(--desktop-scale))), 2.34rem);
+    --fs-small: clamp(1.06rem, calc(0.97rem + (0.48 * var(--desktop-scale))), 1.26rem);
+    --fs-launch-kicker: clamp(1.24rem, calc(1.06rem + (0.82 * var(--desktop-scale))), 1.58rem);
+    --fs-launch-cta: clamp(1.18rem, calc(1.03rem + (0.7 * var(--desktop-scale))), 1.46rem);
+    --fs-h1: clamp(2.24rem, calc(1.76rem + (2.3 * var(--desktop-scale))), 3.32rem);
+    --fs-v-h1: clamp(2.6rem, calc(2.16rem + (1.96 * var(--desktop-scale))), 3.8rem);
+    --fs-v-h2: clamp(1.86rem, calc(1.6rem + (1.18 * var(--desktop-scale))), 2.6rem);
+    --fs-v-h3: clamp(1.46rem, calc(1.25rem + (0.82 * var(--desktop-scale))), 2.2rem);
     --content-max: min(88vw, 2960px);
     --content-max-wide: min(93vw, 3320px);
   }
@@ -422,7 +427,17 @@ footer {
 
 @media (min-width: 3200px) {
   :root {
+    --desktop-scale: 0.7vw;
     --gutter: 1.6rem;
+    --fs-body: clamp(1.2rem, calc(1.02rem + (0.62 * var(--desktop-scale))), 1.52rem);
+    --lh-body: clamp(1.98rem, calc(1.82rem + (0.62 * var(--desktop-scale))), 2.56rem);
+    --fs-small: clamp(1.08rem, calc(0.98rem + (0.5 * var(--desktop-scale))), 1.34rem);
+    --fs-launch-kicker: clamp(1.28rem, calc(1.08rem + (0.84 * var(--desktop-scale))), 1.72rem);
+    --fs-launch-cta: clamp(1.2rem, calc(1.04rem + (0.76 * var(--desktop-scale))), 1.6rem);
+    --fs-h1: clamp(2.34rem, calc(1.82rem + (2.5 * var(--desktop-scale))), 3.7rem);
+    --fs-v-h1: clamp(2.72rem, calc(2.2rem + (2.1 * var(--desktop-scale))), 4.2rem);
+    --fs-v-h2: clamp(1.94rem, calc(1.64rem + (1.3 * var(--desktop-scale))), 2.92rem);
+    --fs-v-h3: clamp(1.54rem, calc(1.28rem + (0.94 * var(--desktop-scale))), 2.38rem);
     --content-max: min(87vw, 3440px);
     --content-max-wide: min(92vw, 3700px);
   }
@@ -456,7 +471,7 @@ footer {
 
 .footer-feedback-form h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--fs-launch-kicker);
   color: var(--text);
   text-align: center;
 }
