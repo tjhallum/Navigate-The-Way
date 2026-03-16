@@ -380,22 +380,51 @@ footer {
 
 @media (min-width: 1200px) {
   :root {
-    --content-max: 1160px; /* desktop expansion: readable main content width */
-    --content-max-wide: 1360px; /* desktop expansion: nav/footer can breathe wider */
+    --content-max: min(93vw, 1480px); /* desktop expansion: fluid shell that grows on wide displays */
+    --content-max-wide: min(96vw, 1720px); /* desktop expansion: nav/footer keep generous horizontal balance */
   }
 }
 
 @media (min-width: 1600px) {
   :root {
-    --content-max: 1320px; /* desktop expansion: ultra-wide content limit */
-    --content-max-wide: 1540px; /* desktop expansion: ultra-wide shell limit */
+    --content-max: min(92vw, 1880px); /* desktop expansion: broader content canvas on large monitors */
+    --content-max-wide: min(95vw, 2160px); /* desktop expansion: wider nav/footer shells */
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --content-max: 1480px; /* desktop expansion: 2K+ screens can use more horizontal room */
-    --content-max-wide: 1760px; /* desktop expansion: 2K+ shell cap for nav/footer consistency */
+    --content-max: min(90vw, 2440px); /* desktop expansion: 2K+ screens avoid narrow center-column feel */
+    --content-max-wide: min(94vw, 2760px); /* desktop expansion: top/bottom chrome stays visually proportional */
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --gutter: 1.4rem;
+    --shell-padding: 1.35rem;
+    --header-padding-block: 1.25rem;
+    --header-padding-inline: 1.4rem;
+    --card-padding: 1.6rem;
+    --fs-body: clamp(1.16rem, 1.02rem + 0.23vw, 1.34rem);
+    --lh-body: clamp(1.72, 1.75, 1.8);
+    --fs-small: clamp(1.04rem, 0.96rem + 0.18vw, 1.18rem);
+    --fs-launch-kicker: clamp(1.22rem, 1.05rem + 0.22vw, 1.46rem);
+    --fs-launch-cta: clamp(1.16rem, 1.02rem + 0.2vw, 1.36rem);
+    --fs-h1: clamp(2.2rem, 1.72rem + 0.8vw, 3rem);
+    --fs-v-h1: clamp(2.55rem, 2.12rem + 0.58vw, 3.3rem);
+    --fs-v-h2: clamp(1.84rem, 1.58rem + 0.3vw, 2.4rem);
+    --fs-v-h3: clamp(1.44rem, 1.24rem + 0.2vw, 1.92rem);
+    --content-max: min(88vw, 2960px);
+    --content-max-wide: min(93vw, 3320px);
+  }
+}
+
+@media (min-width: 3200px) {
+  :root {
+    --gutter: 1.6rem;
+    --content-max: min(87vw, 3440px);
+    --content-max-wide: min(92vw, 3700px);
   }
 }
 
