@@ -13,6 +13,8 @@
   --theme-surface: rgba(8, 14, 34, 0.72);
   --content-max: 980px; /* mobile baseline: default page/content width */
   --content-max-wide: 1160px; /* mobile baseline: nav/footer wider shell */
+  --section-max-readable: 100%;
+  --section-max-wide-readable: 100%;
   --gutter: 1rem; /* mobile baseline: shared horizontal breathing room */
   --shell-padding: 1rem;
   --shell-radius: 20px;
@@ -394,15 +396,23 @@ footer {
     --fs-v-h1: clamp(2rem, calc(1.76rem + (1.58 * var(--desktop-scale))), 2.68rem);
     --fs-v-h2: clamp(1.54rem, calc(1.36rem + (0.98 * var(--desktop-scale))), 2rem);
     --fs-v-h3: clamp(1.3rem, calc(1.18rem + (0.68 * var(--desktop-scale))), 1.62rem);
+    --section-max-readable: min(100%, clamp(78ch, 60vw + 14ch, 92ch));
+    --section-max-wide-readable: min(100%, clamp(84ch, 62vw + 18ch, 98ch));
   }
 
-  .page-header {
-    max-width: min(100%, clamp(84ch, 62vw + 18ch, 98ch));
+  .page-header,
+  .card,
+  .verbatim-content {
     margin-inline: auto;
   }
 
+  .page-header,
+  .card {
+    max-width: var(--section-max-wide-readable);
+  }
+
   .page-header p {
-    max-width: min(100%, clamp(72ch, 56vw + 14ch, 84ch));
+    max-width: var(--section-max-readable);
     line-height: 1.72;
   }
 
@@ -421,10 +431,7 @@ footer {
     margin: 0.46rem 0;
   }
 
-  .verbatim-content {
-    max-width: min(100%, clamp(78ch, 60vw + 14ch, 92ch));
-    margin-inline: auto;
-  }
+  .verbatim-content { max-width: var(--section-max-readable); }
 
   .verbatim-content p {
     margin: 0.92rem 0;
@@ -476,6 +483,8 @@ footer {
     --fs-v-h1: clamp(2.2rem, calc(1.9rem + (1.86 * var(--desktop-scale))), 3.12rem);
     --fs-v-h2: clamp(1.68rem, calc(1.42rem + (1.28 * var(--desktop-scale))), 2.3rem);
     --fs-v-h3: clamp(1.36rem, calc(1.18rem + (0.86 * var(--desktop-scale))), 1.92rem);
+    --section-max-readable: min(100%, clamp(82ch, 60vw + 14ch, 98ch));
+    --section-max-wide-readable: min(100%, clamp(90ch, 62vw + 18ch, 106ch));
   }
 
   .site-logo {
@@ -520,6 +529,8 @@ footer {
     --fs-v-h1: clamp(2.48rem, calc(2.06rem + (2.12 * var(--desktop-scale))), 3.56rem);
     --fs-v-h2: clamp(1.86rem, calc(1.56rem + (1.38 * var(--desktop-scale))), 2.58rem);
     --fs-v-h3: clamp(1.5rem, calc(1.28rem + (0.94 * var(--desktop-scale))), 2.2rem);
+    --section-max-readable: min(100%, clamp(86ch, 58vw + 14ch, 104ch));
+    --section-max-wide-readable: min(100%, clamp(96ch, 60vw + 18ch, 116ch));
   }
 
   .site-logo {
@@ -533,11 +544,6 @@ footer {
   .launch-grid {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.05rem;
-  }
-
-  .page-header {
-    max-width: min(100%, clamp(92ch, 64vw + 20ch, 108ch));
-    margin-inline: auto;
   }
 
 }
@@ -597,6 +603,8 @@ footer {
     --fs-v-h3: clamp(1.62rem, calc(1.12rem + (1.96 * var(--desktop-scale))), 2.44rem);
     --content-max: min(86vw, 3040px);
     --content-max-wide: min(92vw, 3380px);
+    --section-max-readable: min(100%, clamp(92ch, 56vw + 14ch, 114ch));
+    --section-max-wide-readable: min(100%, clamp(102ch, 58vw + 18ch, 128ch));
   }
 
   .launch-grid {
@@ -639,6 +647,8 @@ footer {
     --fs-v-h3: clamp(2.48rem, calc(0.62rem + (0.0839 * var(--desktop-scale))), 2.86rem);
     --content-max: min(84vw, 3560px);
     --content-max-wide: min(90vw, 3780px);
+    --section-max-readable: min(100%, clamp(98ch, 54vw + 14ch, 126ch));
+    --section-max-wide-readable: min(100%, clamp(112ch, 56vw + 18ch, 142ch));
   }
 
   .launch-grid {

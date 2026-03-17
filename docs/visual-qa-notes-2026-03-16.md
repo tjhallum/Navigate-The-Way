@@ -28,6 +28,14 @@ Use `qa-after-2560x1440.png` as the target reference for relative scale.
 - [ ] **No over-scaling drift**: body text does not visually approach title size at any desktop checkpoint.
 - [ ] **No under-scaling drift**: body text remains clearly legible at 1920×1080 and larger desktop sizes.
 
+## Width token acceptance criteria (desktop scaling, including 3840×2160)
+Root width tokens are expected to drive `.page-header`, `.card`, and `.verbatim-content` scaling in lock-step at desktop breakpoints.
+
+- [ ] **Tokenized section widths in use**: at desktop breakpoints, section width comes from `--section-max-readable` and `--section-max-wide-readable` rather than per-component one-off clamps.
+- [ ] **Shared scaling behavior**: `.page-header` and `.card` expand/contract together via `--section-max-wide-readable`, while `.verbatim-content` and header paragraph text use `--section-max-readable`.
+- [ ] **3840×2160 readability guardrail**: long-form body content remains comfortably readable (no excessively long line length), while header/card containers scale wider than body copy to preserve hierarchy.
+- [ ] **No side effects in excluded regions**: `.launch-context`, `.launch-grid`, and `#apg-inline-shell` dimensions remain unchanged after token rollout.
+
 ## Desktop capture matrix (before/after)
 | Checkpoint | Before | After | Status |
 |---|---|---|---|
