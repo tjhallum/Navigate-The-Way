@@ -406,14 +406,6 @@ footer {
     line-height: 1.72;
   }
 
-  .card > :is(p, ul, ol, blockquote, pre, .verbatim-content) {
-    max-width: min(100%, clamp(74ch, 58vw + 14ch, 88ch));
-  }
-
-  .card > :is(p, ul, ol, blockquote, pre) {
-    margin-inline: auto;
-  }
-
   .launch-panel p,
   .launch-panel li,
   .verbatim-content p,
