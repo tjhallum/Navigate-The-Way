@@ -47,3 +47,10 @@ For each tested page at 3840px:
 - [ ] `docs/caution-points.html`
 - [ ] `docs/faqs.html`
 - [ ] `docs/feedback.html`
+
+## Section-width guardrail (desktop)
+- Keep `.page-header`, `.card`, `.card.verbatim-content`, and `.verbatim-content` at `width: 100%; max-width: 100%` for desktop breakpoints (>=1024px) so they scale with `main`/`.page-shell`.
+- Do **not** add desktop `max-width` caps (especially `ch`-based caps) back to those selectors; doing so reintroduces the narrow-column regression seen on high-resolution displays.
+- If readability limits are needed, apply them to inner text elements (`p`, `li`, etc.) only—not to section containers.
+- During visual QA, compare non-launch sections against the launch-panel and Apologist embed widths on `docs/index.html`; widths should feel proportionally aligned across desktop pages.
+
