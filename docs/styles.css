@@ -433,6 +433,8 @@ footer {
 
   .verbatim-content { max-width: var(--section-max-readable); }
 
+  .card.verbatim-content { max-width: var(--section-max-wide-readable); }
+
   .verbatim-content p {
     margin: 0.92rem 0;
   }
