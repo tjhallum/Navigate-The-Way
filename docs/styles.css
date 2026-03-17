@@ -13,8 +13,9 @@
   --theme-surface: rgba(8, 14, 34, 0.72);
   --content-max: 980px; /* mobile baseline: default page/content width */
   --content-max-wide: 1160px; /* mobile baseline: nav/footer wider shell */
-  --section-max-readable: 100%;
-  --section-max-wide-readable: 100%;
+  --section-container-max: 100%;
+  --section-container-max-wide: 100%;
+  --section-measure-max: 100%;
   --gutter: 1rem; /* mobile baseline: shared horizontal breathing room */
   --shell-padding: 1rem;
   --shell-radius: 20px;
@@ -396,8 +397,9 @@ footer {
     --fs-v-h1: clamp(2rem, calc(1.76rem + (1.58 * var(--desktop-scale))), 2.68rem);
     --fs-v-h2: clamp(1.54rem, calc(1.36rem + (0.98 * var(--desktop-scale))), 2rem);
     --fs-v-h3: clamp(1.3rem, calc(1.18rem + (0.68 * var(--desktop-scale))), 1.62rem);
-    --section-max-readable: min(100%, clamp(82ch, 56vw + 16ch, 100ch));
-    --section-max-wide-readable: min(100%, clamp(96ch, 64vw + 18ch, 116ch));
+    --section-container-max: min(100%, clamp(96ch, 64vw + 18ch, 116ch));
+    --section-container-max-wide: min(100%, clamp(104ch, 68vw + 18ch, 126ch));
+    --section-measure-max: min(100%, clamp(82ch, 56vw + 16ch, 100ch));
   }
 
   .page-header,
@@ -410,17 +412,17 @@ footer {
   .page-header,
   .card,
   .card.verbatim-content {
-    max-width: var(--section-max-wide-readable);
+    max-width: var(--section-container-max-wide);
   }
 
-  .page-header p {
-    max-width: var(--section-max-readable);
+  .verbatim-content {
+    max-width: var(--section-container-max);
+  }
+
+  .page-header :is(p, li),
+  .card :is(p, li) {
+    max-inline-size: var(--section-measure-max);
     line-height: 1.72;
-  }
-
-  .card.verbatim-content p,
-  .card.verbatim-content li {
-    max-inline-size: var(--section-max-readable);
   }
 
   .launch-panel p,
@@ -437,8 +439,6 @@ footer {
   .launch-panel li {
     margin: 0.46rem 0;
   }
-
-  .verbatim-content { max-width: var(--section-max-readable); }
 
   .verbatim-content p {
     margin: 0.92rem 0;
@@ -490,8 +490,9 @@ footer {
     --fs-v-h1: clamp(2.2rem, calc(1.9rem + (1.86 * var(--desktop-scale))), 3.12rem);
     --fs-v-h2: clamp(1.68rem, calc(1.42rem + (1.28 * var(--desktop-scale))), 2.3rem);
     --fs-v-h3: clamp(1.36rem, calc(1.18rem + (0.86 * var(--desktop-scale))), 1.92rem);
-    --section-max-readable: min(100%, clamp(86ch, 56vw + 16ch, 106ch));
-    --section-max-wide-readable: min(100%, clamp(102ch, 64vw + 18ch, 124ch));
+    --section-container-max: min(100%, clamp(102ch, 64vw + 18ch, 124ch));
+    --section-container-max-wide: min(100%, clamp(110ch, 68vw + 18ch, 134ch));
+    --section-measure-max: min(100%, clamp(86ch, 56vw + 16ch, 106ch));
   }
 
   .site-logo {
@@ -536,8 +537,9 @@ footer {
     --fs-v-h1: clamp(2.48rem, calc(2.06rem + (2.12 * var(--desktop-scale))), 3.56rem);
     --fs-v-h2: clamp(1.86rem, calc(1.56rem + (1.38 * var(--desktop-scale))), 2.58rem);
     --fs-v-h3: clamp(1.5rem, calc(1.28rem + (0.94 * var(--desktop-scale))), 2.2rem);
-    --section-max-readable: min(100%, clamp(90ch, 54vw + 18ch, 112ch));
-    --section-max-wide-readable: min(100%, clamp(110ch, 62vw + 20ch, 136ch));
+    --section-container-max: min(100%, clamp(110ch, 62vw + 20ch, 136ch));
+    --section-container-max-wide: min(100%, clamp(118ch, 66vw + 20ch, 146ch));
+    --section-measure-max: min(100%, clamp(90ch, 54vw + 18ch, 112ch));
   }
 
   .site-logo {
@@ -610,8 +612,9 @@ footer {
     --fs-v-h3: clamp(1.62rem, calc(1.12rem + (1.96 * var(--desktop-scale))), 2.44rem);
     --content-max: min(86vw, 3040px);
     --content-max-wide: min(92vw, 3380px);
-    --section-max-readable: min(100%, clamp(96ch, 52vw + 18ch, 120ch));
-    --section-max-wide-readable: min(100%, clamp(120ch, 60vw + 20ch, 152ch));
+    --section-container-max: min(100%, clamp(120ch, 60vw + 20ch, 152ch));
+    --section-container-max-wide: min(100%, clamp(130ch, 64vw + 20ch, 164ch));
+    --section-measure-max: min(100%, clamp(96ch, 52vw + 18ch, 120ch));
   }
 
   .launch-grid {
@@ -654,8 +657,9 @@ footer {
     --fs-v-h3: clamp(2.48rem, calc(0.62rem + (0.0839 * var(--desktop-scale))), 2.86rem);
     --content-max: min(84vw, 3560px);
     --content-max-wide: min(90vw, 3780px);
-    --section-max-readable: min(100%, clamp(102ch, 50vw + 20ch, 128ch));
-    --section-max-wide-readable: min(100%, clamp(132ch, 58vw + 22ch, 168ch));
+    --section-container-max: min(100%, clamp(132ch, 58vw + 22ch, 168ch));
+    --section-container-max-wide: min(100%, clamp(142ch, 62vw + 24ch, 182ch));
+    --section-measure-max: min(100%, clamp(102ch, 50vw + 20ch, 128ch));
   }
 
   .launch-grid {
