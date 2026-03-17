@@ -424,6 +424,7 @@ footer {
 
   .page-header :is(p, li),
   .card :is(p, li) {
+    max-inline-size: var(--section-measure-max);
     line-height: 1.72;
   }
 
