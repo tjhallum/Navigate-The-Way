@@ -396,24 +396,31 @@ footer {
     --fs-v-h1: clamp(2rem, calc(1.76rem + (1.58 * var(--desktop-scale))), 2.68rem);
     --fs-v-h2: clamp(1.54rem, calc(1.36rem + (0.98 * var(--desktop-scale))), 2rem);
     --fs-v-h3: clamp(1.3rem, calc(1.18rem + (0.68 * var(--desktop-scale))), 1.62rem);
-    --section-max-readable: min(100%, clamp(78ch, 60vw + 14ch, 92ch));
-    --section-max-wide-readable: min(100%, clamp(84ch, 62vw + 18ch, 98ch));
+    --section-max-readable: min(100%, clamp(82ch, 56vw + 16ch, 100ch));
+    --section-max-wide-readable: min(100%, clamp(96ch, 64vw + 18ch, 116ch));
   }
 
   .page-header,
   .card,
+  .card.verbatim-content,
   .verbatim-content {
     margin-inline: auto;
   }
 
   .page-header,
-  .card {
+  .card,
+  .card.verbatim-content {
     max-width: var(--section-max-wide-readable);
   }
 
   .page-header p {
     max-width: var(--section-max-readable);
     line-height: 1.72;
+  }
+
+  .card.verbatim-content p,
+  .card.verbatim-content li {
+    max-inline-size: var(--section-max-readable);
   }
 
   .launch-panel p,
@@ -432,8 +439,6 @@ footer {
   }
 
   .verbatim-content { max-width: var(--section-max-readable); }
-
-  .card.verbatim-content { max-width: var(--section-max-wide-readable); }
 
   .verbatim-content p {
     margin: 0.92rem 0;
@@ -485,8 +490,8 @@ footer {
     --fs-v-h1: clamp(2.2rem, calc(1.9rem + (1.86 * var(--desktop-scale))), 3.12rem);
     --fs-v-h2: clamp(1.68rem, calc(1.42rem + (1.28 * var(--desktop-scale))), 2.3rem);
     --fs-v-h3: clamp(1.36rem, calc(1.18rem + (0.86 * var(--desktop-scale))), 1.92rem);
-    --section-max-readable: min(100%, clamp(82ch, 60vw + 14ch, 98ch));
-    --section-max-wide-readable: min(100%, clamp(90ch, 62vw + 18ch, 106ch));
+    --section-max-readable: min(100%, clamp(86ch, 56vw + 16ch, 106ch));
+    --section-max-wide-readable: min(100%, clamp(102ch, 64vw + 18ch, 124ch));
   }
 
   .site-logo {
@@ -531,8 +536,8 @@ footer {
     --fs-v-h1: clamp(2.48rem, calc(2.06rem + (2.12 * var(--desktop-scale))), 3.56rem);
     --fs-v-h2: clamp(1.86rem, calc(1.56rem + (1.38 * var(--desktop-scale))), 2.58rem);
     --fs-v-h3: clamp(1.5rem, calc(1.28rem + (0.94 * var(--desktop-scale))), 2.2rem);
-    --section-max-readable: min(100%, clamp(86ch, 58vw + 14ch, 104ch));
-    --section-max-wide-readable: min(100%, clamp(96ch, 60vw + 18ch, 116ch));
+    --section-max-readable: min(100%, clamp(90ch, 54vw + 18ch, 112ch));
+    --section-max-wide-readable: min(100%, clamp(110ch, 62vw + 20ch, 136ch));
   }
 
   .site-logo {
@@ -605,8 +610,8 @@ footer {
     --fs-v-h3: clamp(1.62rem, calc(1.12rem + (1.96 * var(--desktop-scale))), 2.44rem);
     --content-max: min(86vw, 3040px);
     --content-max-wide: min(92vw, 3380px);
-    --section-max-readable: min(100%, clamp(92ch, 56vw + 14ch, 114ch));
-    --section-max-wide-readable: min(100%, clamp(102ch, 58vw + 18ch, 128ch));
+    --section-max-readable: min(100%, clamp(96ch, 52vw + 18ch, 120ch));
+    --section-max-wide-readable: min(100%, clamp(120ch, 60vw + 20ch, 152ch));
   }
 
   .launch-grid {
@@ -649,8 +654,8 @@ footer {
     --fs-v-h3: clamp(2.48rem, calc(0.62rem + (0.0839 * var(--desktop-scale))), 2.86rem);
     --content-max: min(84vw, 3560px);
     --content-max-wide: min(90vw, 3780px);
-    --section-max-readable: min(100%, clamp(98ch, 54vw + 14ch, 126ch));
-    --section-max-wide-readable: min(100%, clamp(112ch, 56vw + 18ch, 142ch));
+    --section-max-readable: min(100%, clamp(102ch, 50vw + 20ch, 128ch));
+    --section-max-wide-readable: min(100%, clamp(132ch, 58vw + 22ch, 168ch));
   }
 
   .launch-grid {
