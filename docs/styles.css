@@ -397,17 +397,17 @@ footer {
   }
 
   .page-header {
-    max-width: min(100%, 84ch);
+    max-width: min(100%, clamp(84ch, 62vw + 18ch, 98ch));
     margin-inline: auto;
   }
 
   .page-header p {
-    max-width: 72ch;
+    max-width: min(100%, clamp(72ch, 56vw + 14ch, 84ch));
     line-height: 1.72;
   }
 
   .card > :is(p, ul, ol, blockquote, pre, .verbatim-content) {
-    max-width: 74ch;
+    max-width: min(100%, clamp(74ch, 58vw + 14ch, 88ch));
   }
 
   .card > :is(p, ul, ol, blockquote, pre) {
@@ -430,7 +430,7 @@ footer {
   }
 
   .verbatim-content {
-    max-width: 78ch;
+    max-width: min(100%, clamp(78ch, 60vw + 14ch, 92ch));
     margin-inline: auto;
   }
 
@@ -544,7 +544,7 @@ footer {
   }
 
   .page-header {
-    max-width: min(100%, 92ch);
+    max-width: min(100%, clamp(92ch, 64vw + 20ch, 108ch));
     margin-inline: auto;
   }
 
