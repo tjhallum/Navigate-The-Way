@@ -428,6 +428,15 @@ footer {
     line-height: 1.72;
   }
 
+  /* Body copy on long-form pages should grow with the section width on desktop. */
+  .card.verbatim-content :is(p, li) {
+    max-inline-size: none;
+  }
+
+  .page-header :is(p, li) {
+    max-inline-size: none;
+  }
+
   .launch-panel p,
   .launch-panel li,
   .verbatim-content p,
