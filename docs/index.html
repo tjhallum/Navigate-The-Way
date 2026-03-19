@@ -168,6 +168,57 @@
   data-target="apg-inline-target"
   data-height="40vh"
 ></script>
+<script>
+  (function initializeApologistInlineShellInteraction() {
+    const shell = document.getElementById('apg-inline-shell');
+    if (!shell) return;
+
+    const target = shell.querySelector('#apg-inline-target');
+    const beacon = document.getElementById('apg-beacon');
+
+    function setInteractionState(active) {
+      const nextState = active ? 'active' : 'inactive';
+      if (shell.dataset.chatInteraction === nextState) return false;
+      shell.dataset.chatInteraction = nextState;
+      return true;
+    }
+
+    function activateInteraction() {
+      return setInteractionState(true);
+    }
+
+    function deactivateInteraction(reason) {
+      void reason;
+      return setInteractionState(false);
+    }
+
+    deactivateInteraction('init');
+
+    if (target) {
+      target.addEventListener('pointerdown', activateInteraction);
+      target.addEventListener('focusin', activateInteraction);
+      target.addEventListener('pointerleave', function () {
+        deactivateInteraction('pointerleave');
+      });
+    }
+
+    shell.addEventListener('pointerleave', function () {
+      deactivateInteraction('shell-pointerleave');
+    });
+
+    shell.addEventListener('focusout', function (event) {
+      if (!shell.contains(event.relatedTarget)) {
+        deactivateInteraction('focusout');
+      }
+    });
+
+    if (beacon) {
+      beacon.addEventListener('load', function () {
+        deactivateInteraction('beacon-load');
+      });
+    }
+  })();
+</script>
   <section class="card verbatim-content">
 <div>
   
