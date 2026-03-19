@@ -249,13 +249,10 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   padding: 0;
   border-radius: 18px;
   background: transparent;
-}
-
-.apg-inline-shell {
   position: relative;
 }
 
-.chat-intent-zone {
+#apg-inline-shell .chat-intent-zone {
   position: absolute;
   left: 0;
   right: 0;
@@ -269,23 +266,26 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
+  pointer-events: auto;
 }
 
-.chat-intent-zone:focus-visible {
+#apg-inline-shell .chat-intent-zone:focus-visible {
   outline: 2px solid #ffce48;
   outline-offset: -2px;
   border-radius: 0 0 16px 16px;
 }
 
-.apg-inline-shell[data-chat-interaction="active"] .chat-intent-zone {
-  pointer-events: none;
-}
-
-.apg-inline-shell[data-chat-interaction="inactive"] .chat-intent-zone {
+#apg-inline-shell[data-chat-interaction="inactive"] .chat-intent-zone {
   pointer-events: auto;
 }
 
-#apg-inline-target {
+#apg-inline-shell[data-chat-interaction="active"] .chat-intent-zone {
+  pointer-events: none;
+}
+
+#apg-inline-shell #apg-inline-target {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -294,16 +294,18 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   border-radius: 16px;
 }
 
-#apg-inline-target > * {
+#apg-inline-shell #apg-inline-target > * {
   width: 100% !important;
   max-width: 100% !important;
 }
 
-#apg-inline-target * {
+#apg-inline-shell #apg-inline-target * {
   max-width: 100% !important;
 }
 
-#apg-inline-target iframe {
+#apg-inline-shell #apg-inline-target iframe {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100% !important;
   max-width: 100% !important;
@@ -311,6 +313,14 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   border: 0;
   border-radius: 16px;
   box-shadow: 0 0 0 2px #ffce48;
+  pointer-events: none;
+}
+
+#apg-inline-shell[data-chat-interaction="inactive"] #apg-inline-target iframe {
+  pointer-events: none;
+}
+
+#apg-inline-shell[data-chat-interaction="active"] #apg-inline-target iframe {
   pointer-events: auto;
 }
 .verbatim-content h1,.verbatim-content h2,.verbatim-content h3,.verbatim-content h4 {
@@ -948,7 +958,7 @@ footer {
     background: transparent;
   }
 
-  #apg-inline-target iframe {
+  #apg-inline-shell #apg-inline-target iframe {
     display: block;
     width: 100% !important;
     max-width: 100% !important;
