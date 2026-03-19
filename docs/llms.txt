@@ -1,5 +1,10 @@
 # Navigate The Way (NTW) — llms.txt
 
+For expanded machine context see `https://www.navtheway.com/llms-full.txt`.
+
+## Synchronization note
+Keep this file and `https://www.navtheway.com/llms-full.txt` synchronized whenever pages are added, removed, or renamed.
+
 ## Site purpose and scope
 Navigate The Way is a Bible-centered, conservative, reformed, evangelical AI ministry resource.
 This site explains NTW's purpose, guardrails, and usage guidance for church leaders, lay leaders,
