@@ -1,3 +1,5 @@
 User-agent: *
 Allow: /
 Sitemap: https://www.navtheway.com/sitemap.xml
+Allow: /llms.txt
+Allow: /llms-full.txt
