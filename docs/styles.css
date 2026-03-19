@@ -251,6 +251,14 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   background: transparent;
 }
 
+.apg-inline-shell {
+  position: relative;
+}
+
+.apg-inline-gate-wrap {
+  position: relative;
+}
+
 #apg-inline-target {
   width: 100%;
   max-width: 100%;
@@ -258,6 +266,35 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   min-width: 0;
   overflow-x: visible;
   border-radius: 16px;
+}
+
+.apg-inline-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border: 1px solid rgba(255, 206, 72, 0.6);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(4, 8, 21, 0.2), rgba(4, 8, 21, 0.56));
+  color: #f8fbff;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+.apg-inline-gate:hover,
+.apg-inline-gate:focus-visible {
+  background: linear-gradient(180deg, rgba(4, 8, 21, 0.28), rgba(4, 8, 21, 0.66));
+}
+
+.apg-inline-shell[data-chat-interaction='active'] .apg-inline-gate {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #apg-inline-target > * {
@@ -277,6 +314,11 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   border: 0;
   border-radius: 16px;
   box-shadow: 0 0 0 2px #ffce48;
+  pointer-events: none;
+}
+
+.apg-inline-shell[data-chat-interaction='active'] #apg-inline-target iframe {
+  pointer-events: auto;
 }
 .verbatim-content h1,.verbatim-content h2,.verbatim-content h3,.verbatim-content h4 {
   line-height: 1.25;
