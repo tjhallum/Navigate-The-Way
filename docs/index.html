@@ -155,19 +155,8 @@
   </div>
   <p class="launch-cta"><strong>👇Try NTW✝️ Now!👇</strong></p>
 </section>
-<div id="apg-inline-shell" class="apg-inline-shell" data-chat-interaction="inactive">
-  <div class="apg-inline-gate-wrap">
-    <div id="apg-inline-target"></div>
-    <button
-      type="button"
-      class="apg-inline-gate"
-      data-chat-interaction-gate
-      aria-controls="apg-inline-target"
-      aria-label="Click to interact with chat"
-    >
-      Click to interact with chat
-    </button>
-  </div>
+<div id="apg-inline-shell" class="apg-inline-shell">
+  <div id="apg-inline-target"></div>
 </div>
 <script
   async
@@ -179,58 +168,6 @@
   data-target="apg-inline-target"
   data-height="40vh"
 ></script>
-<script>
-  (() => {
-    const shell = document.querySelector('#apg-inline-shell');
-    if (!shell) return;
-
-    const gate = shell.querySelector('[data-chat-interaction-gate]');
-    const target = shell.querySelector('#apg-inline-target');
-    if (!gate || !target) return;
-
-    const setInteractionState = (active) => {
-      shell.dataset.chatInteraction = active ? 'active' : 'inactive';
-      gate.setAttribute('aria-hidden', active ? 'true' : 'false');
-      gate.tabIndex = active ? -1 : 0;
-      if (!active) gate.blur();
-    };
-
-    const activateInteraction = () => {
-      setInteractionState(true);
-      target.querySelector('iframe')?.focus();
-    };
-
-    const deactivateInteraction = () => {
-      setInteractionState(false);
-      gate.focus({ preventScroll: true });
-    };
-
-    gate.addEventListener('click', activateInteraction);
-    gate.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        activateInteraction();
-      }
-    });
-
-    shell.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && shell.dataset.chatInteraction === 'active') {
-        event.preventDefault();
-        deactivateInteraction();
-      }
-    });
-
-    shell.addEventListener('focusout', () => {
-      requestAnimationFrame(() => {
-        if (shell.dataset.chatInteraction === 'active' && !shell.contains(document.activeElement)) {
-          deactivateInteraction();
-        }
-      });
-    });
-
-    setInteractionState(false);
-  })();
-</script>
   <section class="card verbatim-content">
 <div>
   
