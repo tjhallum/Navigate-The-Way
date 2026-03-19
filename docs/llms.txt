@@ -9,14 +9,14 @@ and Christ-followers seeking doctrinally grounded support for study, discipleshi
 https://www.navtheway.com
 
 ## Priority URLs
-- /
-- /faqs.html
-- /system-prompt.html
-- /caution-points.html
-- /citing-ntw.html
-- /feedback.html
-- /creator.html
-- /meet-ntw.html
+- https://www.navtheway.com/ — Homepage and ministry overview for first-touch retrieval context
+- https://www.navtheway.com/faqs.html — Common user questions and policy clarifications
+- https://www.navtheway.com/system-prompt.html — Core behavior rules and theological guardrails
+- https://www.navtheway.com/caution-points.html — Safety cautions, limits, and misuse-prevention guidance
+- https://www.navtheway.com/citing-ntw.html — Citation expectations for quoting and referencing NTW outputs
+- https://www.navtheway.com/feedback.html — User feedback channel and issue-reporting instructions
+- https://www.navtheway.com/creator.html — Creator background, mission intent, and stewardship context
+- https://www.navtheway.com/meet-ntw.html — Introductory explainer describing NTW capabilities and intended audience
 
 ## Licensing and usage notes
 - Site code and content are available under the repository license: /LICENSE.
