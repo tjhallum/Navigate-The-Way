@@ -51,3 +51,36 @@ Root width tokens are expected to drive `.page-header`, `.card`, and `.verbatim-
 ## Notes
 - This checklist is designed to be filled while reviewing paired before/after captures from the same page and checkpoints.
 - If any acceptance criterion fails, record the exact viewport and section before sign-off.
+
+---
+
+# Visual QA Checklist — Apologist Embed Interaction Modes (2026-03-16)
+
+## Scope
+Interaction QA for the Apologist embed behavior on desktop and touch devices.
+
+Target areas:
+- `#apg-beacon`
+- Launch panel / embed container region
+
+## Desktop checks
+- [ ] Initial state allows page scroll while cursor is over embed.
+- [ ] Clicking bottom intent zone enters chat mode.
+- [ ] Outside click exits mode.
+- [ ] Mouseleave delay exits mode without accidental early exits.
+- [ ] Esc exits mode.
+- [ ] Quick leave-and-return does not flap states.
+
+## Touch checks
+- [ ] Tap intent zone activates.
+- [ ] Tap outside deactivates.
+- [ ] Normal page scrolling remains possible when inactive.
+
+## Regression checks
+- [ ] Existing Apologist embed still loads via `#apg-beacon`.
+- [ ] No visible banners/labels appear.
+- [ ] No layout shifts in launch panel and embed container.
+
+## Notes
+- Record device/browser and viewport for each completed check.
+- If any check fails, include repro steps and whether failure is consistent or intermittent.
