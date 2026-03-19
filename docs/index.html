@@ -155,8 +155,14 @@
   </div>
   <p class="launch-cta"><strong>👇Try NTW✝️ Now!👇</strong></p>
 </section>
-<div id="apg-inline-shell" class="apg-inline-shell">
+<div id="apg-inline-shell" class="apg-inline-shell" data-chat-interaction="inactive">
   <div id="apg-inline-target"></div>
+  <button
+    type="button"
+    class="chat-intent-zone"
+    data-chat-intent-zone
+    aria-label="Activate chat interaction"
+  ></button>
 </div>
 <script
   async
@@ -175,6 +181,7 @@
 
     const target = shell.querySelector('#apg-inline-target');
     const beacon = document.getElementById('apg-beacon');
+    const chatIntentZone = shell.querySelector('[data-chat-intent-zone]');
 
     function setInteractionState(active) {
       const nextState = active ? 'active' : 'inactive';
@@ -193,6 +200,33 @@
     }
 
     deactivateInteraction('init');
+
+    function focusInlineChatFrame() {
+      if (!target) return;
+      const iframe = target.querySelector('iframe');
+      if (!iframe) return;
+      iframe.focus();
+      if (iframe.contentWindow && typeof iframe.contentWindow.focus === 'function') {
+        iframe.contentWindow.focus();
+      }
+    }
+
+    if (chatIntentZone) {
+      chatIntentZone.addEventListener('pointerdown', function () {
+        activateInteraction();
+        focusInlineChatFrame();
+      });
+      chatIntentZone.addEventListener('click', function () {
+        activateInteraction();
+        focusInlineChatFrame();
+      });
+      chatIntentZone.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          activateInteraction();
+          focusInlineChatFrame();
+        }
+      });
+    }
 
     if (target) {
       target.addEventListener('pointerdown', activateInteraction);

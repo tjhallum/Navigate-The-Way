@@ -255,6 +255,36 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   position: relative;
 }
 
+.chat-intent-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  z-index: 2;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.chat-intent-zone:focus-visible {
+  outline: 2px solid #ffce48;
+  outline-offset: -2px;
+  border-radius: 0 0 16px 16px;
+}
+
+.apg-inline-shell[data-chat-interaction="active"] .chat-intent-zone {
+  pointer-events: none;
+}
+
+.apg-inline-shell[data-chat-interaction="inactive"] .chat-intent-zone {
+  pointer-events: auto;
+}
+
 #apg-inline-target {
   width: 100%;
   max-width: 100%;
