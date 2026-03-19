@@ -182,21 +182,120 @@
     const target = shell.querySelector('#apg-inline-target');
     const beacon = document.getElementById('apg-beacon');
     const chatIntentZone = shell.querySelector('[data-chat-intent-zone]');
+    const MIN_ACTIVE_MS = 1200;
+    const LEAVE_GRACE_MS = 400;
+    const TRANSITION_DEBOUNCE_MS = 180;
+    const WHEEL_BOUNDARY_PX = 96;
+    let activatedAt = 0;
+    let leaveTimer = null;
+    let transitionTimer = null;
+    let pendingState = null;
+    let pendingReason = '';
+    let lastTransitionAt = 0;
 
-    function setInteractionState(active) {
+    function clearLeaveTimer() {
+      if (!leaveTimer) return;
+      clearTimeout(leaveTimer);
+      leaveTimer = null;
+    }
+
+    function clearTransitionTimer() {
+      if (!transitionTimer) return;
+      clearTimeout(transitionTimer);
+      transitionTimer = null;
+      pendingState = null;
+      pendingReason = '';
+    }
+
+    function setInteractionState(active, reason) {
+      void reason;
       const nextState = active ? 'active' : 'inactive';
       if (shell.dataset.chatInteraction === nextState) return false;
+
+      const now = Date.now();
+      const elapsedSinceTransition = now - lastTransitionAt;
+      if (elapsedSinceTransition < TRANSITION_DEBOUNCE_MS) {
+        pendingState = active;
+        pendingReason = reason || '';
+        clearTimeout(transitionTimer);
+        transitionTimer = setTimeout(function () {
+          const queuedState = pendingState;
+          const queuedReason = pendingReason;
+          clearTransitionTimer();
+          setInteractionState(Boolean(queuedState), queuedReason);
+        }, TRANSITION_DEBOUNCE_MS - elapsedSinceTransition);
+        return false;
+      }
+
       shell.dataset.chatInteraction = nextState;
+      lastTransitionAt = now;
+      if (active) {
+        activatedAt = now;
+        clearLeaveTimer();
+      } else {
+        activatedAt = 0;
+        clearLeaveTimer();
+      }
       return true;
     }
 
     function activateInteraction() {
-      return setInteractionState(true);
+      return setInteractionState(true, 'activate');
+    }
+
+    function hasMinActiveDuration() {
+      if (shell.dataset.chatInteraction !== 'active') return false;
+      if (!activatedAt) return false;
+      return Date.now() - activatedAt >= MIN_ACTIVE_MS;
+    }
+
+    function canAutoDeactivate() {
+      return hasMinActiveDuration();
     }
 
     function deactivateInteraction(reason) {
       void reason;
-      return setInteractionState(false);
+      clearLeaveTimer();
+      return setInteractionState(false, reason || 'deactivate');
+    }
+
+    function scheduleGraceDeactivate(reason) {
+      clearLeaveTimer();
+      if (shell.dataset.chatInteraction !== 'active') return;
+      leaveTimer = setTimeout(function () {
+        if (!canAutoDeactivate()) return;
+        deactivateInteraction(reason);
+      }, LEAVE_GRACE_MS);
+    }
+
+    function cancelGraceDeactivate() {
+      clearLeaveTimer();
+    }
+
+    function hasShellFocusContext() {
+      const active = document.activeElement;
+      return !!(active && shell.contains(active));
+    }
+
+    function isWheelNearShellBoundary(event) {
+      if (shell.contains(event.target)) return false;
+      const rect = shell.getBoundingClientRect();
+      const x = event.clientX;
+      const y = event.clientY;
+      if (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      ) {
+        return false;
+      }
+      const dx =
+        x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+      const dy =
+        y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+      const distanceToBoundary = Math.sqrt((dx * dx) + (dy * dy));
+      return distanceToBoundary <= WHEEL_BOUNDARY_PX;
     }
 
     deactivateInteraction('init');
@@ -214,37 +313,82 @@
     if (chatIntentZone) {
       chatIntentZone.addEventListener('pointerdown', function () {
         activateInteraction();
+        cancelGraceDeactivate();
         focusInlineChatFrame();
       });
       chatIntentZone.addEventListener('click', function () {
         activateInteraction();
+        cancelGraceDeactivate();
         focusInlineChatFrame();
       });
       chatIntentZone.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
           activateInteraction();
+          cancelGraceDeactivate();
           focusInlineChatFrame();
         }
       });
     }
 
     if (target) {
-      target.addEventListener('pointerdown', activateInteraction);
-      target.addEventListener('focusin', activateInteraction);
+      target.addEventListener('pointerdown', function () {
+        activateInteraction();
+        cancelGraceDeactivate();
+      });
+      target.addEventListener('focusin', function () {
+        activateInteraction();
+        cancelGraceDeactivate();
+      });
       target.addEventListener('pointerleave', function () {
-        deactivateInteraction('pointerleave');
+        scheduleGraceDeactivate('pointerleave');
+      });
+      target.addEventListener('pointerenter', function () {
+        cancelGraceDeactivate();
       });
     }
 
     shell.addEventListener('pointerleave', function () {
-      deactivateInteraction('shell-pointerleave');
+      scheduleGraceDeactivate('shell-pointerleave');
+    });
+
+    shell.addEventListener('pointerenter', function () {
+      cancelGraceDeactivate();
     });
 
     shell.addEventListener('focusout', function (event) {
       if (!shell.contains(event.relatedTarget)) {
+        if (!canAutoDeactivate()) return;
         deactivateInteraction('focusout');
       }
     });
+
+    document.addEventListener('pointerdown', function (event) {
+      if (shell.dataset.chatInteraction !== 'active') return;
+      if (shell.contains(event.target)) return;
+      if (!canAutoDeactivate()) return;
+      deactivateInteraction('outside-pointerdown');
+    });
+
+    document.addEventListener('click', function (event) {
+      if (shell.dataset.chatInteraction !== 'active') return;
+      if (shell.contains(event.target)) return;
+      if (!canAutoDeactivate()) return;
+      deactivateInteraction('outside-click');
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      if (shell.dataset.chatInteraction !== 'active') return;
+      if (!hasShellFocusContext()) return;
+      deactivateInteraction('escape-key');
+    });
+
+    document.addEventListener('wheel', function (event) {
+      if (shell.dataset.chatInteraction !== 'active') return;
+      if (!canAutoDeactivate()) return;
+      if (!isWheelNearShellBoundary(event)) return;
+      deactivateInteraction('wheel-boundary');
+    }, { passive: true });
 
     if (beacon) {
       beacon.addEventListener('load', function () {
