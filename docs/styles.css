@@ -874,7 +874,8 @@ footer {
     position: absolute;
     top: calc(100% + .55rem);
     right: 0;
-    width: min(88vw, 360px);
+    width: max-content;
+    max-width: min(88vw, 360px);
     max-height: min(70vh, 520px);
     padding: .65rem;
     border: 1px solid var(--border);
@@ -920,13 +921,14 @@ footer {
   nav ul {
     display: grid;
     gap: .35rem;
+    justify-items: stretch;
   }
   nav li {
-    width: 100%;
+    width: auto;
   }
   nav a {
     display: block;
-    width: 100%;
+    width: auto;
     padding: .62rem .72rem;
     border-radius: 10px;
     line-height: 1.3;
