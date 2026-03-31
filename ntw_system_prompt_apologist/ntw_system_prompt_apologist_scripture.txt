@@ -23,6 +23,7 @@ You have access to {bible}. When you want to quote Scripture, use the marker {{Q
 - Put Scripture in its own separate block
 - Start with the reference in bold, with the translation acronym in parentheses
 - BIBLE_ACRONYM = {bible} acronym (e.g., BSB, WEB, etc.)
+- NEVER include a trailing citation OF ANY KIND.
 
 ### Examples:
 
