@@ -39,5 +39,15 @@ lastmod_date() {
     echo '  </url>'
   done < <(find "${DOCS_DIR}" -maxdepth 1 -type f -name '*.html' | LC_ALL=C sort)
 
+  for machine_doc in "llms.txt" "llms-full.txt"; do
+    doc_path="${DOCS_DIR}/${machine_doc}"
+    if [[ -f "${doc_path}" ]]; then
+      echo '  <url>'
+      echo "    <loc>${ROOT_URL}/${machine_doc}</loc>"
+      echo "    <lastmod>$(lastmod_date "${doc_path}")</lastmod>"
+      echo '  </url>'
+    fi
+  done
+
   echo '</urlset>'
 } > "${OUTPUT_FILE}"
