@@ -19,7 +19,7 @@ base_html() {
   ${og_url_meta}
   <meta property="og:image" content="https://www.navtheway.com/image.png" />
   ${twitter_meta}
-  <link rel="canonical" href="https://www.navtheway.com/page.html" />
+  <link rel="canonical" href="https://www.navtheway.com/test" />
 </head>
 <body></body>
 </html>
@@ -89,19 +89,35 @@ $(base_html '' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
 run_expect_fail_only "name-og-url-wrong-attr" 'og:url meta must use property="og:url" (not name)' 'missing og:url meta with property="og:url"' <<EOFCASE
-$(base_html '<meta name="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta name="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
 EOFCASE
 
 run_expect_fail "property-twitter-card" 'missing twitter:card meta with name="twitter:card"' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '')
 EOFCASE
 
 run_expect_fail_only "property-twitter-card-wrong-attr" 'twitter:card meta must use name="twitter:card" (not property)' 'missing twitter:card meta with name="twitter:card"' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta property="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta property="twitter:card" content="summary_large_image" />')
 EOFCASE
 
 run_expect_pass "correct-attributes" <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
+EOFCASE
+
+run_expect_fail "html-extension-canonical" 'canonical URL must be the extensionless canonical URL https://www.navtheway.com/test' <<EOFCASE
+<!doctype html>
+<html>
+<head>
+  <meta name="description" content="Description" />
+  <meta property="og:title" content="Title" />
+  <meta property="og:description" content="OG Description" />
+  <meta property="og:url" content="https://www.navtheway.com/test.html" />
+  <meta property="og:image" content="https://www.navtheway.com/image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://www.navtheway.com/test.html" />
+</head>
+<body></body>
+</html>
 EOFCASE
 
 run_expect_fail "duplicate-canonical" 'expected exactly one canonical link, found 2' <<EOFCASE
@@ -111,11 +127,11 @@ run_expect_fail "duplicate-canonical" 'expected exactly one canonical link, foun
   <meta name="description" content="Description" />
   <meta property="og:title" content="Title" />
   <meta property="og:description" content="OG Description" />
-  <meta property="og:url" content="https://www.navtheway.com/page.html" />
+  <meta property="og:url" content="https://www.navtheway.com/test" />
   <meta property="og:image" content="https://www.navtheway.com/image.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://www.navtheway.com/page.html" />
-  <link rel="canonical" href="https://www.navtheway.com/page.html" />
+  <link rel="canonical" href="https://www.navtheway.com/test" />
+  <link rel="canonical" href="https://www.navtheway.com/test" />
 </head>
 <body></body>
 </html>
@@ -123,7 +139,7 @@ EOFCASE
 
 
 run_expect_fail "duplicate-json-ld-property" 'duplicate JSON-LD property "inLanguage" in script 1' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -136,7 +152,7 @@ $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.htm
 EOFCASE
 
 run_expect_fail "invalid-json-ld" 'invalid JSON-LD script 1' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
   <script type="application/ld+json">
   {"@context": "https://schema.org",
   </script>
@@ -144,21 +160,21 @@ EOFCASE
 
 
 run_expect_fail "article-reciprocal-main-entity" 'Article should use mainEntityOfPage without duplicating the inverse WebPage mainEntity link' <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://www.navtheway.com/page.html#webpage",
-        "mainEntity": {"@id": "https://www.navtheway.com/page.html#article"}
+        "@id": "https://www.navtheway.com/test#webpage",
+        "mainEntity": {"@id": "https://www.navtheway.com/test#article"}
       },
       {
         "@type": "Article",
-        "@id": "https://www.navtheway.com/page.html#article",
+        "@id": "https://www.navtheway.com/test#article",
         "headline": "Page",
-        "mainEntityOfPage": {"@id": "https://www.navtheway.com/page.html#webpage"}
+        "mainEntityOfPage": {"@id": "https://www.navtheway.com/test#webpage"}
       }
     ]
   }
@@ -166,20 +182,20 @@ $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.htm
 EOFCASE
 
 run_expect_pass "article-main-entity-of-page-only" <<EOFCASE
-$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/test" />' '<meta name="twitter:card" content="summary_large_image" />')
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://www.navtheway.com/page.html#webpage"
+        "@id": "https://www.navtheway.com/test#webpage"
       },
       {
         "@type": "Article",
-        "@id": "https://www.navtheway.com/page.html#article",
+        "@id": "https://www.navtheway.com/test#article",
         "headline": "Page",
-        "mainEntityOfPage": {"@id": "https://www.navtheway.com/page.html#webpage"}
+        "mainEntityOfPage": {"@id": "https://www.navtheway.com/test#webpage"}
       }
     ]
   }

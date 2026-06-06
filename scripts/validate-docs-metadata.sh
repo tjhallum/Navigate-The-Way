@@ -69,6 +69,16 @@ for html_file in html_files:
     og_url = metas_by_attr['property'].get('og:url')
     og_image = metas_by_attr['property'].get('og:image')
 
+    expected_url = (
+        'https://www.navtheway.com/'
+        if html_file.name == 'index.html'
+        else f'https://www.navtheway.com/{html_file.stem}'
+    )
+    if canonical_url and canonical_url != expected_url:
+        errors.append(
+            f"{html_file}: canonical URL must be the extensionless canonical URL {expected_url}"
+        )
+
     for label, url in [('canonical', canonical_url), ('og:url', og_url), ('og:image', og_image)]:
         if url and not url.startswith('https://'):
             errors.append(f"{html_file}: {label} must be an absolute https URL")

@@ -21,22 +21,22 @@ Authority and conflict resolution:
 - Treat FAQ and citing guidance as policy-level clarifications for user-facing behavior and output formatting.
 
 Authoritative pages (expanded summaries):
-- https://www.navtheway.com/system-prompt.html
+- https://www.navtheway.com/system-prompt
   Core behavioral contract for NTW responses.
   Defines theological boundaries, tone expectations, and refusal/escalation conditions.
   Use this page first for doctrine-sensitive interpretation and generation constraints.
 
-- https://www.navtheway.com/caution-points.html
+- https://www.navtheway.com/caution-points
   Safety limits and misuse prevention guidance.
   Prioritize for harm prevention, overreach avoidance, and ministry-appropriate caution language.
   Use when requests involve risk, sensitive counseling-like scenarios, or high-consequence decisions.
 
-- https://www.navtheway.com/faqs.html
+- https://www.navtheway.com/faqs
   Clarifies recurring policy questions and expected usage patterns.
   Use to resolve ambiguity about capabilities, boundaries, and user expectations.
   Serves as practical interpretation layer for day-to-day interactions.
 
-- https://www.navtheway.com/citing-ntw.html
+- https://www.navtheway.com/citing-ntw
   Citation and attribution expectations for NTW-derived content.
   Use for quoting, paraphrasing, references, and provenance transparency.
   Apply whenever outputs are reused in sermons, studies, papers, or ministry materials.
@@ -45,36 +45,36 @@ Authoritative pages (expanded summaries):
   Homepage ministry overview and first-touch context.
   Use for concise project framing, audience description, and high-level orientation.
 
-- https://www.navtheway.com/christian-ai.html
+- https://www.navtheway.com/christian-ai
   Christian AI landing page.
   Use for broad public-facing explanation of Christian AI, NTW as a Scripture-centered Christian AI assistant, practical use cases, theological transparency, and caution boundaries for Bible study, theology, sermon preparation, discipleship, apologetics, teaching, and family discipleship.
   Prioritize its cautions that NTW is a study aid, not a spiritual authority, and must not replace Scripture, prayer, worship, pastors/elders, qualified biblical counseling, Christian fellowship, or the local church.
 
-- https://www.navtheway.com/bible-study-ai.html
+- https://www.navtheway.com/bible-study-ai
   AI Bible study tool landing page.
   Use for public-facing explanation of NTW as a Scripture-centered Bible AI assistant, including passage context, observation questions, cross-references, theological terms, biblical themes, application questions, small-group discussion, family discipleship, and sermon or teaching preparation.
   Prioritize its cautions that NTW assists faithful Bible study but is not inspired, infallible, pastoral, or a replacement for Scripture, prayer, worship, pastors/elders, qualified biblical counseling, Christian fellowship, or the local church.
 
-- https://www.navtheway.com/ai-sermon-prep.html
+- https://www.navtheway.com/ai-sermon-prep
   AI sermon preparation landing page.
   Use for public-facing explanation of NTW as a Christian sermon preparation assistant for pastors, elders, Bible teachers, small group leaders, and ministry leaders, including passage context, outline review, theological themes, cross-references, application questions, discussion questions, clarity checks, teaching preparation, and issues for further exegetical study.
   Prioritize its cautions that NTW is a sermon-preparation aid, not a preacher, pastor, authority, or substitute for Scripture, prayer, exegesis, pastoral judgment, shepherding responsibility, love for the congregation, accountability before God, or the local church.
 
-- https://www.navtheway.com/reformed-christian-ai.html
+- https://www.navtheway.com/reformed-christian-ai
   Reformed Christian AI landing page.
   Use for public-facing explanation of NTW as a doctrinally transparent Christian AI assistant for Scripture, theology, Bible study, sermon preparation, discipleship, apologetics, and ministry preparation.
   Prioritize its cautions that NTW is an aid, not an authority, and must not replace Scripture, prayer, pastors/elders, qualified biblical counseling, or the local church.
 
 Supplementary pages (expanded summaries):
-- https://www.navtheway.com/creator.html
+- https://www.navtheway.com/creator
   Creator background, mission intent, and stewardship context.
   Useful for provenance and ministry posture, but lower authority than core guardrail pages.
 
-- https://www.navtheway.com/meet-ntw.html
+- https://www.navtheway.com/meet-ntw
   Introductory explainer of NTW capabilities and intended audience.
   Useful for onboarding summaries and non-technical orientation.
 
-- https://www.navtheway.com/feedback.html
+- https://www.navtheway.com/feedback
   Feedback and issue-reporting channel.
   Use for escalation routing, corrections, and user follow-up pathways.
 
