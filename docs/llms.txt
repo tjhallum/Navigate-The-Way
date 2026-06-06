@@ -21,6 +21,7 @@ Note: When guidance conflicts, prefer authoritative sources over supplementary s
 - https://www.navtheway.com/faqs.html — Common user questions and policy clarifications
 - https://www.navtheway.com/citing-ntw.html — Citation expectations for quoting and referencing NTW outputs
 - https://www.navtheway.com/ — Homepage and ministry overview for first-touch retrieval context
+- https://www.navtheway.com/christian-ai.html — Christian AI landing page for broad category framing, use cases, cautions, and FAQ context
 - https://www.navtheway.com/reformed-christian-ai.html — Reformed Christian AI landing page for doctrinal framing, use cases, cautions, and FAQ context
 
 ## Supplementary sources
