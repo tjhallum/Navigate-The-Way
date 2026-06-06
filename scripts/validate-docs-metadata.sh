@@ -82,6 +82,7 @@ for html_file in html_files:
         if url != 'https://www.navtheway.com/' and url.endswith('/'):
             errors.append(f"{html_file}: {label} must not use a trailing slash for non-home pages")
 
+    json_ld_nodes = []
     for script_index, match in enumerate(json_ld_pattern.finditer(text), start=1):
         duplicate_keys = []
 
@@ -96,7 +97,7 @@ for html_file in html_files:
             return result
 
         try:
-            json.loads(match.group(1), object_pairs_hook=reject_duplicate_keys)
+            parsed_json_ld = json.loads(match.group(1), object_pairs_hook=reject_duplicate_keys)
         except json.JSONDecodeError as exc:
             errors.append(f"{html_file}: invalid JSON-LD script {script_index}: {exc.msg}")
             continue
@@ -104,6 +105,44 @@ for html_file in html_files:
         for key in sorted(set(duplicate_keys)):
             errors.append(
                 f'{html_file}: duplicate JSON-LD property "{key}" in script {script_index}'
+            )
+
+        if isinstance(parsed_json_ld, dict) and isinstance(parsed_json_ld.get('@graph'), list):
+            json_ld_nodes.extend(
+                node for node in parsed_json_ld['@graph'] if isinstance(node, dict)
+            )
+        elif isinstance(parsed_json_ld, dict):
+            json_ld_nodes.append(parsed_json_ld)
+
+    articles_by_page_id = {}
+    for node in json_ld_nodes:
+        node_type = node.get('@type')
+        node_types = node_type if isinstance(node_type, list) else [node_type]
+        if 'Article' not in node_types:
+            continue
+        page_ref = node.get('mainEntityOfPage')
+        if isinstance(page_ref, dict):
+            page_id = page_ref.get('@id')
+        elif isinstance(page_ref, str):
+            page_id = page_ref
+        else:
+            page_id = None
+        if page_id:
+            articles_by_page_id[page_id] = node.get('@id')
+
+    for node in json_ld_nodes:
+        node_type = node.get('@type')
+        node_types = node_type if isinstance(node_type, list) else [node_type]
+        if 'WebPage' not in node_types:
+            continue
+        page_id = node.get('@id')
+        article_id = articles_by_page_id.get(page_id)
+        main_entity = node.get('mainEntity')
+        if not article_id or not isinstance(main_entity, dict):
+            continue
+        if main_entity.get('@id') == article_id:
+            errors.append(
+                f'{html_file}: Article should use mainEntityOfPage without duplicating the inverse WebPage mainEntity link'
             )
 
 if errors:

@@ -142,4 +142,48 @@ $(base_html '<meta property="og:url" content="https://www.navtheway.com/page.htm
   </script>
 EOFCASE
 
+
+run_expect_fail "article-reciprocal-main-entity" 'Article should use mainEntityOfPage without duplicating the inverse WebPage mainEntity link' <<EOFCASE
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://www.navtheway.com/page.html#webpage",
+        "mainEntity": {"@id": "https://www.navtheway.com/page.html#article"}
+      },
+      {
+        "@type": "Article",
+        "@id": "https://www.navtheway.com/page.html#article",
+        "headline": "Page",
+        "mainEntityOfPage": {"@id": "https://www.navtheway.com/page.html#webpage"}
+      }
+    ]
+  }
+  </script>
+EOFCASE
+
+run_expect_pass "article-main-entity-of-page-only" <<EOFCASE
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://www.navtheway.com/page.html#webpage"
+      },
+      {
+        "@type": "Article",
+        "@id": "https://www.navtheway.com/page.html#article",
+        "headline": "Page",
+        "mainEntityOfPage": {"@id": "https://www.navtheway.com/page.html#webpage"}
+      }
+    ]
+  }
+  </script>
+EOFCASE
+
 echo "All metadata validator fixture checks passed."
