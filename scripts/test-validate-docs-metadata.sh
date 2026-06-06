@@ -121,4 +121,25 @@ run_expect_fail "duplicate-canonical" 'expected exactly one canonical link, foun
 </html>
 EOFCASE
 
+
+run_expect_fail "duplicate-json-ld-property" 'duplicate JSON-LD property "inLanguage" in script 1' <<EOFCASE
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "inLanguage": "en",
+    "headline": "Page",
+    "inLanguage": "en-US"
+  }
+  </script>
+EOFCASE
+
+run_expect_fail "invalid-json-ld" 'invalid JSON-LD script 1' <<EOFCASE
+$(base_html '<meta property="og:url" content="https://www.navtheway.com/page.html" />' '<meta name="twitter:card" content="summary_large_image" />')
+  <script type="application/ld+json">
+  {"@context": "https://schema.org",
+  </script>
+EOFCASE
+
 echo "All metadata validator fixture checks passed."
