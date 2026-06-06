@@ -34,7 +34,7 @@ lastmod_date() {
     [[ "${page_name}" == "index.html" ]] && continue
 
     echo '  <url>'
-    echo "    <loc>${ROOT_URL}/${page_name}</loc>"
+    echo "    <loc>${ROOT_URL}/${page_name%.html}</loc>"
     echo "    <lastmod>$(lastmod_date "${page}")</lastmod>"
     echo '  </url>'
   done < <(find "${DOCS_DIR}" -maxdepth 1 -type f -name '*.html' | LC_ALL=C sort)
