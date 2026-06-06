@@ -3,6 +3,7 @@ set -euo pipefail
 
 python - <<'PY'
 from pathlib import Path
+import json
 import os
 import re
 import sys
@@ -19,6 +20,10 @@ required_meta = [
 meta_pattern = re.compile(r'<meta\s+[^>]*?>', re.IGNORECASE)
 attr_pattern = re.compile(r'([:\w-]+)\s*=\s*"([^"]*)"', re.IGNORECASE)
 canonical_pattern = re.compile(r'<link\s+[^>]*rel="canonical"[^>]*>', re.IGNORECASE)
+json_ld_pattern = re.compile(
+    r'<script\s+[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
+    re.IGNORECASE | re.DOTALL,
+)
 
 errors = []
 docs_dir = Path(os.environ.get('DOCS_DIR', 'docs'))
@@ -76,6 +81,30 @@ for html_file in html_files:
             continue
         if url != 'https://www.navtheway.com/' and url.endswith('/'):
             errors.append(f"{html_file}: {label} must not use a trailing slash for non-home pages")
+
+    for script_index, match in enumerate(json_ld_pattern.finditer(text), start=1):
+        duplicate_keys = []
+
+        def reject_duplicate_keys(pairs):
+            seen = set()
+            result = {}
+            for key, value in pairs:
+                if key in seen:
+                    duplicate_keys.append(key)
+                seen.add(key)
+                result[key] = value
+            return result
+
+        try:
+            json.loads(match.group(1), object_pairs_hook=reject_duplicate_keys)
+        except json.JSONDecodeError as exc:
+            errors.append(f"{html_file}: invalid JSON-LD script {script_index}: {exc.msg}")
+            continue
+
+        for key in sorted(set(duplicate_keys)):
+            errors.append(
+                f'{html_file}: duplicate JSON-LD property "{key}" in script {script_index}'
+            )
 
 if errors:
     print('Metadata validation failed:')
