@@ -55,6 +55,11 @@ Authoritative pages (expanded summaries):
   Use for public-facing explanation of NTW as a Scripture-centered Bible AI assistant, including passage context, observation questions, cross-references, theological terms, biblical themes, application questions, small-group discussion, family discipleship, and sermon or teaching preparation.
   Prioritize its cautions that NTW assists faithful Bible study but is not inspired, infallible, pastoral, or a replacement for Scripture, prayer, worship, pastors/elders, qualified biblical counseling, Christian fellowship, or the local church.
 
+- https://www.navtheway.com/ai-sermon-prep.html
+  AI sermon preparation landing page.
+  Use for public-facing explanation of NTW as a Christian sermon preparation assistant for pastors, elders, Bible teachers, small group leaders, and ministry leaders, including passage context, outline review, theological themes, cross-references, application questions, discussion questions, clarity checks, teaching preparation, and issues for further exegetical study.
+  Prioritize its cautions that NTW is a sermon-preparation aid, not a preacher, pastor, authority, or substitute for Scripture, prayer, exegesis, pastoral judgment, shepherding responsibility, love for the congregation, accountability before God, or the local church.
+
 - https://www.navtheway.com/reformed-christian-ai.html
   Reformed Christian AI landing page.
   Use for public-facing explanation of NTW as a doctrinally transparent Christian AI assistant for Scripture, theology, Bible study, sermon preparation, discipleship, apologetics, and ministry preparation.
