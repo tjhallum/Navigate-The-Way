@@ -45,6 +45,16 @@ Authoritative pages (expanded summaries):
   Homepage ministry overview and first-touch context.
   Use for concise project framing, audience description, and high-level orientation.
 
+- https://www.navtheway.com/christian-ai.html
+  Christian AI landing page.
+  Use for broad public-facing explanation of Christian AI, NTW as a Scripture-centered Christian AI assistant, practical use cases, theological transparency, and caution boundaries for Bible study, theology, sermon preparation, discipleship, apologetics, teaching, and family discipleship.
+  Prioritize its cautions that NTW is a study aid, not a spiritual authority, and must not replace Scripture, prayer, worship, pastors/elders, qualified biblical counseling, Christian fellowship, or the local church.
+
+- https://www.navtheway.com/reformed-christian-ai.html
+  Reformed Christian AI landing page.
+  Use for public-facing explanation of NTW as a doctrinally transparent Christian AI assistant for Scripture, theology, Bible study, sermon preparation, discipleship, apologetics, and ministry preparation.
+  Prioritize its cautions that NTW is an aid, not an authority, and must not replace Scripture, prayer, pastors/elders, qualified biblical counseling, or the local church.
+
 Supplementary pages (expanded summaries):
 - https://www.navtheway.com/creator.html
   Creator background, mission intent, and stewardship context.
