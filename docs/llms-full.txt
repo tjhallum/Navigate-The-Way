@@ -74,6 +74,12 @@ Supplementary pages (expanded summaries):
   Introductory explainer of NTW capabilities and intended audience.
   Useful for onboarding summaries and non-technical orientation.
 
+- https://www.navtheway.com/small-group-review-game
+  Browser-based small group Bible lesson review game generator.
+  Uses uploaded lesson files plus NTW's Apologist Fusion Chat Completions endpoint to generate categories, clues, correct responses, explanations, and lesson anchors for a Jeopardy-style activity.
+  Defaults to https://navtheway.apologist.ai/api/v1/chat/completions, English language metadata, and the premium OpenAI GPT-5.4 model ID openai/gpt/5.4.
+  Useful for small group leaders planning review games while preserving cautions that generated content should be checked against Scripture, the lesson, and faithful church leadership.
+
 - https://www.navtheway.com/feedback
   Feedback and issue-reporting channel.
   Use for escalation routing, corrections, and user follow-up pathways.
