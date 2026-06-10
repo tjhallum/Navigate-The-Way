@@ -491,14 +491,177 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   margin-bottom: 0.65rem;
 }
 
+.info-page {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.info-page .lede {
+  color: #dbe8ff;
+}
+
+.section-kicker {
+  margin: 0.6rem 0 -0.2rem;
+  color: #9ec3ff;
+  font-size: var(--fs-small);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.info-grid,
+.resource-grid,
+.citation-grid,
+.testimonial-grid,
+.faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+  margin: 0.8rem 0 1.15rem;
+}
+
+.info-card,
+.citation-card,
+.testimonial-card,
+.faq-card,
+.video-feature,
+.prompt-panel {
+  min-width: 0;
+  padding: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(16, 27, 54, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.info-card h2,
+.info-card h3,
+.citation-card h2,
+.citation-card h3,
+.testimonial-card h2,
+.testimonial-card h3,
+.faq-card h2,
+.faq-card h3,
+.video-feature h2,
+.prompt-panel h2 {
+  margin-top: 0;
+}
+
+.info-card p:last-child,
+.citation-card p:last-child,
+.testimonial-card p:last-child,
+.faq-card p:last-child,
+.video-feature p:last-child,
+.prompt-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.resource-links,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.8rem 0 1.05rem;
+}
+
+.pill-link,
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.78rem;
+  border: 1px solid rgba(122, 168, 255, 0.46);
+  border-radius: 999px;
+  color: #f7faff;
+  background: linear-gradient(135deg, rgba(122, 168, 255, 0.18), rgba(170, 134, 255, 0.12)), rgba(8, 14, 34, 0.72);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pill-link:hover,
+.action-link:hover {
+  text-decoration: none;
+  filter: brightness(1.08);
+}
+
+.video-feature {
+  margin: 1rem 0 1.2rem;
+  background: linear-gradient(135deg, rgba(122, 168, 255, 0.12), rgba(170, 134, 255, 0.08)), rgba(16, 27, 54, 0.72);
+}
+
+.testimonial-grid {
+  display: block;
+  columns: 280px 3;
+  column-gap: 0.85rem;
+  align-items: start;
+}
+
+.testimonial-card {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 0.85rem;
+}
+
+.testimonial-card blockquote {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 0;
+  background: transparent;
+}
+
+.testimonial-card blockquote p {
+  margin: 0;
+}
+
+.testimonial-card cite {
+  display: block;
+  color: #cbd8ff;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.testimonial-meta {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.faq-list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0.8rem 0 1.15rem;
+}
+
+.faq-card {
+  background: rgba(8, 14, 34, 0.72);
+}
+
+.citation-example,
+.prompt-snippet {
+  margin: 0.75rem 0 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid rgba(122, 168, 255, 0.32);
+  border-radius: 12px;
+  background: #050b1e;
+  color: #dbe8ff;
+}
+
 .system-prompt-content {
   width: 100%;
-  height: 2600px;
+  height: min(68vh, 780px);
+  min-height: 420px;
   overflow: auto;
-  padding: 0.625rem;
+  padding: 1rem;
   white-space: pre-wrap;
-  background-color: #000;
-  color: #fff;
+  border: 1px solid rgba(122, 168, 255, 0.32);
+  border-radius: 14px;
+  background-color: #050b1e;
+  color: #e9efff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, Liberation Mono, monospace;
   font-size: var(--fs-mono-body);
   line-height: 1.45;
@@ -509,6 +672,11 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   width: 100%;
   display: flex;
   justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(122, 168, 255, 0.32);
+  border-radius: 14px;
+  background: #050b1e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .video-embed-wrap iframe {
@@ -518,6 +686,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   aspect-ratio: 16 / 9;
   height: auto;
   border: 0;
+  background: #050b1e;
 }
 
 footer {
