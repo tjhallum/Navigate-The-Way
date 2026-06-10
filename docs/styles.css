@@ -414,8 +414,6 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 .seo-landing .lede {
   color: #dbe8ff;
-  font-size: clamp(1.05rem, calc(1.05rem + var(--desktop-scale)), 1.2rem);
-  line-height: 1.65;
 }
 
 .quick-answer,
