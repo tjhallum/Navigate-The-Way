@@ -509,6 +509,43 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   text-transform: uppercase;
 }
 
+.creator-page {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.creator-intro,
+.creator-story,
+.creator-background,
+.creator-next {
+  max-width: 78ch;
+}
+
+.creator-intro {
+  padding-bottom: 0.15rem;
+}
+
+.creator-intro .section-kicker {
+  margin-top: 0;
+}
+
+.creator-intro .lede {
+  margin-bottom: 0.75rem;
+  color: #dbe8ff;
+}
+
+.creator-story h2,
+.creator-background h2,
+.creator-next h2 {
+  margin-bottom: 0.45rem;
+}
+
+.creator-next {
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(122, 168, 255, 0.22);
+}
+
+
 .info-grid,
 .resource-grid,
 .citation-grid,
