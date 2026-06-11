@@ -230,6 +230,7 @@
               : [],
             winningContestantId: rawClue?.winningContestantId ? String(rawClue.winningContestantId) : '',
             allContestantsMissed: Boolean(rawClue?.allContestantsMissed),
+            noContestantsBuzzed: Boolean(rawClue?.noContestantsBuzzed),
             partialCreditAwarded: Math.max(0, Number(rawClue?.partialCreditAwarded || 0)),
             partialCreditContestantIds: Array.isArray(rawClue?.partialCreditContestantIds)
               ? [...new Set(rawClue.partialCreditContestantIds.map(String))]
@@ -445,6 +446,43 @@
       allContestantsAttempted,
       answerShouldBeRevealed: normalizedJudgment.verdict === 'correct' || allContestantsAttempted,
     };
+  }
+
+  function applyNoBuzzForClue({ contestants, clue }) {
+    if (!Array.isArray(contestants)) {
+      throw new Error('Contestants are required for scorekeeping.');
+    }
+    if (!clue || typeof clue !== 'object') {
+      throw new Error('A clue is required before marking that no one buzzed in.');
+    }
+    if (clue.completed) {
+      throw new Error('This clue is already complete.');
+    }
+    const nextClue = {
+      ...clue,
+      completed: true,
+      allContestantsMissed: true,
+      noContestantsBuzzed: true,
+      winningContestantId: '',
+      attemptedContestantIds: Array.isArray(clue.attemptedContestantIds)
+        ? [...clue.attemptedContestantIds.map(String)]
+        : [],
+      partialCreditAwarded: Math.max(0, Number(clue.partialCreditAwarded || 0)),
+      partialCreditContestantIds: Array.isArray(clue.partialCreditContestantIds)
+        ? [...clue.partialCreditContestantIds.map(String)]
+        : [],
+    };
+    return {
+      contestants: cloneContestants(contestants),
+      clue: nextClue,
+      awardedPoints: 0,
+      noBuzz: true,
+      answerShouldBeRevealed: true,
+    };
+  }
+
+  function shouldAutoCloseAfterAnswerResult(result) {
+    return Boolean(result?.answerShouldBeRevealed && result?.clue?.completed);
   }
 
   function truncateLessonContent(lessonContent, maxChars = MAX_LESSON_CHARS) {
@@ -1102,6 +1140,7 @@
     const responseInput = app.querySelector('#contestant-response-input');
     const checkResponseButton = app.querySelector('#check-response-button');
     const clueFeedback = app.querySelector('#clue-feedback');
+    const noBuzzButton = app.querySelector('#no-buzz-button');
     const closeClueButton = app.querySelector('#close-clue-button');
     const nameInputs = configureContestantNameInputs(app.querySelectorAll('.contestant-name-input'));
 
@@ -1191,6 +1230,7 @@
       }
       if (responseSection) responseSection.hidden = true;
       if (checkResponseButton) checkResponseButton.disabled = false;
+      if (noBuzzButton) noBuzzButton.disabled = false;
     }
 
     function selectedContestantId() {
@@ -1217,6 +1257,9 @@
       }
       if (checkResponseButton) {
         checkResponseButton.disabled = !contestant || clueIsComplete;
+      }
+      if (noBuzzButton) {
+        noBuzzButton.disabled = clueIsComplete;
       }
     }
 
@@ -1278,7 +1321,8 @@
       }
       if (responseSection) responseSection.hidden = true;
       if (checkResponseButton) checkResponseButton.disabled = false;
-      if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. The correct answer stays hidden while NTW checks the response.';
+      if (noBuzzButton) noBuzzButton.disabled = Boolean(activeClue.completed);
+      if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
       renderContestantChoices();
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
@@ -1293,6 +1337,24 @@
       renderScoreboard();
       renderBoard();
       renderContestantChoices();
+    }
+
+    function handleNoBuzz() {
+      if (!activeClue || activeClue.completed) return;
+      const result = applyNoBuzzForClue({ contestants, clue: activeClue });
+      contestants = result.contestants;
+      replaceActiveClue(result.clue);
+      showAnswer();
+      if (responseSection) responseSection.hidden = true;
+      if (responseInput) responseInput.disabled = true;
+      if (checkResponseButton) checkResponseButton.disabled = true;
+      if (noBuzzButton) noBuzzButton.disabled = true;
+      if (clueFeedback) {
+        clueFeedback.textContent = 'No one buzzed in. No points changed. The answer is shown, and this panel will close in a moment.';
+      }
+      if (shouldAutoCloseAfterAnswerResult(result)) {
+        scheduleClueAutoClose();
+      }
     }
 
     async function handleResponseCheck() {
@@ -1313,6 +1375,7 @@
         });
         if (checkResponseButton) checkResponseButton.disabled = true;
         if (responseInput) responseInput.disabled = true;
+        if (noBuzzButton) noBuzzButton.disabled = true;
         if (clueFeedback) clueFeedback.textContent = `Checking ${contestant.name}'s response with NTW…`;
         const endpoint = normalizeChatCompletionsEndpoint(endpointInput?.value || DEFAULT_CHAT_COMPLETIONS_ENDPOINT);
         const model = modelInput?.value || DEFAULT_MODEL;
@@ -1325,12 +1388,19 @@
           contestantName: contestant.name,
           contestantResponse,
         });
-        if (!activeClue || activeClue.id !== clueIdAtRequestStart) {
+        const clueForScoring = activeClue;
+        if (!clueForScoring || clueForScoring.id !== clueIdAtRequestStart || clueForScoring.completed) {
+          return;
+        }
+        const activeAttemptedIds = Array.isArray(clueForScoring.attemptedContestantIds)
+          ? clueForScoring.attemptedContestantIds.map(String)
+          : [];
+        if (activeAttemptedIds.includes(contestant.id)) {
           return;
         }
         const result = applyAnswerJudgment({
           contestants,
-          clue: clueAtRequestStart,
+          clue: clueForScoring,
           contestantId: contestant.id,
           judgment,
         });
@@ -1344,7 +1414,9 @@
           if (clueFeedback) {
             clueFeedback.textContent = `${contestant.name}'s response was judged correct. ${formatScore(result.awardedPoints)} awarded. The answer is shown, and this panel will close in a moment.`;
           }
-          scheduleClueAutoClose();
+          if (shouldAutoCloseAfterAnswerResult(result)) {
+            scheduleClueAutoClose();
+          }
           return;
         }
 
@@ -1358,7 +1430,10 @@
             const missNote = result.judgment.verdict === 'incorrect'
               ? `${formatScore(Math.abs(result.awardedPoints))} was subtracted for this miss. `
               : '';
-            clueFeedback.textContent = `${partialNote}${missNote}All contestants have attempted this clue, so the answer is now shown.`;
+            clueFeedback.textContent = `${partialNote}${missNote}All contestants have attempted this clue, so the answer is now shown and this panel will close in a moment.`;
+          }
+          if (shouldAutoCloseAfterAnswerResult(result)) {
+            scheduleClueAutoClose();
           }
           return;
         }
@@ -1368,6 +1443,7 @@
           responseInput.disabled = false;
         }
         if (checkResponseButton) checkResponseButton.disabled = false;
+        if (noBuzzButton) noBuzzButton.disabled = false;
         if (clueFeedback) {
           if (result.judgment.verdict === 'partial') {
             const remainingCredit = getFullCreditAward(appliedClue);
@@ -1385,6 +1461,7 @@
         }
         if (responseInput && !activeClue.completed) responseInput.disabled = false;
         if (checkResponseButton && !activeClue.completed) checkResponseButton.disabled = false;
+        if (noBuzzButton && !activeClue.completed) noBuzzButton.disabled = false;
         if (clueFeedback) clueFeedback.textContent = error.message || 'Could not check that answer.';
       }
     }
@@ -1462,6 +1539,9 @@
     checkResponseButton?.addEventListener('click', () => {
       handleResponseCheck();
     });
+    noBuzzButton?.addEventListener('click', () => {
+      handleNoBuzz();
+    });
     responseInput?.addEventListener('keydown', (event) => {
       if (shouldSubmitResponseFromKeydown(event)) {
         event.preventDefault();
@@ -1518,6 +1598,8 @@
     normalizeGeneratedGame,
     applyScoreDecision,
     applyAnswerJudgment,
+    applyNoBuzzForClue,
+    shouldAutoCloseAfterAnswerResult,
     truncateLessonContent,
     buildOpenAiMessages,
     buildAnswerJudgmentMessages,
