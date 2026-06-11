@@ -227,6 +227,120 @@ test('builds concise schema-enforced answer judgment request bodies', () => {
   assert.match(body.messages[1].content, /believers are adopted/);
 });
 
+test('retries board generation with Apologist JSON mode when json_schema is not accepted', async () => {
+  const messages = game.buildOpenAiMessages({
+    contestantNames: ['Ada', 'Boaz', 'Chloe', 'Daniel'],
+    lessonContent: 'Lesson material about Romans 8 and adoption in Christ.',
+  });
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  global.fetch = async (_url, options) => {
+    requestBodies.push(JSON.parse(options.body));
+    if (requestBodies.length === 1) {
+      return {
+        ok: false,
+        status: 422,
+        text: async () => JSON.stringify({
+          success: false,
+          errors: ["The 'response_format/type' parameter must be equal to one of the allowed values."],
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ response: JSON.stringify(sampleGeneratedGame()) }),
+    };
+  };
+
+  try {
+    const parsed = await game.callOpenAiCompatibleApi({
+      endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+      apiKey: 'test-key',
+      model: game.DEFAULT_MODEL,
+      messages,
+    });
+
+    assert.equal(parsed.categories.length, 5);
+    assert.equal(requestBodies.length, 2);
+    assert.equal(requestBodies[0].response_format.type, 'json_schema');
+    assert.equal(requestBodies[1].response_format.type, 'json');
+    assert.equal(Object.hasOwn(requestBodies[1].response_format, 'json_schema'), false);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('retries answer judgment with Apologist JSON mode when json_schema is not accepted', async () => {
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  global.fetch = async (_url, options) => {
+    requestBodies.push(JSON.parse(options.body));
+    if (requestBodies.length === 1) {
+      return {
+        ok: false,
+        status: 422,
+        text: async () => JSON.stringify({
+          success: false,
+          errors: ["The 'response_format/type' parameter must be equal to one of the allowed values."],
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ response: '{"isCorrect":true,"feedback":"Correct."}' }),
+    };
+  };
+
+  try {
+    const judgment = await game.callAnswerJudgmentApi({
+      endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+      apiKey: 'test-key',
+      model: game.DEFAULT_MODEL,
+      clue,
+      contestantName: 'Ada',
+      contestantResponse: 'Response 1-1 in my own words.',
+    });
+
+    assert.equal(judgment.isCorrect, true);
+    assert.equal(requestBodies.length, 2);
+    assert.equal(requestBodies[0].response_format.type, 'json_schema');
+    assert.equal(requestBodies[1].response_format.type, 'json');
+    assert.equal(requestBodies[1].max_completion_tokens, 120);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('surfaces Apologist validation details for unrecoverable API failures', async () => {
+  const messages = game.buildOpenAiMessages({
+    contestantNames: ['Ada', 'Boaz', 'Chloe', 'Daniel'],
+    lessonContent: 'Lesson material about Romans 8 and adoption in Christ.',
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: false,
+    status: 422,
+    text: async () => JSON.stringify({ success: false, errors: ['The model field is invalid.'] }),
+  });
+
+  try {
+    await assert.rejects(
+      () => game.callOpenAiCompatibleApi({
+        endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+        apiKey: 'test-key',
+        model: game.DEFAULT_MODEL,
+        messages,
+      }),
+      /model field is invalid/i
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test('extracts JSON objects from OpenAI-compatible and Apologist Fusion chat responses', () => {
   const openAiParsed = game.parseOpenAiGameResponse({
     choices: [{

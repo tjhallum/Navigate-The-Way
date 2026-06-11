@@ -588,6 +588,9 @@
   }
 
   function buildStructuredResponseFormat(jsonSchema = GAME_RESPONSE_JSON_SCHEMA) {
+    if (!jsonSchema) {
+      return { type: 'json' };
+    }
     return {
       type: 'json_schema',
       json_schema: jsonSchema,
@@ -629,6 +632,77 @@
     });
   }
 
+  function buildJsonModeFallbackBody(body) {
+    return {
+      ...body,
+      response_format: buildStructuredResponseFormat(null),
+    };
+  }
+
+  function collectApiErrorParts(value, parts = []) {
+    if (!value) return parts;
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (text) parts.push(text);
+      return parts;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => collectApiErrorParts(item, parts));
+      return parts;
+    }
+    if (typeof value === 'object') {
+      collectApiErrorParts(value.message, parts);
+      collectApiErrorParts(value.detail, parts);
+      collectApiErrorParts(value.title, parts);
+      collectApiErrorParts(value.msg, parts);
+      collectApiErrorParts(value.error, parts);
+      return parts;
+    }
+    return parts;
+  }
+
+  function extractApiErrorMessage(payload, fallbackStatus) {
+    const parts = [];
+    collectApiErrorParts(payload?.error, parts);
+    collectApiErrorParts(payload?.errors, parts);
+    collectApiErrorParts(payload?.message, parts);
+    collectApiErrorParts(payload?.detail, parts);
+    collectApiErrorParts(payload?.validation, parts);
+    const unique = [...new Set(parts)];
+    return unique.join(' ') || `HTTP ${fallbackStatus}`;
+  }
+
+  function shouldRetryWithJsonMode({ status, payload }) {
+    if (status !== 422) return false;
+    const message = extractApiErrorMessage(payload, status).toLowerCase();
+    return message.includes('response_format/type') && message.includes('allowed values');
+  }
+
+  async function postChatCompletionsRequest({ endpoint, apiKey, body, nonJsonMessage }) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const payloadText = await response.text();
+    let payload = null;
+    try {
+      payload = payloadText ? JSON.parse(payloadText) : null;
+    } catch (error) {
+      throw new Error(`${nonJsonMessage} HTTP ${response.status}.`);
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      payload,
+    };
+  }
+
   async function callOpenAiCompatibleApi({ endpoint, apiKey, model, messages }) {
     const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
     const cleanKey = String(apiKey || '').trim();
@@ -643,29 +717,28 @@
       throw new Error('Enter the NTW model name.');
     }
 
-    const response = await fetch(cleanEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cleanKey}`,
-      },
-      body: JSON.stringify(buildChatCompletionsBody({ model: cleanModel, messages })),
+    const body = buildChatCompletionsBody({ model: cleanModel, messages });
+    let result = await postChatCompletionsRequest({
+      endpoint: cleanEndpoint,
+      apiKey: cleanKey,
+      body,
+      nonJsonMessage: 'The NTW API returned non-JSON content with',
     });
 
-    const payloadText = await response.text();
-    let payload = null;
-    try {
-      payload = payloadText ? JSON.parse(payloadText) : null;
-    } catch (error) {
-      throw new Error(`The NTW API returned non-JSON content with HTTP ${response.status}.`);
+    if (!result.ok && shouldRetryWithJsonMode(result)) {
+      result = await postChatCompletionsRequest({
+        endpoint: cleanEndpoint,
+        apiKey: cleanKey,
+        body: buildJsonModeFallbackBody(body),
+        nonJsonMessage: 'The NTW API returned non-JSON content with',
+      });
     }
 
-    if (!response.ok) {
-      const message = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
-      throw new Error(`The NTW API request failed: ${message}`);
+    if (!result.ok) {
+      throw new Error(`The NTW API request failed: ${extractApiErrorMessage(result.payload, result.status)}`);
     }
 
-    return parseOpenAiGameResponse(payload);
+    return parseOpenAiGameResponse(result.payload);
   }
 
   async function callAnswerJudgmentApi({ endpoint, apiKey, model, clue, contestantName, contestantResponse }) {
@@ -688,29 +761,27 @@
       contestantName,
       contestantResponse,
     });
-    const response = await fetch(cleanEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cleanKey}`,
-      },
-      body: JSON.stringify(body),
+    let result = await postChatCompletionsRequest({
+      endpoint: cleanEndpoint,
+      apiKey: cleanKey,
+      body,
+      nonJsonMessage: 'The NTW answer check returned non-JSON content with',
     });
 
-    const payloadText = await response.text();
-    let payload = null;
-    try {
-      payload = payloadText ? JSON.parse(payloadText) : null;
-    } catch (error) {
-      throw new Error(`The NTW answer check returned non-JSON content with HTTP ${response.status}.`);
+    if (!result.ok && shouldRetryWithJsonMode(result)) {
+      result = await postChatCompletionsRequest({
+        endpoint: cleanEndpoint,
+        apiKey: cleanKey,
+        body: buildJsonModeFallbackBody(body),
+        nonJsonMessage: 'The NTW answer check returned non-JSON content with',
+      });
     }
 
-    if (!response.ok) {
-      const message = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
-      throw new Error(`The NTW answer check failed: ${message}`);
+    if (!result.ok) {
+      throw new Error(`The NTW answer check failed: ${extractApiErrorMessage(result.payload, result.status)}`);
     }
 
-    return parseAnswerJudgmentResponse(payload);
+    return parseAnswerJudgmentResponse(result.payload);
   }
 
   async function extractPdfText(file) {
@@ -1293,6 +1364,8 @@
     parseAnswerJudgmentResponse,
     buildChatCompletionsBody,
     buildAnswerJudgmentChatCompletionsBody,
+    callOpenAiCompatibleApi,
+    callAnswerJudgmentApi,
     extractLessonTextFromFiles,
     buildLessonSourceContent,
     initializeSmallGroupGame,
