@@ -136,6 +136,50 @@ test('applies API-judged answer results and reveals only after a correct answer 
   assert.equal(allMissed.answerShouldBeRevealed, true);
 });
 
+test('awards limited partial credit for biblically sound but not expected answers', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const partial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial', feedback: 'Biblically sound, but not the lesson answer.' },
+  });
+
+  assert.equal(partial.contestants[0].score, 20);
+  assert.equal(partial.awardedPoints, 20);
+  assert.equal(partial.clue.partialCreditAwarded, 20);
+  assert.deepEqual(partial.clue.partialCreditContestantIds, ['contestant-1']);
+  assert.deepEqual(partial.clue.attemptedContestantIds, ['contestant-1']);
+  assert.equal(partial.clue.completed, false);
+  assert.equal(partial.answerShouldBeRevealed, false);
+
+  const secondPartial = game.applyAnswerJudgment({
+    contestants: partial.contestants,
+    clue: partial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+
+  assert.equal(secondPartial.contestants[1].score, 0);
+  assert.equal(secondPartial.awardedPoints, 0);
+  assert.equal(secondPartial.clue.partialCreditAwarded, 20);
+  assert.deepEqual(secondPartial.clue.partialCreditContestantIds, ['contestant-1']);
+
+  const correct = game.applyAnswerJudgment({
+    contestants: secondPartial.contestants,
+    clue: secondPartial.clue,
+    contestantId: 'contestant-3',
+    judgment: { verdict: 'correct' },
+  });
+
+  assert.equal(correct.contestants[2].score, 80);
+  assert.equal(correct.awardedPoints, 80);
+  assert.equal(correct.clue.completed, true);
+  assert.equal(correct.answerShouldBeRevealed, true);
+});
+
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material', () => {
   const messages = game.buildOpenAiMessages({
     contestantNames: ['Ada', 'Boaz', 'Chloe', 'Daniel'],
@@ -161,6 +205,9 @@ test('builds answer judgment prompts without requiring verbatim wording', () => 
   assert.equal(messages[0].role, 'system');
   assert.match(messages[0].content, /conceptually correct/i);
   assert.match(messages[0].content, /not need to be verbatim/i);
+  assert.match(messages[0].content, /partial credit/i);
+  assert.match(messages[0].content, /biblically sound/i);
+  assert.match(messages[0].content, /not the expected lesson answer/i);
   assert.match(messages[0].content, /very concise/i);
   assert.match(messages[1].content, /Contestant: Ada/);
   assert.match(messages[1].content, /Expected correct response/);
@@ -221,8 +268,8 @@ test('builds concise schema-enforced answer judgment request bodies', () => {
   assert.equal(body.response_format.type, 'json_schema');
   assert.equal(body.response_format.json_schema.name, 'ntw_answer_judgment');
   assert.equal(body.response_format.json_schema.strict, true);
-  assert.deepEqual(body.response_format.json_schema.schema.required, ['isCorrect', 'feedback']);
-  assert.equal(body.response_format.json_schema.schema.properties.isCorrect.type, 'boolean');
+  assert.deepEqual(body.response_format.json_schema.schema.required, ['verdict', 'feedback']);
+  assert.deepEqual(body.response_format.json_schema.schema.properties.verdict.enum, ['correct', 'partial', 'incorrect']);
   assert.match(body.messages[1].content, /Expected correct response/);
   assert.match(body.messages[1].content, /believers are adopted/);
 });
@@ -376,9 +423,24 @@ test('extracts answer judgments from OpenAI-compatible and Apologist Fusion chat
       response: '```json\n{"correct":false,"feedback":"Not close enough yet."}\n```',
     },
   });
+  const partialJudgment = game.parseAnswerJudgmentResponse({
+    response: '{"verdict":"partial","feedback":"Biblically sound, but not expected."}',
+  });
 
   assert.equal(openAiJudgment.isCorrect, true);
+  assert.equal(openAiJudgment.verdict, 'correct');
   assert.equal(openAiJudgment.feedback, 'Conceptually correct.');
   assert.equal(apologistJudgment.isCorrect, false);
+  assert.equal(apologistJudgment.verdict, 'incorrect');
   assert.equal(apologistJudgment.feedback, 'Not close enough yet.');
+  assert.equal(partialJudgment.isCorrect, false);
+  assert.equal(partialJudgment.verdict, 'partial');
+  assert.equal(partialJudgment.partialCreditFraction, 0.2);
+});
+
+test('submits contestant responses on Enter while preserving Shift+Enter for notes', () => {
+  assert.equal(game.shouldSubmitResponseFromKeydown({ key: 'Enter' }), true);
+  assert.equal(game.shouldSubmitResponseFromKeydown({ key: 'Enter', shiftKey: true }), false);
+  assert.equal(game.shouldSubmitResponseFromKeydown({ key: 'Enter', ctrlKey: true }), false);
+  assert.equal(game.shouldSubmitResponseFromKeydown({ key: 'a' }), false);
 });

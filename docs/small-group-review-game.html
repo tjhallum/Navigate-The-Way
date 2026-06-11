@@ -140,8 +140,8 @@
           <li>Drag in the week’s lesson files, type a brief lesson topic/summary, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
-          <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is conceptually correct.</li>
-          <li>Points are assigned automatically. Wrong answers subtract that clue’s value, correct answers add it, and the answer is revealed only after a correct response or after every contestant has missed.</li>
+          <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
+          <li>Points are assigned automatically. Wrong answers subtract that clue’s value, biblically sound but not-by-the-book answers can receive limited partial credit, correct answers receive the remaining clue value, and the answer is revealed only after a correct response or after every contestant has tried.</li>
         </ol>
         <p><strong>Important:</strong> this static GitHub Pages app cannot hide a server-side secret. Do not hardcode an API key into this repository. For a public/shared deployment, use a small server-side proxy with the key stored as a secret. This page only accepts the key at runtime in the leader’s browser.</p>
         <p>The default API configuration uses <a href="https://apologistproject.org/documentation/apologist-fusion/chat-completion">Apologist Fusion Chat Completions</a> at <code>https://navtheway.apologist.ai/api/v1/chat/completions</code>, language <code>en</code>, and premium model <code>openai/gpt/5.4</code>.</p>
@@ -223,7 +223,7 @@
 
           <div id="contestant-response-section" class="contestant-response-section" hidden>
             <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
-              <textarea id="contestant-response-input" rows="4" maxlength="2000" placeholder="Type what the contestant said. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
+              <textarea id="contestant-response-input" rows="4" maxlength="2000" placeholder="Type what the contestant said. Press Enter to check it, or Shift+Enter for a new line. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
             </label>
             <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
           </div>
