@@ -83,6 +83,33 @@ test('defensively clears required validation from optional contestant inputs at 
   assert.deepEqual(inputs.map((input) => input.attributes['aria-required'] || ''), ['true', 'true', '', '']);
 });
 
+test('keeps no-buzz, contestant choices, and response controls disabled while answer check is pending', () => {
+  const pendingState = game.getResponseEntryControlState({
+    hasSelectedContestant: true,
+    clueIsComplete: false,
+    responseCheckInFlight: true,
+  });
+
+  assert.equal(pendingState.responseSectionHidden, false);
+  assert.equal(pendingState.responseInputDisabled, true);
+  assert.equal(pendingState.checkResponseButtonDisabled, true);
+  assert.equal(pendingState.noBuzzButtonDisabled, true);
+  assert.equal(pendingState.contestantChoicesDisabled, true);
+  assert.equal(game.canHandleNoBuzz({ activeClue: { completed: false }, responseCheckInFlight: true }), false);
+
+  const readyState = game.getResponseEntryControlState({
+    hasSelectedContestant: true,
+    clueIsComplete: false,
+    responseCheckInFlight: false,
+  });
+
+  assert.equal(readyState.responseInputDisabled, false);
+  assert.equal(readyState.checkResponseButtonDisabled, false);
+  assert.equal(readyState.noBuzzButtonDisabled, false);
+  assert.equal(readyState.contestantChoicesDisabled, false);
+  assert.equal(game.canHandleNoBuzz({ activeClue: { completed: false }, responseCheckInFlight: false }), true);
+});
+
 test('normalizes and validates a generated five-by-five review board', () => {
   const normalized = game.normalizeGeneratedGame(sampleGeneratedGame());
   assert.equal(normalized.categories.length, 5);

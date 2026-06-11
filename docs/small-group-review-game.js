@@ -133,6 +133,24 @@
     return list;
   }
 
+  function getResponseEntryControlState({ hasSelectedContestant, clueIsComplete, responseCheckInFlight }) {
+    const selected = Boolean(hasSelectedContestant);
+    const complete = Boolean(clueIsComplete);
+    const pending = Boolean(responseCheckInFlight);
+    const responseDisabled = !selected || complete || pending;
+    return {
+      responseSectionHidden: !selected || complete,
+      responseInputDisabled: responseDisabled,
+      checkResponseButtonDisabled: responseDisabled,
+      noBuzzButtonDisabled: complete || pending,
+      contestantChoicesDisabled: complete || pending,
+    };
+  }
+
+  function canHandleNoBuzz({ activeClue, responseCheckInFlight }) {
+    return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
+  }
+
   function createContestants(names) {
     if (!Array.isArray(names)) {
       throw new Error('Please supply two to four contestant names.');
@@ -1149,6 +1167,7 @@
     let gameData = null;
     let activeClue = null;
     let answerRevealed = false;
+    let responseCheckInFlight = false;
     let clueAutoCloseTimer = null;
 
     const savedEndpoint = window.localStorage?.getItem('ntwReviewGameEndpoint') || '';
@@ -1220,6 +1239,7 @@
 
     function closeActiveClue() {
       clearClueAutoCloseTimer();
+      responseCheckInFlight = false;
       if (cluePanel) cluePanel.hidden = true;
       document.body?.classList.remove('has-active-clue-modal');
       activeClue = null;
@@ -1245,10 +1265,15 @@
     function updateResponseEntryState() {
       const contestant = selectedContestant();
       const clueIsComplete = Boolean(activeClue?.completed);
-      if (responseSection) responseSection.hidden = !contestant || clueIsComplete;
+      const controlState = getResponseEntryControlState({
+        hasSelectedContestant: Boolean(contestant),
+        clueIsComplete,
+        responseCheckInFlight,
+      });
+      if (responseSection) responseSection.hidden = controlState.responseSectionHidden;
       if (responseInput) {
-        responseInput.disabled = !contestant || clueIsComplete;
-        if (contestant && !clueIsComplete) {
+        responseInput.disabled = controlState.responseInputDisabled;
+        if (contestant && !controlState.responseInputDisabled) {
           responseInput.focus();
         }
       }
@@ -1256,10 +1281,10 @@
         responseLabel.firstChild.textContent = `Enter ${contestant.name}'s response `;
       }
       if (checkResponseButton) {
-        checkResponseButton.disabled = !contestant || clueIsComplete;
+        checkResponseButton.disabled = controlState.checkResponseButtonDisabled;
       }
       if (noBuzzButton) {
-        noBuzzButton.disabled = clueIsComplete;
+        noBuzzButton.disabled = controlState.noBuzzButtonDisabled;
       }
     }
 
@@ -1270,9 +1295,14 @@
         : [];
       contestantChoices.innerHTML = contestants.map((contestant) => {
         const attempted = attemptedIds.includes(contestant.id);
-        const disabled = attempted || activeClue.completed;
+        const controlState = getResponseEntryControlState({
+          hasSelectedContestant: true,
+          clueIsComplete: Boolean(activeClue.completed),
+          responseCheckInFlight,
+        });
+        const disabled = attempted || controlState.contestantChoicesDisabled;
         return `
-          <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}${activeClue.completed ? ' contestant-choice--disabled' : ''}">
+          <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}${controlState.contestantChoicesDisabled ? ' contestant-choice--disabled' : ''}">
             <input type="radio" name="active-contestant" value="${contestant.id}" ${disabled ? 'disabled' : ''} />
             <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${attempted ? ' · already tried' : ''}</small></span>
           </label>
@@ -1299,6 +1329,7 @@
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
       clearClueAutoCloseTimer();
+      responseCheckInFlight = false;
       activeClue = found.clue;
       answerRevealed = false;
       if (clueHeading) clueHeading.textContent = `${found.category.title} for $${activeClue.value}`;
@@ -1340,7 +1371,7 @@
     }
 
     function handleNoBuzz() {
-      if (!activeClue || activeClue.completed) return;
+      if (!canHandleNoBuzz({ activeClue, responseCheckInFlight })) return;
       const result = applyNoBuzzForClue({ contestants, clue: activeClue });
       contestants = result.contestants;
       replaceActiveClue(result.clue);
@@ -1367,12 +1398,17 @@
         return;
       }
       const contestantResponse = responseInput?.value || '';
+      let startedResponseCheck = false;
       try {
         buildAnswerJudgmentMessages({
           clue: clueAtRequestStart,
           contestantName: contestant.name,
           contestantResponse,
         });
+        responseCheckInFlight = true;
+        startedResponseCheck = true;
+        renderContestantChoices();
+        updateResponseEntryState();
         if (checkResponseButton) checkResponseButton.disabled = true;
         if (responseInput) responseInput.disabled = true;
         if (noBuzzButton) noBuzzButton.disabled = true;
@@ -1459,10 +1495,15 @@
         if (!activeClue || activeClue.id !== clueIdAtRequestStart) {
           return;
         }
-        if (responseInput && !activeClue.completed) responseInput.disabled = false;
-        if (checkResponseButton && !activeClue.completed) checkResponseButton.disabled = false;
-        if (noBuzzButton && !activeClue.completed) noBuzzButton.disabled = false;
         if (clueFeedback) clueFeedback.textContent = error.message || 'Could not check that answer.';
+      } finally {
+        if (startedResponseCheck) {
+          responseCheckInFlight = false;
+          if (activeClue && activeClue.id === clueIdAtRequestStart && !activeClue.completed) {
+            renderContestantChoices();
+            updateResponseEntryState();
+          }
+        }
       }
     }
 
@@ -1594,6 +1635,8 @@
     DEFAULT_BIBLE,
     isSupportedLessonFile,
     configureContestantNameInputs,
+    getResponseEntryControlState,
+    canHandleNoBuzz,
     createContestants,
     normalizeGeneratedGame,
     applyScoreDecision,
