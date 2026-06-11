@@ -16,10 +16,10 @@
   <title>Small Group Bible Review Game | Navigate The Way</title>
   <link rel="canonical" href="https://www.navtheway.com/small-group-review-game" />
   <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
-  <meta name="description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files using Navigate The Way's OpenAI-compatible API." />
+  <meta name="description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files or a leader-provided lesson topic using Navigate The Way's OpenAI-compatible API." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Small Group Bible Review Game | Navigate The Way" />
-  <meta property="og:description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files using Navigate The Way's OpenAI-compatible API." />
+  <meta property="og:description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files or a leader-provided lesson topic using Navigate The Way's OpenAI-compatible API." />
   <meta property="og:url" content="https://www.navtheway.com/small-group-review-game" />
 
   <meta property="og:image" content="https://www.navtheway.com/images/ntw_social_share.png" />
@@ -28,7 +28,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Small Group Bible Review Game | Navigate The Way" />
-  <meta name="twitter:description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files using Navigate The Way's OpenAI-compatible API." />
+  <meta name="twitter:description" content="Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files or a leader-provided lesson topic using Navigate The Way's OpenAI-compatible API." />
   <meta name="twitter:image" content="https://www.navtheway.com/images/ntw_social_share.png" />
   <script type="application/ld+json">
 {
@@ -64,7 +64,7 @@
       "@id": "https://www.navtheway.com/small-group-review-game#webpage",
       "url": "https://www.navtheway.com/small-group-review-game",
       "name": "Small Group Bible Review Game | Navigate The Way",
-      "description": "Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files using Navigate The Way's OpenAI-compatible API.",
+      "description": "Create a Jeopardy-style small group Bible lesson review game from uploaded lesson files or a leader-provided lesson topic using Navigate The Way's OpenAI-compatible API.",
       "isPartOf": {
         "@id": "https://www.navtheway.com/#website"
       },
@@ -82,7 +82,7 @@
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Web",
       "url": "https://www.navtheway.com/small-group-review-game",
-      "description": "A browser-based small group lesson review board that uses an OpenAI-compatible Navigate The Way API to generate categories, clues, and answers from uploaded lesson content.",
+      "description": "A browser-based small group lesson review board that uses an OpenAI-compatible Navigate The Way API to generate categories, clues, and answers from uploaded lesson content or a leader-provided lesson topic.",
       "isAccessibleForFree": true,
       "publisher": {
         "@id": "https://www.navtheway.com/#organization"
@@ -129,21 +129,24 @@
   <section class="page-shell small-group-game-page" data-small-group-review-game>
     <section class="page-header">
       <h1>Small Group Bible Lesson Review Game</h1>
-      <p>Create a Jeopardy-style review board from your lesson files, then let your group use physical buzzers while the leader controls scoring.</p>
+      <p>Create a Jeopardy-style review board from your lesson files or a typed lesson topic, then let your group use physical buzzers while NTW checks answers and handles scoring.</p>
     </section>
 
-    <section class="card review-game-intro" aria-labelledby="review-game-how-title">
-      <h2 id="review-game-how-title">How it works</h2>
-      <ol>
-        <li>Enter four contestants.</li>
-        <li>Drag in the week’s lesson files. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
-        <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
-        <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
-        <li>Players buzz in with physical buzzers. The leader selects the contestant and marks the answer right or wrong.</li>
-      </ol>
-      <p><strong>Important:</strong> this static GitHub Pages app cannot hide a server-side secret. Do not hardcode an API key into this repository. For a public/shared deployment, use a small server-side proxy with the key stored as a secret. This page only accepts the key at runtime in the leader’s browser.</p>
-      <p>The default API configuration uses <a href="https://apologistproject.org/documentation/apologist-fusion/chat-completion">Apologist Fusion Chat Completions</a> at <code>https://navtheway.apologist.ai/api/v1/chat/completions</code>, language <code>en</code>, and premium model <code>openai/gpt/5.4</code>.</p>
-    </section>
+    <details class="card review-game-intro" aria-labelledby="review-game-how-title">
+      <summary id="review-game-how-title">How it works</summary>
+      <div class="review-game-intro__content">
+        <ol>
+          <li>Enter four contestants.</li>
+          <li>Drag in the week’s lesson files, type a brief lesson topic/summary, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
+          <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
+          <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
+          <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is conceptually correct.</li>
+          <li>Points are assigned automatically. Wrong answers subtract that clue’s value, correct answers add it, and the answer is revealed only after a correct response or after every contestant has missed.</li>
+        </ol>
+        <p><strong>Important:</strong> this static GitHub Pages app cannot hide a server-side secret. Do not hardcode an API key into this repository. For a public/shared deployment, use a small server-side proxy with the key stored as a secret. This page only accepts the key at runtime in the leader’s browser.</p>
+        <p>The default API configuration uses <a href="https://apologistproject.org/documentation/apologist-fusion/chat-completion">Apologist Fusion Chat Completions</a> at <code>https://navtheway.apologist.ai/api/v1/chat/completions</code>, language <code>en</code>, and premium model <code>openai/gpt/5.4</code>.</p>
+      </div>
+    </details>
 
     <form id="game-setup-form" class="card review-game-setup" autocomplete="off">
       <h2>1. Set up contestants</h2>
@@ -162,13 +165,17 @@
         </label>
       </div>
 
-      <h2>2. Add lesson files</h2>
+      <h2>2. Add lesson files or describe the lesson</h2>
       <label id="lesson-drop-zone" class="lesson-drop-zone" for="lesson-files">
         <span>Drop lesson files here, or click to choose files.</span>
         <small>Supported: .txt, .md, .html, .json, .rtf, .pdf, .docx, .pptx</small>
       </label>
       <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
       <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
+      <label for="lesson-topic-text">Or type the lesson topic / summary
+        <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8, adoption in Christ, assurance in suffering, and how believers pray when they feel weak."></textarea>
+      </label>
+      <p class="privacy-note">Use the text field if you do not have lesson-specific files. You may also use it to add emphasis or context alongside uploaded files.</p>
 
       <h2>3. Connect to NTW’s API</h2>
       <div class="api-grid">
@@ -182,7 +189,7 @@
           <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
         </label>
       </div>
-      <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson content is processed locally first, then sent to the endpoint only when you press Generate. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+      <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
 
       <button id="generate-game-button" type="submit" class="primary-action">Generate Review Game</button>
       <p id="game-setup-status" class="game-status" aria-live="polite"></p>
@@ -203,7 +210,7 @@
       <section aria-label="Scores" id="scoreboard" class="scoreboard"></section>
       <section aria-label="Review game board" id="game-board" class="game-board"></section>
 
-      <section id="active-clue-panel" class="active-clue-panel" hidden>
+      <section id="active-clue-panel" class="active-clue-panel" role="dialog" aria-modal="true" aria-labelledby="active-clue-heading" hidden>
         <div class="active-clue-card">
           <p class="eyebrow" id="active-clue-heading">Category for $100</p>
           <p id="active-clue-text" class="active-clue-text"></p>
@@ -213,11 +220,16 @@
 
           <h3>Who buzzed in?</h3>
           <div id="contestant-choices" class="contestant-choices"></div>
+
+          <div id="contestant-response-section" class="contestant-response-section" hidden>
+            <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
+              <textarea id="contestant-response-input" rows="4" maxlength="2000" placeholder="Type what the contestant said. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
+            </label>
+            <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
+          </div>
+
           <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
           <div class="clue-actions">
-            <button id="mark-wrong-button" type="button">Wrong − points</button>
-            <button id="mark-correct-button" type="button" class="primary-action">Correct + points</button>
-            <button id="reveal-answer-button" type="button">Reveal Answer / No One Got It</button>
             <button id="close-clue-button" type="button">Close</button>
           </div>
         </div>

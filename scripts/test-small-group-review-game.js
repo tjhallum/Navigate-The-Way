@@ -73,7 +73,70 @@ test('applies leader scoring decisions without connected buzzers', () => {
   assert.equal(afterCorrect.clue.winningContestantId, 'contestant-2');
 });
 
-test('builds OpenAI-compatible prompts that constrain NTW to the uploaded lesson content', () => {
+test('accepts leader-provided lesson text as an alternative to uploaded files', async () => {
+  const topicOnly = await game.buildLessonSourceContent({
+    lessonTopicText: 'This week focuses on Romans 8, adoption in Christ, and assurance for suffering believers.',
+  });
+
+  assert.match(topicOnly, /leader-provided lesson topic/i);
+  assert.match(topicOnly, /Romans 8/);
+
+  const combined = await game.buildLessonSourceContent({
+    lessonTopicText: 'The leader wants application questions about prayer and dependence on Christ.',
+    files: [{ name: 'leader-guide.md' }],
+    fileExtractor: async () => 'SOURCE FILE: leader-guide.md\nLesson notes about abiding in Christ.',
+  });
+
+  assert.match(combined, /leader-provided lesson topic/i);
+  assert.match(combined, /uploaded lesson files/i);
+  assert.match(combined, /abiding in Christ/i);
+});
+
+test('still requires either a lesson file or a leader-provided lesson description', async () => {
+  await assert.rejects(
+    () => game.buildLessonSourceContent({ lessonTopicText: '   ', files: [] }),
+    /lesson file or describe the lesson topic/i
+  );
+});
+
+test('applies API-judged answer results and reveals only after a correct answer or all contestants miss', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const firstMiss = game.applyAnswerJudgment({ contestants, clue, contestantId: 'contestant-1', isCorrect: false });
+  assert.equal(firstMiss.contestants[0].score, -100);
+  assert.equal(firstMiss.clue.completed, false);
+  assert.equal(firstMiss.answerShouldBeRevealed, false);
+  assert.deepEqual(firstMiss.clue.attemptedContestantIds, ['contestant-1']);
+
+  const correctAnswer = game.applyAnswerJudgment({
+    contestants: firstMiss.contestants,
+    clue: firstMiss.clue,
+    contestantId: 'contestant-2',
+    isCorrect: true,
+  });
+  assert.equal(correctAnswer.contestants[1].score, 100);
+  assert.equal(correctAnswer.clue.completed, true);
+  assert.equal(correctAnswer.clue.winningContestantId, 'contestant-2');
+  assert.equal(correctAnswer.answerShouldBeRevealed, true);
+
+  let allMissed = { contestants, clue };
+  for (const contestant of contestants) {
+    allMissed = game.applyAnswerJudgment({
+      contestants: allMissed.contestants,
+      clue: allMissed.clue,
+      contestantId: contestant.id,
+      isCorrect: false,
+    });
+  }
+
+  assert.deepEqual(allMissed.clue.attemptedContestantIds, contestants.map((contestant) => contestant.id));
+  assert.equal(allMissed.clue.completed, true);
+  assert.equal(allMissed.clue.allContestantsMissed, true);
+  assert.equal(allMissed.answerShouldBeRevealed, true);
+});
+
+test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material', () => {
   const messages = game.buildOpenAiMessages({
     contestantNames: ['Ada', 'Boaz', 'Chloe', 'Daniel'],
     lessonContent: 'Lesson material about Romans 8 and adoption in Christ.',
@@ -85,6 +148,27 @@ test('builds OpenAI-compatible prompts that constrain NTW to the uploaded lesson
   assert.match(messages[1].content, /exactly 5 categories/i);
   assert.match(messages[1].content, /Ada, Boaz, Chloe, Daniel/);
   assert.match(messages[1].content, /Lesson material about Romans 8/);
+});
+
+test('builds answer judgment prompts without requiring verbatim wording', () => {
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const messages = game.buildAnswerJudgmentMessages({
+    clue,
+    contestantName: 'Ada',
+    contestantResponse: 'It means believers are adopted as God’s children in Christ.',
+  });
+
+  assert.equal(messages[0].role, 'system');
+  assert.match(messages[0].content, /conceptually correct/i);
+  assert.match(messages[0].content, /not need to be verbatim/i);
+  assert.match(messages[0].content, /very concise/i);
+  assert.match(messages[1].content, /Contestant: Ada/);
+  assert.match(messages[1].content, /Expected correct response/);
+  assert.match(messages[1].content, /believers are adopted/);
+  assert.throws(
+    () => game.buildAnswerJudgmentMessages({ clue, contestantName: 'Ada', contestantResponse: '  ' }),
+    /enter the contestant/i
+  );
 });
 
 test('uses Apologist Fusion defaults for the NTW English premium model', () => {
@@ -106,12 +190,41 @@ test('builds Apologist Fusion chat completion request bodies', () => {
 
   assert.equal(body.model, 'openai/gpt/5.4');
   assert.equal(body.stream, false);
-  assert.deepEqual(body.response_format, { type: 'json' });
+  assert.equal(body.response_format.type, 'json_schema');
+  assert.equal(body.response_format.json_schema.name, 'ntw_small_group_review_game');
+  assert.equal(body.response_format.json_schema.strict, true);
+  assert.deepEqual(body.response_format.json_schema.schema.required, ['title', 'categories']);
+  assert.equal(body.response_format.json_schema.schema.properties.categories.type, 'array');
+  assert.deepEqual(
+    body.response_format.json_schema.schema.properties.categories.items.properties.clues.items.required,
+    ['value', 'clue', 'correctResponse', 'explanation', 'sourceAnchor']
+  );
   assert.deepEqual(body.metadata, {
     anonymous: true,
     language: 'en',
     bible: 'bsb',
   });
+});
+
+test('builds concise schema-enforced answer judgment request bodies', () => {
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const body = game.buildAnswerJudgmentChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    clue,
+    contestantName: 'Ada',
+    contestantResponse: 'It means believers are adopted as God’s children in Christ.',
+  });
+
+  assert.equal(body.temperature, 0);
+  assert.equal(body.top_p, 1);
+  assert.equal(body.max_completion_tokens <= 150, true);
+  assert.equal(body.response_format.type, 'json_schema');
+  assert.equal(body.response_format.json_schema.name, 'ntw_answer_judgment');
+  assert.equal(body.response_format.json_schema.strict, true);
+  assert.deepEqual(body.response_format.json_schema.schema.required, ['isCorrect', 'feedback']);
+  assert.equal(body.response_format.json_schema.schema.properties.isCorrect.type, 'boolean');
+  assert.match(body.messages[1].content, /Expected correct response/);
+  assert.match(body.messages[1].content, /believers are adopted/);
 });
 
 test('extracts JSON objects from OpenAI-compatible and Apologist Fusion chat responses', () => {
@@ -134,4 +247,24 @@ test('extracts JSON objects from OpenAI-compatible and Apologist Fusion chat res
   assert.equal(openAiParsed.categories.length, 5);
   assert.equal(apologistParsed.categories[2].clues[3].correctResponse, 'Response 3-4');
   assert.equal(apologistDataParsed.categories[4].clues[4].correctResponse, 'Response 5-5');
+});
+
+test('extracts answer judgments from OpenAI-compatible and Apologist Fusion chat responses', () => {
+  const openAiJudgment = game.parseAnswerJudgmentResponse({
+    choices: [{
+      message: {
+        content: '{"isCorrect":true,"feedback":"Conceptually correct."}',
+      },
+    }],
+  });
+  const apologistJudgment = game.parseAnswerJudgmentResponse({
+    data: {
+      response: '```json\n{"correct":false,"feedback":"Not close enough yet."}\n```',
+    },
+  });
+
+  assert.equal(openAiJudgment.isCorrect, true);
+  assert.equal(openAiJudgment.feedback, 'Conceptually correct.');
+  assert.equal(apologistJudgment.isCorrect, false);
+  assert.equal(apologistJudgment.feedback, 'Not close enough yet.');
 });
