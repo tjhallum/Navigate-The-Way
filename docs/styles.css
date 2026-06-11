@@ -518,7 +518,9 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .creator-story,
 .creator-background,
 .creator-next {
-  max-width: 78ch;
+  max-width: 92ch;
+  margin-inline: auto;
+  width: min(100%, 92ch);
 }
 
 .creator-intro {
@@ -631,7 +633,9 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
-  max-width: 78ch;
+  grid-auto-flow: row;
+  columns: auto;
+  max-width: none;
 }
 
 .testimonial-card {
