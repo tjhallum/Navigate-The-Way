@@ -190,9 +190,9 @@
           <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
         </label>
       </div>
-      <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+      <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
 
-      <button id="generate-game-button" type="submit" class="primary-action">Generate Review Game</button>
+      <button id="generate-game-button" type="submit" class="primary-action">Generate Game Board</button>
       <p id="game-setup-status" class="game-status" aria-live="polite"></p>
     </form>
 
@@ -231,6 +231,7 @@
 
           <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
           <div class="clue-actions">
+            <button id="no-buzz-button" type="button">No one buzzed in</button>
             <button id="close-clue-button" type="button">Close</button>
           </div>
         </div>
@@ -248,6 +249,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260611-optional-contestants"></script>
+<script src="small-group-review-game.js?v=20260611-gameplay-completion"></script>
 </body>
 </html>

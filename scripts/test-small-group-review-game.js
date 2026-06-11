@@ -59,6 +59,9 @@ test('keeps only the first two contestant fields required in the browser form', 
   assert.match(inputMatches[1], /\brequired\b/);
   assert.doesNotMatch(inputMatches[2], /\brequired\b/);
   assert.doesNotMatch(inputMatches[3], /\brequired\b/);
+  assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
+  assert.doesNotMatch(html, /Generate Review Game/);
+  assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=[^"]+"><\/script>/);
 });
 
@@ -228,6 +231,48 @@ test('awards equal partial credit repeatedly while preserving final-answer value
   assert.equal(correct.awardedPoints, 40);
   assert.equal(correct.clue.completed, true);
   assert.equal(correct.answerShouldBeRevealed, true);
+});
+
+test('marks clues complete without score changes when no one buzzes in', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const result = game.applyNoBuzzForClue({ contestants, clue });
+
+  assert.deepEqual(result.contestants, contestants);
+  assert.equal(result.clue.completed, true);
+  assert.equal(result.clue.allContestantsMissed, true);
+  assert.equal(result.clue.noContestantsBuzzed, true);
+  assert.deepEqual(result.clue.attemptedContestantIds, []);
+  assert.equal(result.answerShouldBeRevealed, true);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(result), true);
+});
+
+test('completes a two-player clue once both players have attempted without the expected answer', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const firstPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  assert.equal(firstPartial.clue.completed, false);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(firstPartial), false);
+
+  const secondMiss = game.applyAnswerJudgment({
+    contestants: firstPartial.contestants,
+    clue: firstPartial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'incorrect' },
+  });
+
+  assert.deepEqual(secondMiss.clue.attemptedContestantIds, ['contestant-1', 'contestant-2']);
+  assert.equal(secondMiss.clue.completed, true);
+  assert.equal(secondMiss.clue.allContestantsMissed, true);
+  assert.equal(secondMiss.answerShouldBeRevealed, true);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(secondMiss), true);
 });
 
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material', () => {
