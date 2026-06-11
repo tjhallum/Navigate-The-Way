@@ -11,6 +11,8 @@
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
   const CORRECT_ANSWER_AUTO_CLOSE_MS = 6000;
+  const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
+  const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
   ]);
@@ -74,9 +76,9 @@
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['isCorrect', 'feedback'],
+      required: ['verdict', 'feedback'],
       properties: {
-        isCorrect: { type: 'boolean' },
+        verdict: { type: 'string', enum: ['correct', 'partial', 'incorrect'] },
         feedback: { type: 'string' },
       },
     },
@@ -118,10 +120,14 @@
   }
 
   function createContestants(names) {
-    if (!Array.isArray(names) || names.length !== 4) {
-      throw new Error('Please supply exactly four contestant names.');
+    if (!Array.isArray(names)) {
+      throw new Error('Please supply two to four contestant names.');
     }
-    return names.map((name, index) => ({
+    const suppliedNames = names.map((name) => coerceText(name)).filter(Boolean);
+    if (suppliedNames.length < 2 || suppliedNames.length > 4) {
+      throw new Error('Please supply two to four contestant names.');
+    }
+    return suppliedNames.map((name, index) => ({
       id: `contestant-${index + 1}`,
       name: normalizeContestantName(name, index),
       score: 0,
@@ -210,6 +216,10 @@
               : [],
             winningContestantId: rawClue?.winningContestantId ? String(rawClue.winningContestantId) : '',
             allContestantsMissed: Boolean(rawClue?.allContestantsMissed),
+            partialCreditAwarded: Math.max(0, Number(rawClue?.partialCreditAwarded || 0)),
+            partialCreditContestantIds: Array.isArray(rawClue?.partialCreditContestantIds)
+              ? [...new Set(rawClue.partialCreditContestantIds.map(String))]
+              : [],
           };
         }),
       };
@@ -271,27 +281,84 @@
     throw new Error(`Unknown scorekeeping decision: ${decision}`);
   }
 
-  function coerceJudgmentBoolean(value) {
+  function normalizeJudgmentVerdict(value) {
     if (typeof value === 'boolean') {
-      return value;
+      return value ? 'correct' : 'incorrect';
     }
     if (typeof value === 'number') {
-      return value > 0;
+      return value > 0 ? 'correct' : 'incorrect';
     }
+    const normalized = coerceText(value).toLowerCase().replace(/[\s_-]+/g, ' ');
+    if (!normalized) return '';
+    if (/^(true|yes|right|correct|full|full credit|acceptable|accepted|reasonable|reasonably correct|conceptually correct)\b/.test(normalized)) {
+      return 'correct';
+    }
+    if (/^(partial|partly|partially correct|partial credit|biblically sound|sound but not expected|sound not expected)\b/.test(normalized)) {
+      return 'partial';
+    }
+    if (/^(false|no|wrong|incorrect|none|no credit|not correct|not enough|not acceptable)\b/.test(normalized)) {
+      return 'incorrect';
+    }
+    return '';
+  }
+
+  function coerceJudgmentBoolean(value) {
+    const verdict = normalizeJudgmentVerdict(value);
+    if (verdict === 'correct') return true;
+    if (verdict === 'incorrect') return false;
+    if (verdict === 'partial') return false;
     const normalized = coerceText(value).toLowerCase();
     if (!normalized) {
       throw new Error('The NTW answer check did not say whether the response was correct.');
     }
-    if (/^(true|yes|correct|acceptable|accepted|reasonable|reasonably correct|conceptually correct)\b/.test(normalized)) {
-      return true;
-    }
-    if (/^(false|no|wrong|incorrect|not correct|not enough|not acceptable)\b/.test(normalized)) {
-      return false;
-    }
     throw new Error('The NTW answer check returned an unclear correctness value.');
   }
 
-  function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect }) {
+  function normalizePartialCreditFraction(rawJudgment, verdict) {
+    if (verdict !== 'partial') return 0;
+    const rawValue = rawJudgment.partialCreditFraction ??
+      rawJudgment.partial_credit_fraction ??
+      rawJudgment.partialCreditPercent ??
+      rawJudgment.partial_credit_percent ??
+      rawJudgment.partialCredit ??
+      rawJudgment.creditPercent;
+    if (rawValue === true || rawValue == null || rawValue === '') {
+      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
+    }
+    const numeric = Number(rawValue);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
+    }
+    const fraction = numeric > 1 ? numeric / 100 : numeric;
+    return Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, Math.max(0, fraction));
+  }
+
+  function normalizeAnswerJudgmentInput({ isCorrect, judgment } = {}) {
+    if (judgment && typeof judgment === 'object') {
+      return normalizeAnswerJudgment(judgment);
+    }
+    return normalizeAnswerJudgment({ isCorrect });
+  }
+
+  function getPartialCreditCap(clue) {
+    return Math.max(0, Math.round(Number(clue?.value || 0) * PARTIAL_CREDIT_MAX_TOTAL_FRACTION));
+  }
+
+  function getPartialCreditAward({ clue, partialCreditFraction }) {
+    const clueValue = Math.max(0, Number(clue?.value || 0));
+    const alreadyAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
+    const cap = getPartialCreditCap(clue);
+    const requested = Math.max(0, Math.round(clueValue * Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, partialCreditFraction || PARTIAL_CREDIT_PER_RESPONSE_FRACTION)));
+    return Math.min(requested, Math.max(0, cap - alreadyAwarded));
+  }
+
+  function getFullCreditAward(clue) {
+    const clueValue = Math.max(0, Number(clue?.value || 0));
+    const alreadyAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
+    return Math.max(0, clueValue - alreadyAwarded);
+  }
+
+  function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect, judgment }) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required for scorekeeping.');
     }
@@ -301,32 +368,68 @@
     if (clue.completed) {
       throw new Error('This clue is already complete.');
     }
+    const contestantIdText = String(contestantId || '');
     const attemptedContestantIds = Array.isArray(clue.attemptedContestantIds)
       ? clue.attemptedContestantIds.map(String)
       : [];
-    if (attemptedContestantIds.includes(String(contestantId || ''))) {
+    if (attemptedContestantIds.includes(contestantIdText)) {
       throw new Error('That contestant has already attempted this clue. Choose another contestant.');
     }
 
-    const correct = coerceJudgmentBoolean(isCorrect);
-    const decision = correct ? 'correct' : 'wrong';
-    const result = applyScoreDecision({ contestants, clue, contestantId, decision });
-    const attemptedAfterDecision = Array.isArray(result.clue.attemptedContestantIds)
-      ? result.clue.attemptedContestantIds
-      : [];
-    const allContestantsAttempted = !correct && contestants.length > 0 &&
-      contestants.every((contestant) => attemptedAfterDecision.includes(contestant.id));
+    const contestantIndex = contestants.findIndex((contestant) => contestant.id === contestantIdText);
+    if (contestantIndex < 0) {
+      throw new Error('Select the contestant who answered before checking an answer.');
+    }
+
+    const normalizedJudgment = normalizeAnswerJudgmentInput({ isCorrect, judgment });
+    const nextContestants = cloneContestants(contestants);
     const nextClue = {
-      ...result.clue,
-      allContestantsMissed: allContestantsAttempted,
-      completed: result.clue.completed || allContestantsAttempted,
+      ...clue,
+      attemptedContestantIds: [...attemptedContestantIds],
+      partialCreditAwarded: Math.max(0, Number(clue.partialCreditAwarded || 0)),
+      partialCreditContestantIds: Array.isArray(clue.partialCreditContestantIds)
+        ? [...clue.partialCreditContestantIds.map(String)]
+        : [],
     };
+    let awardedPoints = 0;
+
+    if (normalizedJudgment.verdict === 'correct') {
+      awardedPoints = getFullCreditAward(nextClue);
+      nextContestants[contestantIndex].score += awardedPoints;
+      nextClue.completed = true;
+      nextClue.winningContestantId = contestantIdText;
+    } else if (normalizedJudgment.verdict === 'partial') {
+      awardedPoints = getPartialCreditAward({ clue: nextClue, partialCreditFraction: normalizedJudgment.partialCreditFraction });
+      if (awardedPoints > 0) {
+        nextContestants[contestantIndex].score += awardedPoints;
+        nextClue.partialCreditAwarded += awardedPoints;
+        nextClue.partialCreditContestantIds.push(contestantIdText);
+      }
+      nextClue.completed = false;
+      if (!nextClue.attemptedContestantIds.includes(contestantIdText)) {
+        nextClue.attemptedContestantIds.push(contestantIdText);
+      }
+    } else {
+      awardedPoints = -Number(clue.value || 0);
+      nextContestants[contestantIndex].score += awardedPoints;
+      nextClue.completed = false;
+      if (!nextClue.attemptedContestantIds.includes(contestantIdText)) {
+        nextClue.attemptedContestantIds.push(contestantIdText);
+      }
+    }
+
+    const allContestantsAttempted = normalizedJudgment.verdict !== 'correct' && contestants.length > 0 &&
+      contestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
+    nextClue.allContestantsMissed = allContestantsAttempted;
+    nextClue.completed = nextClue.completed || allContestantsAttempted;
 
     return {
-      contestants: result.contestants,
+      contestants: nextContestants,
       clue: nextClue,
+      judgment: normalizedJudgment,
+      awardedPoints,
       allContestantsAttempted,
-      answerShouldBeRevealed: correct || allContestantsAttempted,
+      answerShouldBeRevealed: normalizedJudgment.verdict === 'correct' || allContestantsAttempted,
     };
   }
 
@@ -415,12 +518,14 @@
         role: 'system',
         content: [
           'You are Navigate The Way ✝️ (NTW✝️), helping a small group leader judge a spoken review-game answer.',
-          'Decide whether the contestant response is reasonably and conceptually correct. It does not need to be verbatim right.',
-          'Mark the response correct when it captures the core idea faithfully, even if wording differs.',
-          'Mark the response incorrect when it contradicts the lesson, misses the core idea, is too vague to show understanding, or gives an unrelated answer.',
+          'Decide whether the contestant response is correct, partially creditable, or incorrect. It should be judged for whether it is reasonably and conceptually correct, and it does not need to be verbatim right.',
+          'Mark the response correct only when it captures the expected lesson answer or its core idea faithfully, even if wording differs.',
+          'Mark the response partial when it is biblically sound, relevant to the clue, and shows real understanding, but is not the expected lesson answer.',
+          'Do not give partial credit for generic, vague, evasive, unrelated, or merely plausible church words such as answering "Jesus" to every clue.',
+          'Mark the response incorrect when it contradicts Scripture or the lesson, misses the core idea, is too vague to show understanding, or gives an unrelated answer.',
           'Be charitable but do not award points for a response that is materially wrong.',
-          'For incorrect responses, do not reveal the correct answer, missing answer details, or giveaway hints in feedback because other contestants may still answer.',
-          'Be very concise. Return only the boolean judgment and feedback of eight words or fewer.',
+          'For partial or incorrect responses, do not reveal the correct answer, missing answer details, or giveaway hints because other contestants may still answer.',
+          'Be very concise. Return only the verdict and feedback of eight words or fewer.',
           'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
         ].join('\n'),
       },
@@ -441,7 +546,8 @@
           '<<<CONTESTANT_RESPONSE_END>>>',
           '',
           'Return this exact JSON shape:',
-          '{ "isCorrect": true, "feedback": "short leader-facing explanation" }',
+          '{ "verdict": "correct", "feedback": "short leader-facing explanation" }',
+          'Use verdict "correct", "partial", or "incorrect".',
         ].join('\n'),
       },
     ];
@@ -544,33 +650,45 @@
     if (!rawJudgment || typeof rawJudgment !== 'object') {
       throw new Error('The NTW answer check did not return a judgment object.');
     }
+    const explicitVerdict = normalizeJudgmentVerdict(
+      rawJudgment.verdict ??
+      rawJudgment.judgment ??
+      rawJudgment.result ??
+      rawJudgment.credit
+    );
+    const partialFlag = rawJudgment.partial === true ||
+      rawJudgment.partiallyCorrect === true ||
+      rawJudgment.partialCredit === true ||
+      rawJudgment.biblicallySoundButNotExpected === true;
     const correctnessValue = rawJudgment.isCorrect ??
       rawJudgment.correct ??
       rawJudgment.reasonablyCorrect ??
       rawJudgment.conceptuallyCorrect ??
-      rawJudgment.accepted ??
-      rawJudgment.verdict;
-    const isCorrect = coerceJudgmentBoolean(correctnessValue);
+      rawJudgment.accepted;
+    const verdict = explicitVerdict || (partialFlag ? 'partial' : (coerceJudgmentBoolean(correctnessValue) ? 'correct' : 'incorrect'));
+    const isCorrect = verdict === 'correct';
     return {
       isCorrect,
+      verdict,
+      partialCreditFraction: normalizePartialCreditFraction(rawJudgment, verdict),
       feedback: pickText(
         rawJudgment,
         ['feedback', 'explanation', 'rationale', 'reason', 'message'],
-        isCorrect ? 'Conceptually correct.' : 'Not close enough yet.'
+        verdict === 'correct' ? 'Conceptually correct.' : (verdict === 'partial' ? 'Biblically sound, but not the expected lesson answer.' : 'Not close enough yet.')
       ),
     };
   }
 
   function parseAnswerJudgmentResponse(payload) {
     if (payload && typeof payload === 'object') {
-      const hasDirectJudgment = ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict']
+      const hasDirectJudgment = ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict', 'judgment', 'result', 'credit', 'partial', 'partiallyCorrect', 'partialCredit']
         .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
       if (hasDirectJudgment) {
         return normalizeAnswerJudgment(payload);
       }
       const data = payload.data;
       const hasDataJudgment = data && typeof data === 'object' &&
-        ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict']
+        ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict', 'judgment', 'result', 'credit', 'partial', 'partiallyCorrect', 'partialCredit']
           .some((key) => Object.prototype.hasOwnProperty.call(data, key));
       if (hasDataJudgment) {
         return normalizeAnswerJudgment(data);
@@ -923,6 +1041,15 @@
     return number < 0 ? `-$${Math.abs(number)}` : `$${number}`;
   }
 
+  function shouldSubmitResponseFromKeydown(event) {
+    return event?.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      !event.isComposing;
+  }
+
   function renderStatus(element, message, type = 'info') {
     if (!element) return;
     element.className = `game-status game-status--${type}`;
@@ -1089,7 +1216,7 @@
         return `
           <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}${activeClue.completed ? ' contestant-choice--disabled' : ''}">
             <input type="radio" name="active-contestant" value="${contestant.id}" ${disabled ? 'disabled' : ''} />
-            <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${attempted ? ' · already missed' : ''}</small></span>
+            <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${attempted ? ' · already tried' : ''}</small></span>
           </label>
         `;
       }).join('');
@@ -1155,6 +1282,8 @@
 
     async function handleResponseCheck() {
       if (!activeClue) return;
+      const clueAtRequestStart = activeClue;
+      const clueIdAtRequestStart = clueAtRequestStart.id;
       const contestant = selectedContestant();
       if (!contestant) {
         if (clueFeedback) clueFeedback.textContent = 'Select the contestant who buzzed in before checking an answer.';
@@ -1163,7 +1292,7 @@
       const contestantResponse = responseInput?.value || '';
       try {
         buildAnswerJudgmentMessages({
-          clue: activeClue,
+          clue: clueAtRequestStart,
           contestantName: contestant.name,
           contestantResponse,
         });
@@ -1177,24 +1306,28 @@
           endpoint,
           apiKey: apiKeyInput?.value || '',
           model,
-          clue: activeClue,
+          clue: clueAtRequestStart,
           contestantName: contestant.name,
           contestantResponse,
         });
+        if (!activeClue || activeClue.id !== clueIdAtRequestStart) {
+          return;
+        }
         const result = applyAnswerJudgment({
           contestants,
-          clue: activeClue,
+          clue: clueAtRequestStart,
           contestantId: contestant.id,
-          isCorrect: judgment.isCorrect,
+          judgment,
         });
         contestants = result.contestants;
-        replaceActiveClue(result.clue);
+        const appliedClue = result.clue;
+        replaceActiveClue(appliedClue);
 
-        if (judgment.isCorrect) {
+        if (result.judgment.verdict === 'correct') {
           showAnswer();
           if (responseSection) responseSection.hidden = true;
           if (clueFeedback) {
-            clueFeedback.textContent = `${contestant.name}'s response was judged correct. ${formatScore(activeClue.value)} awarded. The answer is shown, and this panel will close in a moment.`;
+            clueFeedback.textContent = `${contestant.name}'s response was judged correct. ${formatScore(result.awardedPoints)} awarded. The answer is shown, and this panel will close in a moment.`;
           }
           scheduleClueAutoClose();
           return;
@@ -1204,7 +1337,13 @@
           showAnswer();
           if (responseSection) responseSection.hidden = true;
           if (clueFeedback) {
-            clueFeedback.textContent = `All contestants have attempted this clue. ${formatScore(activeClue.value)} was subtracted from each miss, and the answer is now shown.`;
+            const partialNote = result.judgment.verdict === 'partial' && result.awardedPoints > 0
+              ? `${contestant.name} received ${formatScore(result.awardedPoints)} partial credit. `
+              : '';
+            const missNote = result.judgment.verdict === 'incorrect'
+              ? `${formatScore(Math.abs(result.awardedPoints))} was subtracted for this miss. `
+              : '';
+            clueFeedback.textContent = `${partialNote}${missNote}All contestants have attempted this clue, so the answer is now shown.`;
           }
           return;
         }
@@ -1215,10 +1354,20 @@
         }
         if (checkResponseButton) checkResponseButton.disabled = false;
         if (clueFeedback) {
-          clueFeedback.textContent = `${contestant.name}'s response was not close enough, so ${formatScore(activeClue.value)} was subtracted. Call on another buzzer and select the next contestant.`;
+          if (result.judgment.verdict === 'partial') {
+            const remainingCredit = getFullCreditAward(appliedClue);
+            clueFeedback.textContent = result.awardedPoints > 0
+              ? `${contestant.name}'s response was biblically sound but not the expected lesson answer. ${formatScore(result.awardedPoints)} partial credit awarded; ${formatScore(remainingCredit)} remains for a full answer.`
+              : `${contestant.name}'s response was biblically sound but not the expected lesson answer. The partial-credit cap has been reached; ${formatScore(remainingCredit)} remains for a full answer.`;
+          } else {
+            clueFeedback.textContent = `${contestant.name}'s response was not accepted, so ${formatScore(Math.abs(result.awardedPoints))} was subtracted. Call on another buzzer and select the next contestant.`;
+          }
         }
         updateResponseEntryState();
       } catch (error) {
+        if (!activeClue || activeClue.id !== clueIdAtRequestStart) {
+          return;
+        }
         if (responseInput && !activeClue.completed) responseInput.disabled = false;
         if (checkResponseButton && !activeClue.completed) checkResponseButton.disabled = false;
         if (clueFeedback) clueFeedback.textContent = error.message || 'Could not check that answer.';
@@ -1300,7 +1449,7 @@
       handleResponseCheck();
     });
     responseInput?.addEventListener('keydown', (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      if (shouldSubmitResponseFromKeydown(event)) {
         event.preventDefault();
         handleResponseCheck();
       }
@@ -1368,6 +1517,7 @@
     callAnswerJudgmentApi,
     extractLessonTextFromFiles,
     buildLessonSourceContent,
+    shouldSubmitResponseFromKeydown,
     initializeSmallGroupGame,
   };
 

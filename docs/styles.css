@@ -1817,6 +1817,12 @@ footer {
   font-weight: 650;
 }
 
+.optional-label {
+  color: var(--muted);
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
 .review-game-setup input,
 .review-game-setup textarea {
   width: 100%;
