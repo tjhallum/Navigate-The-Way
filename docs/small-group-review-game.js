@@ -11,7 +11,8 @@
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
   const CORRECT_ANSWER_AUTO_CLOSE_MS = 6000;
-  const PARTIAL_CREDIT_MAX_FRACTION = 0.2;
+  const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
+  const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
   ]);
@@ -119,10 +120,14 @@
   }
 
   function createContestants(names) {
-    if (!Array.isArray(names) || names.length !== 4) {
-      throw new Error('Please supply exactly four contestant names.');
+    if (!Array.isArray(names)) {
+      throw new Error('Please supply two to four contestant names.');
     }
-    return names.map((name, index) => ({
+    const suppliedNames = names.map((name) => coerceText(name)).filter(Boolean);
+    if (suppliedNames.length < 2 || suppliedNames.length > 4) {
+      throw new Error('Please supply two to four contestant names.');
+    }
+    return suppliedNames.map((name, index) => ({
       id: `contestant-${index + 1}`,
       name: normalizeContestantName(name, index),
       score: 0,
@@ -318,14 +323,14 @@
       rawJudgment.partialCredit ??
       rawJudgment.creditPercent;
     if (rawValue === true || rawValue == null || rawValue === '') {
-      return PARTIAL_CREDIT_MAX_FRACTION;
+      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
     }
     const numeric = Number(rawValue);
     if (!Number.isFinite(numeric) || numeric <= 0) {
-      return PARTIAL_CREDIT_MAX_FRACTION;
+      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
     }
     const fraction = numeric > 1 ? numeric / 100 : numeric;
-    return Math.min(PARTIAL_CREDIT_MAX_FRACTION, Math.max(0, fraction));
+    return Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, Math.max(0, fraction));
   }
 
   function normalizeAnswerJudgmentInput({ isCorrect, judgment } = {}) {
@@ -336,14 +341,14 @@
   }
 
   function getPartialCreditCap(clue) {
-    return Math.max(0, Math.round(Number(clue?.value || 0) * PARTIAL_CREDIT_MAX_FRACTION));
+    return Math.max(0, Math.round(Number(clue?.value || 0) * PARTIAL_CREDIT_MAX_TOTAL_FRACTION));
   }
 
   function getPartialCreditAward({ clue, partialCreditFraction }) {
     const clueValue = Math.max(0, Number(clue?.value || 0));
     const alreadyAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
     const cap = getPartialCreditCap(clue);
-    const requested = Math.max(0, Math.round(clueValue * Math.min(PARTIAL_CREDIT_MAX_FRACTION, partialCreditFraction || PARTIAL_CREDIT_MAX_FRACTION)));
+    const requested = Math.max(0, Math.round(clueValue * Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, partialCreditFraction || PARTIAL_CREDIT_PER_RESPONSE_FRACTION)));
     return Math.min(requested, Math.max(0, cap - alreadyAwarded));
   }
 
@@ -1353,7 +1358,7 @@
             const remainingCredit = getFullCreditAward(appliedClue);
             clueFeedback.textContent = result.awardedPoints > 0
               ? `${contestant.name}'s response was biblically sound but not the expected lesson answer. ${formatScore(result.awardedPoints)} partial credit awarded; ${formatScore(remainingCredit)} remains for a full answer.`
-              : `${contestant.name}'s response was biblically sound but not the expected lesson answer. Partial credit for this clue has already been awarded; ${formatScore(remainingCredit)} remains for a full answer.`;
+              : `${contestant.name}'s response was biblically sound but not the expected lesson answer. The partial-credit cap has been reached; ${formatScore(remainingCredit)} remains for a full answer.`;
           } else {
             clueFeedback.textContent = `${contestant.name}'s response was not accepted, so ${formatScore(Math.abs(result.awardedPoints))} was subtracted. Call on another buzzer and select the next contestant.`;
           }
