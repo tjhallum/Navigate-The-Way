@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const game = require('../docs/small-group-review-game.js');
@@ -46,6 +48,36 @@ test('requires between two and four contestant names', () => {
   assert.throws(() => game.createContestants(['Ada']), /two to four/i);
   assert.throws(() => game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve']), /two to four/i);
   assert.throws(() => game.createContestants(['Ada', ' ', ' ', ' ']), /two to four/i);
+});
+
+test('keeps only the first two contestant fields required in the browser form', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const inputMatches = [...html.matchAll(/<input class="contestant-name-input"[^>]*>/g)].map((match) => match[0]);
+
+  assert.equal(inputMatches.length, 4);
+  assert.match(inputMatches[0], /\brequired\b/);
+  assert.match(inputMatches[1], /\brequired\b/);
+  assert.doesNotMatch(inputMatches[2], /\brequired\b/);
+  assert.doesNotMatch(inputMatches[3], /\brequired\b/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=[^"]+"><\/script>/);
+});
+
+test('defensively clears required validation from optional contestant inputs at startup', () => {
+  const inputs = Array.from({ length: 4 }, () => ({
+    required: true,
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
+    removeAttribute(name) {
+      delete this.attributes[name];
+    },
+  }));
+
+  game.configureContestantNameInputs(inputs);
+
+  assert.deepEqual(inputs.map((input) => input.required), [true, true, false, false]);
+  assert.deepEqual(inputs.map((input) => input.attributes['aria-required'] || ''), ['true', 'true', '', '']);
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {

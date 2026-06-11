@@ -119,6 +119,20 @@
     return normalized;
   }
 
+  function configureContestantNameInputs(inputs) {
+    const list = Array.from(inputs || []);
+    list.forEach((input, index) => {
+      const isRequired = index < 2;
+      input.required = isRequired;
+      if (isRequired) {
+        input.setAttribute?.('aria-required', 'true');
+      } else {
+        input.removeAttribute?.('aria-required');
+      }
+    });
+    return list;
+  }
+
   function createContestants(names) {
     if (!Array.isArray(names)) {
       throw new Error('Please supply two to four contestant names.');
@@ -1089,6 +1103,7 @@
     const checkResponseButton = app.querySelector('#check-response-button');
     const clueFeedback = app.querySelector('#clue-feedback');
     const closeClueButton = app.querySelector('#close-clue-button');
+    const nameInputs = configureContestantNameInputs(app.querySelectorAll('.contestant-name-input'));
 
     let selectedFiles = [];
     let contestants = [];
@@ -1399,7 +1414,6 @@
 
     setupForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const nameInputs = Array.from(app.querySelectorAll('.contestant-name-input'));
       try {
         contestants = createContestants(nameInputs.map((input) => input.value));
         renderStatus(setupStatus, 'Preparing lesson material in your browser…', 'info');
@@ -1499,6 +1513,7 @@
     DEFAULT_LANGUAGE,
     DEFAULT_BIBLE,
     isSupportedLessonFile,
+    configureContestantNameInputs,
     createContestants,
     normalizeGeneratedGame,
     applyScoreDecision,
