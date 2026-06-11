@@ -132,7 +132,7 @@ nav a { font-size: var(--fs-nav-label); }
 main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding-block: 0 3rem; padding-inline: var(--gutter); }
 
 .home-main {
-  margin-top: clamp(1rem, 1.2vw, 1.45rem);
+  margin-top: clamp(0.55rem, 0.8vw, 0.85rem);
 }
 
 .page-shell {
@@ -171,8 +171,8 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   --home-heading: clamp(2.35rem, 1.35rem + 2.4vw, 4.15rem);
   --home-radius: 28px;
   display: grid;
-  gap: clamp(1.25rem, 2.2vw, 2.15rem);
-  padding: clamp(1rem, 1.8vw, 1.6rem);
+  gap: clamp(1.05rem, 1.75vw, 1.8rem);
+  padding: clamp(0.7rem, 1.05vw, 1rem);
   border-color: rgba(122, 168, 255, 0.22);
   background:
     radial-gradient(circle at 9% 0%, rgba(255, 220, 115, 0.13), transparent 28%),
@@ -203,11 +203,11 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.82fr);
-  gap: clamp(2rem, 4.2vw, 4.6rem);
+  grid-template-columns: minmax(0, 1.18fr) minmax(420px, 0.74fr);
+  gap: clamp(1.5rem, 2.6vw, 3rem);
   align-items: center;
-  min-height: clamp(500px, 54vh, 640px);
-  padding: clamp(1.75rem, 2.4vw, 2.4rem);
+  min-height: auto;
+  padding: clamp(1.3rem, 1.85vw, 1.8rem);
   overflow: hidden;
   border: 1px solid rgba(122, 168, 255, 0.32);
   border-radius: 34px;
@@ -254,9 +254,9 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 .home-hero-copy h1 {
   max-width: 13.5ch;
-  margin: 0.45rem 0 1.05rem;
+  margin: 0.35rem 0 0.85rem;
   color: #f8fbff;
-  font-size: clamp(3.25rem, 2.1rem + 4.1vw, 6rem);
+  font-size: clamp(3.25rem, 1.9rem + 3.7vw, 5.55rem);
   line-height: 0.98;
   letter-spacing: -0.055em;
   text-wrap: balance;
@@ -267,14 +267,14 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   margin: 0;
   color: #e8f0ff;
   font-size: var(--home-copy-large);
-  line-height: 1.62;
+  line-height: 1.5;
 }
 
 .home-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
-  margin: clamp(1.4rem, 2vw, 1.9rem) 0 0;
+  gap: 0.65rem;
+  margin: clamp(1.75rem, 1.9vw, 2rem) 0 0;
 }
 
 .home-actions .action-link,
@@ -297,19 +297,19 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 .home-trust-note {
   max-width: 66ch;
-  margin: 1.35rem 0 0;
+  margin: 0;
   color: #dbe8ff;
   font-size: var(--home-copy);
-  line-height: 1.62;
+  line-height: 1.5;
 }
 
 .home-hero-card {
   display: grid;
   place-items: center;
   align-content: center;
-  gap: clamp(1rem, 1.6vw, 1.55rem);
+  gap: clamp(0.75rem, 1.25vw, 1.15rem);
   min-height: 100%;
-  padding: clamp(1.25rem, 2vw, 1.75rem);
+  padding: clamp(1rem, 1.6vw, 1.35rem);
   border: 1px solid rgba(122, 168, 255, 0.24);
   border-radius: 30px;
   background:
@@ -330,10 +330,10 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 .home-hero-card h2 {
   max-width: 18ch;
-  margin: 0 auto 0.9rem;
+  margin: 0 auto 0.65rem;
   color: #f8fbff;
-  font-size: clamp(1.9rem, 1.15vw + 1.35rem, 2.9rem);
-  line-height: 1.12;
+  font-size: clamp(1.85rem, 0.98vw + 1.3rem, 2.55rem);
+  line-height: 1.08;
   letter-spacing: -0.025em;
   text-align: center;
   text-wrap: balance;
@@ -342,7 +342,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 .home-compact-list,
 .home-launch-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.45rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -353,7 +353,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   position: relative;
   padding-left: 1.65rem;
   color: #e5eeff;
-  line-height: 1.55;
+  line-height: 1.32;
 }
 
 .home-compact-list li::before,
@@ -587,7 +587,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
 @media (min-width: 1600px) {
   .home-hero-card .site-logo {
-    width: clamp(470px, 26vw, 500px);
+    width: clamp(430px, 24vw, 465px);
   }
 }
 
@@ -659,8 +659,8 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   }
 
   .home-try #apg-inline-shell #apg-inline-target iframe {
-    min-height: 540px !important;
-    height: 72vh !important;
+    min-height: 760px !important;
+    height: clamp(760px, 92vh, 920px) !important;
     border-radius: 16px;
   }
 }
@@ -992,6 +992,10 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   flex-wrap: wrap;
   gap: 0.65rem;
   margin: 0.8rem 0 1.05rem;
+}
+
+.action-row.home-actions {
+  margin: 1.1rem 0;
 }
 
 .pill-link,
