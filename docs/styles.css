@@ -1732,15 +1732,59 @@ footer {
 .small-group-game-page {
   display: grid;
   gap: 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
-.review-game-intro h2,
+.small-group-game-page > * {
+  min-width: 0;
+}
+
+.review-game-intro summary,
 .review-game-setup h2,
 .review-game-play h2,
 .active-clue-panel h3 {
   margin-top: 0;
   color: #f3f8ff;
   line-height: 1.25;
+}
+
+.review-game-intro summary {
+  cursor: pointer;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 850;
+  list-style: none;
+}
+
+.review-game-intro summary::-webkit-details-marker {
+  display: none;
+}
+
+.review-game-intro summary::after {
+  content: ' +';
+  color: #ffce48;
+}
+
+.review-game-intro[open] summary {
+  margin-bottom: 0.65rem;
+}
+
+.review-game-intro[open] summary::after {
+  content: ' −';
+}
+
+.review-game-intro__content {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-game-intro :is(a, code) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .review-game-intro ol {
@@ -1784,7 +1828,14 @@ footer {
   font: inherit;
 }
 
+.review-game-setup textarea,
+.active-clue-panel textarea {
+  resize: vertical;
+}
+
 .review-game-setup input:focus,
+.review-game-setup textarea:focus,
+.active-clue-panel textarea:focus,
 .contestant-choice:focus-within,
 .game-board__clue:focus-visible,
 .review-game-setup button:focus-visible,
@@ -1913,13 +1964,13 @@ button.primary-action {
 }
 
 .scoreboard {
-  margin-bottom: 1rem;
+  margin-bottom: 0.65rem;
 }
 
 .score-card {
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 0.9rem;
+  padding: 0.65rem;
   background: rgba(255, 255, 255, 0.04);
   text-align: center;
 }
@@ -1939,16 +1990,16 @@ button.primary-action {
 .game-board {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin: 1rem 0;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0;
 }
 
 .game-board__category,
 .game-board__clue {
-  min-height: 4.2rem;
+  min-height: clamp(2.8rem, 7vh, 3.9rem);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 0.5rem;
+  padding: 0.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1960,12 +2011,14 @@ button.primary-action {
   background: rgba(255, 255, 255, 0.055);
   font-weight: 850;
   line-height: 1.25;
+  font-size: clamp(0.72rem, 1.15vw, 0.95rem);
+  overflow-wrap: anywhere;
 }
 
 .game-board__clue {
   color: #ffdf72;
   background: linear-gradient(180deg, rgba(28, 47, 93, 0.98), rgba(16, 27, 54, 0.98));
-  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-size: clamp(1.1rem, 2.2vw, 1.7rem);
   font-weight: 900;
   cursor: pointer;
 }
@@ -1976,15 +2029,35 @@ button.primary-action {
 }
 
 .active-clue-panel {
-  margin-top: 1rem;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  background: rgba(2, 6, 18, 0.76);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+.active-clue-panel[hidden] {
+  display: none;
 }
 
 .active-clue-card {
+  width: min(760px, 100%);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
   border: 1px solid rgba(255, 206, 72, 0.42);
   border-radius: 16px;
   padding: 1rem;
-  background: rgba(5, 11, 30, 0.9);
+  background: rgba(5, 11, 30, 0.96);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+}
+
+body.has-active-clue-modal {
+  overflow: hidden;
 }
 
 .active-clue-text {
@@ -2030,20 +2103,67 @@ button.primary-action {
   opacity: 0.58;
 }
 
+.contestant-choice--disabled {
+  cursor: default;
+}
+
+.contestant-response-section {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+}
+
+.contestant-response-section[hidden] {
+  display: none;
+}
+
+.contestant-response-section label {
+  display: grid;
+  gap: 0.35rem;
+  color: #dbe7ff;
+  font-weight: 650;
+}
+
+.active-clue-panel textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.72rem 0.8rem;
+  color: var(--text);
+  background: rgba(5, 11, 30, 0.92);
+  font: inherit;
+}
+
 @media (max-width: 760px) {
   .game-board {
-    gap: 0.3rem;
+    gap: 0.25rem;
+  }
+
+  .scoreboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .score-card h3 {
+    font-size: 0.95rem;
+  }
+
+  .score-card p {
+    font-size: 1.2rem;
   }
 
   .game-board__category,
   .game-board__clue {
-    min-height: 3.25rem;
-    padding: 0.35rem;
+    min-height: 3rem;
+    padding: 0.3rem;
     border-radius: 9px;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 
   .game-board__clue {
-    font-size: 1.05rem;
+    font-size: 1rem;
+  }
+
+  .active-clue-card {
+    max-height: 92vh;
   }
 }

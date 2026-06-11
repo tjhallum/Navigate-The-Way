@@ -10,6 +10,7 @@
   const DEFAULT_MODEL = 'openai/gpt/5.4';
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
+  const CORRECT_ANSWER_AUTO_CLOSE_MS = 6000;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
   ]);
@@ -29,6 +30,57 @@
     'application/vnd.openxmlformats-officedocument.presentationml.presentation'
   ]);
   const PDF_MIME_TYPES = new Set(['application/pdf']);
+  const GAME_RESPONSE_JSON_SCHEMA = {
+    name: 'ntw_small_group_review_game',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'categories'],
+      properties: {
+        title: { type: 'string' },
+        categories: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['title', 'clues'],
+            properties: {
+              title: { type: 'string' },
+              clues: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['value', 'clue', 'correctResponse', 'explanation', 'sourceAnchor'],
+                  properties: {
+                    value: { type: 'integer', enum: BOARD_VALUES },
+                    clue: { type: 'string' },
+                    correctResponse: { type: 'string' },
+                    explanation: { type: 'string' },
+                    sourceAnchor: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  const ANSWER_JUDGMENT_JSON_SCHEMA = {
+    name: 'ntw_answer_judgment',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['isCorrect', 'feedback'],
+      properties: {
+        isCorrect: { type: 'boolean' },
+        feedback: { type: 'string' },
+      },
+    },
+  };
 
   function getFileExtension(name) {
     const cleanName = String(name || '').toLowerCase();
@@ -84,6 +136,14 @@
       return fallback;
     }
     return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeLongFormText(value) {
+    return String(value || '')
+      .replaceAll(String.fromCharCode(13), '')
+      .replace(/[ \t]+$/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   function pickText(source, keys, fallback = '') {
@@ -149,6 +209,7 @@
               ? [...new Set(rawClue.attemptedContestantIds.map(String))]
               : [],
             winningContestantId: rawClue?.winningContestantId ? String(rawClue.winningContestantId) : '',
+            allContestantsMissed: Boolean(rawClue?.allContestantsMissed),
           };
         }),
       };
@@ -210,6 +271,65 @@
     throw new Error(`Unknown scorekeeping decision: ${decision}`);
   }
 
+  function coerceJudgmentBoolean(value) {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value > 0;
+    }
+    const normalized = coerceText(value).toLowerCase();
+    if (!normalized) {
+      throw new Error('The NTW answer check did not say whether the response was correct.');
+    }
+    if (/^(true|yes|correct|acceptable|accepted|reasonable|reasonably correct|conceptually correct)\b/.test(normalized)) {
+      return true;
+    }
+    if (/^(false|no|wrong|incorrect|not correct|not enough|not acceptable)\b/.test(normalized)) {
+      return false;
+    }
+    throw new Error('The NTW answer check returned an unclear correctness value.');
+  }
+
+  function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect }) {
+    if (!Array.isArray(contestants)) {
+      throw new Error('Contestants are required for scorekeeping.');
+    }
+    if (!clue || typeof clue !== 'object') {
+      throw new Error('A clue is required for scorekeeping.');
+    }
+    if (clue.completed) {
+      throw new Error('This clue is already complete.');
+    }
+    const attemptedContestantIds = Array.isArray(clue.attemptedContestantIds)
+      ? clue.attemptedContestantIds.map(String)
+      : [];
+    if (attemptedContestantIds.includes(String(contestantId || ''))) {
+      throw new Error('That contestant has already attempted this clue. Choose another contestant.');
+    }
+
+    const correct = coerceJudgmentBoolean(isCorrect);
+    const decision = correct ? 'correct' : 'wrong';
+    const result = applyScoreDecision({ contestants, clue, contestantId, decision });
+    const attemptedAfterDecision = Array.isArray(result.clue.attemptedContestantIds)
+      ? result.clue.attemptedContestantIds
+      : [];
+    const allContestantsAttempted = !correct && contestants.length > 0 &&
+      contestants.every((contestant) => attemptedAfterDecision.includes(contestant.id));
+    const nextClue = {
+      ...result.clue,
+      allContestantsMissed: allContestantsAttempted,
+      completed: result.clue.completed || allContestantsAttempted,
+    };
+
+    return {
+      contestants: result.contestants,
+      clue: nextClue,
+      allContestantsAttempted,
+      answerShouldBeRevealed: correct || allContestantsAttempted,
+    };
+  }
+
   function truncateLessonContent(lessonContent, maxChars = MAX_LESSON_CHARS) {
     const normalized = String(lessonContent || '').replace(/\r\n/g, '\n').trim();
     if (normalized.length <= maxChars) {
@@ -226,7 +346,7 @@
     const names = Array.isArray(contestantNames) ? contestantNames.map((name, index) => normalizeContestantName(name, index)) : [];
     const lesson = truncateLessonContent(lessonContent);
     const truncationNote = lesson.truncated
-      ? `\n\nNOTE: The supplied lesson content was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before generation. Build the game only from the visible lesson content below.`
+      ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before generation. Build the game only from the visible lesson material below.`
       : '';
 
     return [
@@ -235,11 +355,12 @@
         content: [
           'You are Navigate The Way ✝️ (NTW✝️), serving a small group leader by creating a Bible lesson review game.',
           'Create content that is conservative, historic, confessional, Reformed evangelical, Scripture-centered, charitable, and pastorally careful.',
-          'Use ONLY the uploaded lesson content supplied by the user as the factual source for this game.',
-          'Do not quote Scripture from memory. If exact Scripture text appears in the uploaded lesson, you may use that supplied text; otherwise cite references without fabricating verse wording.',
-          'Do not invent doctrines, anecdotes, or lesson details that are not supported by the uploaded content.',
+          'Use ONLY the lesson material supplied by the user as the factual source for this game. The material may include uploaded files, a leader-provided lesson topic or summary, or both.',
+          'If the leader supplied only a brief topic or summary, create broadly applicable review content for that stated lesson subject without claiming unpublished lesson details.',
+          'Do not quote Scripture from memory. If exact Scripture text appears in the supplied lesson material, you may use that supplied text; otherwise cite references without fabricating verse wording.',
+          'Do not invent doctrines, anecdotes, precise lesson details, or source claims that are not supported by the supplied material.',
           'Keep the tone warm, clear, and suitable for a fun small group review activity.',
-          'Return only valid JSON. Do not wrap the JSON in markdown unless the API requires it.',
+          'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
         ].join('\n'),
       },
       {
@@ -253,7 +374,7 @@
           '- Clue values must be 100, 200, 300, 400, and 500 in that order for every category.',
           '- The displayed "clue" should ask or prompt recall/application from the lesson.',
           '- The "correctResponse" should be short enough for a leader to judge a spoken answer.',
-          '- Include a brief explanation and a sourceAnchor pointing to the lesson section, heading, or passage reference when available.',
+          '- Include a brief explanation and a sourceAnchor pointing to the uploaded file, leader-provided topic/summary, lesson section, heading, or passage reference when available.',
           '- Avoid trick questions and avoid mocking wrong answers.',
           '- Prefer questions that reinforce faithful understanding, careful application, and Christ-centered theological clarity.',
           '',
@@ -271,10 +392,56 @@
           '}',
           truncationNote,
           '',
-          'Uploaded lesson content:',
+          'Lesson source material:',
           '<<<LESSON_CONTENT_START>>>',
           lesson.content,
           '<<<LESSON_CONTENT_END>>>',
+        ].join('\n'),
+      },
+    ];
+  }
+
+  function buildAnswerJudgmentMessages({ clue, contestantName, contestantResponse }) {
+    if (!clue || typeof clue !== 'object') {
+      throw new Error('A clue is required before checking an answer.');
+    }
+    const response = normalizeLongFormText(contestantResponse);
+    if (!response) {
+      throw new Error('Enter the contestant response before asking NTW to check it.');
+    }
+
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are Navigate The Way ✝️ (NTW✝️), helping a small group leader judge a spoken review-game answer.',
+          'Decide whether the contestant response is reasonably and conceptually correct. It does not need to be verbatim right.',
+          'Mark the response correct when it captures the core idea faithfully, even if wording differs.',
+          'Mark the response incorrect when it contradicts the lesson, misses the core idea, is too vague to show understanding, or gives an unrelated answer.',
+          'Be charitable but do not award points for a response that is materially wrong.',
+          'For incorrect responses, do not reveal the correct answer, missing answer details, or giveaway hints in feedback because other contestants may still answer.',
+          'Be very concise. Return only the boolean judgment and feedback of eight words or fewer.',
+          'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          'Judge this contestant response for a Bible small group review game.',
+          `Contestant: ${coerceText(contestantName, 'Selected contestant')}`,
+          `Clue value: $${Number(clue.value || 0)}`,
+          `Clue: ${coerceText(clue.clue)}`,
+          `Expected correct response: ${coerceText(clue.correctResponse)}`,
+          `Teaching explanation: ${coerceText(clue.explanation, 'No explanation supplied.')}`,
+          `Lesson/source anchor: ${coerceText(clue.sourceAnchor, 'Lesson material')}`,
+          '',
+          'Contestant response:',
+          '<<<CONTESTANT_RESPONSE_START>>>',
+          response,
+          '<<<CONTESTANT_RESPONSE_END>>>',
+          '',
+          'Return this exact JSON shape:',
+          '{ "isCorrect": true, "feedback": "short leader-facing explanation" }',
         ].join('\n'),
       },
     ];
@@ -373,21 +540,93 @@
     return normalizeGeneratedGame(extractJsonObject(completionContent));
   }
 
-  function buildChatCompletionsBody({ model, messages }) {
+  function normalizeAnswerJudgment(rawJudgment) {
+    if (!rawJudgment || typeof rawJudgment !== 'object') {
+      throw new Error('The NTW answer check did not return a judgment object.');
+    }
+    const correctnessValue = rawJudgment.isCorrect ??
+      rawJudgment.correct ??
+      rawJudgment.reasonablyCorrect ??
+      rawJudgment.conceptuallyCorrect ??
+      rawJudgment.accepted ??
+      rawJudgment.verdict;
+    const isCorrect = coerceJudgmentBoolean(correctnessValue);
+    return {
+      isCorrect,
+      feedback: pickText(
+        rawJudgment,
+        ['feedback', 'explanation', 'rationale', 'reason', 'message'],
+        isCorrect ? 'Conceptually correct.' : 'Not close enough yet.'
+      ),
+    };
+  }
+
+  function parseAnswerJudgmentResponse(payload) {
+    if (payload && typeof payload === 'object') {
+      const hasDirectJudgment = ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict']
+        .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      if (hasDirectJudgment) {
+        return normalizeAnswerJudgment(payload);
+      }
+      const data = payload.data;
+      const hasDataJudgment = data && typeof data === 'object' &&
+        ['isCorrect', 'correct', 'reasonablyCorrect', 'conceptuallyCorrect', 'accepted', 'verdict']
+          .some((key) => Object.prototype.hasOwnProperty.call(data, key));
+      if (hasDataJudgment) {
+        return normalizeAnswerJudgment(data);
+      }
+    }
+
+    const completionContent = findCompletionContent(payload);
+    if (!completionContent) {
+      throw new Error('The NTW answer check response did not include a recognizable completion payload.');
+    }
+    if (typeof completionContent === 'object') {
+      return normalizeAnswerJudgment(completionContent);
+    }
+    return normalizeAnswerJudgment(extractJsonObject(completionContent));
+  }
+
+  function buildStructuredResponseFormat(jsonSchema = GAME_RESPONSE_JSON_SCHEMA) {
+    return {
+      type: 'json_schema',
+      json_schema: jsonSchema,
+    };
+  }
+
+  function buildChatCompletionsBody({
+    model,
+    messages,
+    responseSchema = GAME_RESPONSE_JSON_SCHEMA,
+    temperature = 0.25,
+    topP = 0.9,
+    maxCompletionTokens = 6000,
+  }) {
     return {
       model: String(model || '').trim() || DEFAULT_MODEL,
       stream: false,
       messages,
-      temperature: 0.25,
-      top_p: 0.9,
-      max_completion_tokens: 6000,
-      response_format: { type: 'json' },
+      temperature,
+      top_p: topP,
+      max_completion_tokens: maxCompletionTokens,
+      response_format: buildStructuredResponseFormat(responseSchema),
       metadata: {
         anonymous: true,
         language: DEFAULT_LANGUAGE,
         bible: DEFAULT_BIBLE,
       },
     };
+  }
+
+  function buildAnswerJudgmentChatCompletionsBody({ model, clue, contestantName, contestantResponse }) {
+    return buildChatCompletionsBody({
+      model,
+      messages: buildAnswerJudgmentMessages({ clue, contestantName, contestantResponse }),
+      responseSchema: ANSWER_JUDGMENT_JSON_SCHEMA,
+      temperature: 0,
+      topP: 1,
+      maxCompletionTokens: 120,
+    });
   }
 
   async function callOpenAiCompatibleApi({ endpoint, apiKey, model, messages }) {
@@ -427,6 +666,51 @@
     }
 
     return parseOpenAiGameResponse(payload);
+  }
+
+  async function callAnswerJudgmentApi({ endpoint, apiKey, model, clue, contestantName, contestantResponse }) {
+    const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
+    const cleanKey = String(apiKey || '').trim();
+    const cleanModel = String(model || '').trim() || DEFAULT_MODEL;
+    if (!cleanEndpoint) {
+      throw new Error('Enter the NTW OpenAI-compatible chat completions endpoint.');
+    }
+    if (!cleanKey) {
+      throw new Error('Enter the NTW API key before checking contestant answers.');
+    }
+    if (!cleanModel) {
+      throw new Error('Enter the NTW model name.');
+    }
+
+    const body = buildAnswerJudgmentChatCompletionsBody({
+      model: cleanModel,
+      clue,
+      contestantName,
+      contestantResponse,
+    });
+    const response = await fetch(cleanEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cleanKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const payloadText = await response.text();
+    let payload = null;
+    try {
+      payload = payloadText ? JSON.parse(payloadText) : null;
+    } catch (error) {
+      throw new Error(`The NTW answer check returned non-JSON content with HTTP ${response.status}.`);
+    }
+
+    if (!response.ok) {
+      const message = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
+      throw new Error(`The NTW answer check failed: ${message}`);
+    }
+
+    return parseAnswerJudgmentResponse(payload);
   }
 
   async function extractPdfText(file) {
@@ -519,7 +803,7 @@
     const sections = [];
     for (const file of list) {
       const text = await extractLessonTextFromFile(file);
-      const cleanText = String(text || '').replace(/\r\n/g, '\n').trim();
+      const cleanText = normalizeLongFormText(text);
       if (cleanText) {
         sections.push(`SOURCE FILE: ${file.name}\n${cleanText}`);
       }
@@ -527,6 +811,29 @@
     if (sections.length === 0) {
       throw new Error('The selected lesson files did not contain readable text.');
     }
+    return sections.join('\n\n---\n\n');
+  }
+
+  async function buildLessonSourceContent({ files, lessonTopicText, fileExtractor = extractLessonTextFromFiles } = {}) {
+    const list = Array.from(files || []);
+    const topic = normalizeLongFormText(lessonTopicText);
+    const sections = [];
+
+    if (topic) {
+      sections.push(`LEADER-PROVIDED LESSON TOPIC OR SUMMARY:\n${topic}`);
+    }
+
+    if (list.length > 0) {
+      const fileContent = normalizeLongFormText(await fileExtractor(list));
+      if (fileContent) {
+        sections.push(`UPLOADED LESSON FILES:\n${fileContent}`);
+      }
+    }
+
+    if (sections.length === 0) {
+      throw new Error('Add at least one lesson file or describe the lesson topic before generating a game.');
+    }
+
     return sections.join('\n\n---\n\n');
   }
 
@@ -559,10 +866,12 @@
     const fileInput = app.querySelector('#lesson-files');
     const dropZone = app.querySelector('#lesson-drop-zone');
     const fileStatus = app.querySelector('#lesson-file-status');
+    const lessonTopicInput = app.querySelector('#lesson-topic-text');
     const setupStatus = app.querySelector('#game-setup-status');
     const generateButton = app.querySelector('#generate-game-button');
     const endpointInput = app.querySelector('#ntw-api-endpoint');
     const modelInput = app.querySelector('#ntw-api-model');
+    const apiKeyInput = app.querySelector('#ntw-api-key');
     const gameArea = app.querySelector('#game-play-area');
     const scoreboard = app.querySelector('#scoreboard');
     const board = app.querySelector('#game-board');
@@ -576,10 +885,11 @@
     const clueExplanation = app.querySelector('#active-clue-explanation');
     const clueSource = app.querySelector('#active-clue-source');
     const contestantChoices = app.querySelector('#contestant-choices');
+    const responseSection = app.querySelector('#contestant-response-section');
+    const responseLabel = app.querySelector('#contestant-response-label');
+    const responseInput = app.querySelector('#contestant-response-input');
+    const checkResponseButton = app.querySelector('#check-response-button');
     const clueFeedback = app.querySelector('#clue-feedback');
-    const correctButton = app.querySelector('#mark-correct-button');
-    const wrongButton = app.querySelector('#mark-wrong-button');
-    const revealButton = app.querySelector('#reveal-answer-button');
     const closeClueButton = app.querySelector('#close-clue-button');
 
     let selectedFiles = [];
@@ -587,6 +897,7 @@
     let gameData = null;
     let activeClue = null;
     let answerRevealed = false;
+    let clueAutoCloseTimer = null;
 
     const savedEndpoint = window.localStorage?.getItem('ntwReviewGameEndpoint') || '';
     const savedModel = window.localStorage?.getItem('ntwReviewGameModel') || '';
@@ -648,17 +959,70 @@
       return null;
     }
 
+    function clearClueAutoCloseTimer() {
+      if (clueAutoCloseTimer) {
+        window.clearTimeout(clueAutoCloseTimer);
+        clueAutoCloseTimer = null;
+      }
+    }
+
+    function closeActiveClue() {
+      clearClueAutoCloseTimer();
+      if (cluePanel) cluePanel.hidden = true;
+      document.body?.classList.remove('has-active-clue-modal');
+      activeClue = null;
+      answerRevealed = false;
+      if (responseInput) {
+        responseInput.value = '';
+        responseInput.disabled = false;
+      }
+      if (responseSection) responseSection.hidden = true;
+      if (checkResponseButton) checkResponseButton.disabled = false;
+    }
+
+    function selectedContestantId() {
+      return contestantChoices?.querySelector('input[name="active-contestant"]:checked')?.value || '';
+    }
+
+    function selectedContestant() {
+      const id = selectedContestantId();
+      return contestants.find((contestant) => contestant.id === id) || null;
+    }
+
+    function updateResponseEntryState() {
+      const contestant = selectedContestant();
+      const clueIsComplete = Boolean(activeClue?.completed);
+      if (responseSection) responseSection.hidden = !contestant || clueIsComplete;
+      if (responseInput) {
+        responseInput.disabled = !contestant || clueIsComplete;
+        if (contestant && !clueIsComplete) {
+          responseInput.focus();
+        }
+      }
+      if (responseLabel?.firstChild && contestant) {
+        responseLabel.firstChild.textContent = `Enter ${contestant.name}'s response `;
+      }
+      if (checkResponseButton) {
+        checkResponseButton.disabled = !contestant || clueIsComplete;
+      }
+    }
+
     function renderContestantChoices() {
       if (!contestantChoices || !activeClue) return;
+      const attemptedIds = Array.isArray(activeClue.attemptedContestantIds)
+        ? activeClue.attemptedContestantIds
+        : [];
       contestantChoices.innerHTML = contestants.map((contestant) => {
-        const attempted = activeClue.attemptedContestantIds.includes(contestant.id);
+        const attempted = attemptedIds.includes(contestant.id);
+        const disabled = attempted || activeClue.completed;
         return `
-          <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}">
-            <input type="radio" name="active-contestant" value="${contestant.id}" ${attempted ? 'disabled' : ''} />
+          <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}${activeClue.completed ? ' contestant-choice--disabled' : ''}">
+            <input type="radio" name="active-contestant" value="${contestant.id}" ${disabled ? 'disabled' : ''} />
             <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${attempted ? ' · already missed' : ''}</small></span>
           </label>
         `;
       }).join('');
+      updateResponseEntryState();
     }
 
     function showAnswer() {
@@ -666,12 +1030,19 @@
       if (clueAnswer) clueAnswer.hidden = false;
       if (clueExplanation) clueExplanation.hidden = false;
       if (clueSource) clueSource.hidden = false;
-      if (revealButton) revealButton.textContent = 'Answer Shown';
+    }
+
+    function scheduleClueAutoClose() {
+      clearClueAutoCloseTimer();
+      clueAutoCloseTimer = window.setTimeout(() => {
+        closeActiveClue();
+      }, CORRECT_ANSWER_AUTO_CLOSE_MS);
     }
 
     function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
+      clearClueAutoCloseTimer();
       activeClue = found.clue;
       answerRevealed = false;
       if (clueHeading) clueHeading.textContent = `${found.category.title} for $${activeClue.value}`;
@@ -688,15 +1059,19 @@
         clueSource.innerHTML = `<strong>Source:</strong> ${escapeHtml(activeClue.sourceAnchor)}`;
         clueSource.hidden = true;
       }
-      if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here.';
-      if (revealButton) revealButton.textContent = 'Reveal Answer / No One Got It';
+      if (responseInput) {
+        responseInput.value = '';
+        responseInput.disabled = false;
+      }
+      if (responseSection) responseSection.hidden = true;
+      if (checkResponseButton) checkResponseButton.disabled = false;
+      if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. The correct answer stays hidden while NTW checks the response.';
       renderContestantChoices();
       cluePanel.hidden = false;
-      cluePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    function selectedContestantId() {
-      return contestantChoices?.querySelector('input[name="active-contestant"]:checked')?.value || '';
+      document.body?.classList.add('has-active-clue-modal');
+      window.requestAnimationFrame(() => {
+        contestantChoices?.querySelector('input[name="active-contestant"]:not(:disabled)')?.focus();
+      });
     }
 
     function replaceActiveClue(updatedClue) {
@@ -707,29 +1082,75 @@
       renderContestantChoices();
     }
 
-    function handleScoreDecision(decision) {
+    async function handleResponseCheck() {
       if (!activeClue) return;
+      const contestant = selectedContestant();
+      if (!contestant) {
+        if (clueFeedback) clueFeedback.textContent = 'Select the contestant who buzzed in before checking an answer.';
+        return;
+      }
+      const contestantResponse = responseInput?.value || '';
       try {
-        const result = applyScoreDecision({
+        buildAnswerJudgmentMessages({
+          clue: activeClue,
+          contestantName: contestant.name,
+          contestantResponse,
+        });
+        if (checkResponseButton) checkResponseButton.disabled = true;
+        if (responseInput) responseInput.disabled = true;
+        if (clueFeedback) clueFeedback.textContent = `Checking ${contestant.name}'s response with NTW…`;
+        const endpoint = normalizeChatCompletionsEndpoint(endpointInput?.value || DEFAULT_CHAT_COMPLETIONS_ENDPOINT);
+        const model = modelInput?.value || DEFAULT_MODEL;
+        if (endpointInput) endpointInput.value = endpoint;
+        const judgment = await callAnswerJudgmentApi({
+          endpoint,
+          apiKey: apiKeyInput?.value || '',
+          model,
+          clue: activeClue,
+          contestantName: contestant.name,
+          contestantResponse,
+        });
+        const result = applyAnswerJudgment({
           contestants,
           clue: activeClue,
-          contestantId: selectedContestantId(),
-          decision,
+          contestantId: contestant.id,
+          isCorrect: judgment.isCorrect,
         });
         contestants = result.contestants;
         replaceActiveClue(result.clue);
-        if (decision === 'wrong') {
-          if (clueFeedback) clueFeedback.textContent = 'Wrong answer recorded and points subtracted. Call on another physical buzzer, or reveal the answer.';
+
+        if (judgment.isCorrect) {
+          showAnswer();
+          if (responseSection) responseSection.hidden = true;
+          if (clueFeedback) {
+            clueFeedback.textContent = `${contestant.name}'s response was judged correct. ${formatScore(activeClue.value)} awarded. The answer is shown, and this panel will close in a moment.`;
+          }
+          scheduleClueAutoClose();
           return;
         }
-        showAnswer();
-        if (clueFeedback) {
-          clueFeedback.textContent = decision === 'correct'
-            ? 'Correct answer recorded. The clue is complete.'
-            : 'The answer is revealed and the clue is complete.';
+
+        if (result.allContestantsAttempted) {
+          showAnswer();
+          if (responseSection) responseSection.hidden = true;
+          if (clueFeedback) {
+            clueFeedback.textContent = `All contestants have attempted this clue. ${formatScore(activeClue.value)} was subtracted from each miss, and the answer is now shown.`;
+          }
+          return;
         }
+
+        if (responseInput) {
+          responseInput.value = '';
+          responseInput.disabled = false;
+        }
+        if (checkResponseButton) checkResponseButton.disabled = false;
+        if (clueFeedback) {
+          clueFeedback.textContent = `${contestant.name}'s response was not close enough, so ${formatScore(activeClue.value)} was subtracted. Call on another buzzer and select the next contestant.`;
+        }
+        updateResponseEntryState();
       } catch (error) {
-        if (clueFeedback) clueFeedback.textContent = error.message;
+        if (responseInput && !activeClue.completed) responseInput.disabled = false;
+        if (checkResponseButton && !activeClue.completed) checkResponseButton.disabled = false;
+        if (clueFeedback) clueFeedback.textContent = error.message || 'Could not check that answer.';
       }
     }
 
@@ -759,12 +1180,14 @@
     setupForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
       const nameInputs = Array.from(app.querySelectorAll('.contestant-name-input'));
-      const apiKeyInput = app.querySelector('#ntw-api-key');
       try {
         contestants = createContestants(nameInputs.map((input) => input.value));
-        renderStatus(setupStatus, 'Reading lesson files locally in your browser…', 'info');
+        renderStatus(setupStatus, 'Preparing lesson material in your browser…', 'info');
         if (generateButton) generateButton.disabled = true;
-        const lessonContent = await extractLessonTextFromFiles(selectedFiles);
+        const lessonContent = await buildLessonSourceContent({
+          files: selectedFiles,
+          lessonTopicText: lessonTopicInput?.value || '',
+        });
         const messages = buildOpenAiMessages({
           contestantNames: contestants.map((contestant) => contestant.name),
           lessonContent,
@@ -798,26 +1221,33 @@
       openClue(button.dataset.clueId);
     });
 
-    correctButton?.addEventListener('click', () => handleScoreDecision('correct'));
-    wrongButton?.addEventListener('click', () => handleScoreDecision('wrong'));
-    revealButton?.addEventListener('click', () => {
-      if (!activeClue) return;
-      if (!answerRevealed) {
-        showAnswer();
+    contestantChoices?.addEventListener('change', () => {
+      if (responseInput) responseInput.value = '';
+      updateResponseEntryState();
+    });
+    checkResponseButton?.addEventListener('click', () => {
+      handleResponseCheck();
+    });
+    responseInput?.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        handleResponseCheck();
       }
-      handleScoreDecision('reveal');
+    });
+    cluePanel?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeActiveClue();
+      }
     });
     closeClueButton?.addEventListener('click', () => {
-      if (cluePanel) cluePanel.hidden = true;
-      activeClue = null;
+      closeActiveClue();
     });
     resetButton?.addEventListener('click', () => {
       if (!window.confirm('Start over and clear the current game board?')) return;
       contestants = [];
       gameData = null;
-      activeClue = null;
+      closeActiveClue();
       if (gameArea) gameArea.hidden = true;
-      if (cluePanel) cluePanel.hidden = true;
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
     });
     exportButton?.addEventListener('click', () => {
@@ -852,14 +1282,19 @@
     createContestants,
     normalizeGeneratedGame,
     applyScoreDecision,
+    applyAnswerJudgment,
     truncateLessonContent,
     buildOpenAiMessages,
+    buildAnswerJudgmentMessages,
     stripJsonMarkdownFence,
     extractJsonObject,
     normalizeChatCompletionsEndpoint,
     parseOpenAiGameResponse,
+    parseAnswerJudgmentResponse,
     buildChatCompletionsBody,
+    buildAnswerJudgmentChatCompletionsBody,
     extractLessonTextFromFiles,
+    buildLessonSourceContent,
     initializeSmallGroupGame,
   };
 
