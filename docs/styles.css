@@ -628,17 +628,16 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 
 .testimonial-grid {
-  display: block;
-  columns: 280px 3;
-  column-gap: 0.85rem;
-  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  max-width: 78ch;
 }
 
 .testimonial-card {
-  display: inline-block;
+  display: block;
   width: 100%;
-  break-inside: avoid;
-  margin: 0 0 0.85rem;
+  margin: 0;
 }
 
 .testimonial-card blockquote {
