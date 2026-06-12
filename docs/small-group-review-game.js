@@ -169,6 +169,18 @@
     return rawScale;
   }
 
+  function formatClueModalScaleForCss(scale) {
+    const safeScale = Number(scale);
+    if (!Number.isFinite(safeScale) || safeScale <= 0) {
+      return '1';
+    }
+    const boundedScale = Math.min(1, safeScale);
+    const formatted = boundedScale >= 0.001
+      ? String(Math.floor(boundedScale * 1000) / 1000)
+      : boundedScale.toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
+    return formatted && formatted !== '0' ? formatted : '0.000000000001';
+  }
+
   function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
     const contestantIdText = String(contestantId || '');
     const attempted = Array.isArray(attemptedIds) && attemptedIds.map(String).includes(contestantIdText);
@@ -1290,8 +1302,9 @@
 
     function applyActiveClueScale(scale) {
       if (!clueCard || !clueCardContent) return;
-      const normalizedScale = Number(scale.toFixed(3));
-      clueCard.style.setProperty('--active-clue-scale', String(normalizedScale));
+      const scaleValue = formatClueModalScaleForCss(scale);
+      const normalizedScale = Number(scaleValue);
+      clueCard.style.setProperty('--active-clue-scale', scaleValue);
       clueCard.style.setProperty('--active-clue-content-width', `${100 / normalizedScale}%`);
       const scaledHeight = Math.ceil(clueCardContent.scrollHeight * normalizedScale) + CLUE_MODAL_FIT_TOLERANCE_PX;
       clueCard.style.setProperty('--active-clue-card-height', `${scaledHeight}px`);
@@ -1780,6 +1793,7 @@
     getResponseEntryControlState,
     canHandleNoBuzz,
     calculateClueModalScale,
+    formatClueModalScaleForCss,
     getContestantChoiceRenderState,
     buildAnswerVerdictPresentation,
     createContestants,

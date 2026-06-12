@@ -248,6 +248,21 @@ test('calculates dynamic clue modal scaling to fit oversized content', () => {
     contentWidth: 820,
     contentHeight: 4000,
   }), 0.125);
+
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 820,
+    availableHeight: 0.4,
+    contentWidth: 820,
+    contentHeight: 1000,
+  }), 0.0004);
+});
+
+test('formats sub-thousandth clue modal scales without collapsing to zero', () => {
+  const formattedScale = game.formatClueModalScaleForCss(0.0004);
+
+  assert.equal(formattedScale, '0.0004');
+  assert.equal(Number(formattedScale) > 0, true);
+  assert.notEqual(formattedScale, '0');
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {
