@@ -61,7 +61,10 @@ test('keeps only the first two contestant fields required in the browser form', 
   assert.doesNotMatch(inputMatches[3], /\brequired\b/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
+  assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
+  assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
+  assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=[^"]+"><\/script>/);
 });
 
@@ -108,6 +111,80 @@ test('keeps no-buzz, contestant choices, and response controls disabled while an
   assert.equal(readyState.noBuzzButtonDisabled, false);
   assert.equal(readyState.contestantChoicesDisabled, false);
   assert.equal(game.canHandleNoBuzz({ activeClue: { completed: false }, responseCheckInFlight: false }), true);
+});
+
+test('preserves selected contestant while pending checks disable the radio group', () => {
+  const pending = game.getContestantChoiceRenderState({
+    contestantId: 'contestant-1',
+    selectedContestantId: 'contestant-1',
+    attemptedIds: [],
+    clueIsComplete: false,
+    responseCheckInFlight: true,
+  });
+
+  assert.equal(pending.checked, true);
+  assert.equal(pending.disabled, true);
+
+  const alreadyAttempted = game.getContestantChoiceRenderState({
+    contestantId: 'contestant-1',
+    selectedContestantId: 'contestant-1',
+    attemptedIds: ['contestant-1'],
+    clueIsComplete: false,
+    responseCheckInFlight: true,
+  });
+
+  assert.equal(alreadyAttempted.checked, false);
+  assert.equal(alreadyAttempted.disabled, true);
+});
+
+test('builds clear verdict announcements without auto-closing revealed answers', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const correct = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+  const correctPresentation = game.buildAnswerVerdictPresentation({
+    result: correct,
+    contestantName: 'Ada',
+  });
+
+  assert.equal(correctPresentation.label, 'Correct');
+  assert.equal(correctPresentation.className, 'clue-verdict clue-verdict--correct');
+  assert.match(correctPresentation.message, /Correct/i);
+  assert.match(correctPresentation.message, /Ada/);
+  assert.match(correctPresentation.message, /\$100/);
+  assert.match(correctPresentation.message, /Back to Board/);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(correct), false);
+
+  const incorrect = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+  const incorrectPresentation = game.buildAnswerVerdictPresentation({
+    result: incorrect,
+    contestantName: 'Ada',
+  });
+
+  assert.equal(incorrectPresentation.label, 'Incorrect');
+  assert.equal(incorrectPresentation.className, 'clue-verdict clue-verdict--incorrect');
+  assert.match(incorrectPresentation.message, /Incorrect/i);
+  assert.match(incorrectPresentation.message, /Ada/);
+  assert.match(incorrectPresentation.message, /\$100/);
+});
+
+test('includes visible verdict styles for correct and incorrect answer judgments', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+
+  assert.match(css, /\.clue-verdict\s*{/);
+  assert.match(css, /\.clue-verdict--correct\s*{/);
+  assert.match(css, /\.clue-verdict--incorrect\s*{/);
+  assert.match(css, /font-weight:\s*(?:800|900|bold)/);
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {
@@ -272,7 +349,7 @@ test('marks clues complete without score changes when no one buzzes in', () => {
   assert.equal(result.clue.noContestantsBuzzed, true);
   assert.deepEqual(result.clue.attemptedContestantIds, []);
   assert.equal(result.answerShouldBeRevealed, true);
-  assert.equal(game.shouldAutoCloseAfterAnswerResult(result), true);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(result), false);
 });
 
 test('completes a two-player clue once both players have attempted without the expected answer', () => {
@@ -299,7 +376,7 @@ test('completes a two-player clue once both players have attempted without the e
   assert.equal(secondMiss.clue.completed, true);
   assert.equal(secondMiss.clue.allContestantsMissed, true);
   assert.equal(secondMiss.answerShouldBeRevealed, true);
-  assert.equal(game.shouldAutoCloseAfterAnswerResult(secondMiss), true);
+  assert.equal(game.shouldAutoCloseAfterAnswerResult(secondMiss), false);
 });
 
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material', () => {

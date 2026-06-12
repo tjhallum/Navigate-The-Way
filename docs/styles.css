@@ -2082,6 +2082,40 @@ body.has-active-clue-modal {
   background: rgba(255, 255, 255, 0.045);
 }
 
+.clue-verdict {
+  margin: 0.75rem 0 0.6rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.clue-verdict[hidden] {
+  display: none;
+}
+
+.clue-verdict--correct {
+  color: #92f5a8;
+  background: rgba(10, 82, 39, 0.26);
+}
+
+.clue-verdict--incorrect {
+  color: #ff9d9d;
+  background: rgba(132, 22, 32, 0.28);
+}
+
+.clue-verdict--partial {
+  color: #ffdf72;
+  background: rgba(126, 92, 13, 0.26);
+}
+
+.clue-verdict--neutral {
+  color: #cfe0ff;
+  background: rgba(122, 168, 255, 0.12);
+}
+
 .contestant-choices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
