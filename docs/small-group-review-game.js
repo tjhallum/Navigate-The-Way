@@ -171,13 +171,12 @@
     const awardedPoints = Number(result?.awardedPoints || 0);
     const points = formatScore(Math.abs(awardedPoints));
     const answerShown = Boolean(result?.answerShouldBeRevealed);
-    const backToBoard = 'Use Back to Board when everyone has had time to read it.';
 
     if (result?.noBuzz) {
       return {
         label: 'No Buzz',
         className: 'clue-verdict clue-verdict--neutral',
-        message: `No one buzzed in. No points changed. The correct answer is shown below. ${backToBoard}`,
+        message: 'No one buzzed in. No points changed. The correct answer is shown below.',
       };
     }
 
@@ -186,7 +185,7 @@
       return {
         label: 'Correct',
         className: 'clue-verdict clue-verdict--correct',
-        message: `Correct — ${name}'s response was accepted. ${points} awarded. The correct answer is shown below. ${backToBoard}`,
+        message: `Correct — ${name}'s response was accepted. ${points} awarded. The correct answer is shown below.`,
       };
     }
     if (verdict === 'partial') {
@@ -194,7 +193,7 @@
         label: 'Partial Credit',
         className: 'clue-verdict clue-verdict--partial',
         message: answerShown
-          ? `Partial credit — ${name} received ${points}. All contestants have attempted this clue, so the correct answer is shown below. ${backToBoard}`
+          ? `Partial credit — ${name} received ${points}. All contestants have attempted this clue, so the correct answer is shown below.`
           : `Partial credit — ${name} received ${points}. The clue remains open for another buzzer.`,
       };
     }
@@ -202,7 +201,7 @@
       label: 'Incorrect',
       className: 'clue-verdict clue-verdict--incorrect',
       message: answerShown
-        ? `Incorrect — ${name}'s response was not accepted. ${points} subtracted. The correct answer is shown below. ${backToBoard}`
+        ? `Incorrect — ${name}'s response was not accepted. ${points} subtracted. The correct answer is shown below.`
         : `Incorrect — ${name}'s response was not accepted. ${points} subtracted. Call on another buzzer.`,
     };
   }
@@ -1211,6 +1210,7 @@
     const clueSource = app.querySelector('#active-clue-source');
     const contestantChoices = app.querySelector('#contestant-choices');
     const responseSection = app.querySelector('#contestant-response-section');
+    const contestantPromptSection = app.querySelector('#contestant-prompt-section');
     const responseLabel = app.querySelector('#contestant-response-label');
     const responseInput = app.querySelector('#contestant-response-input');
     const checkResponseButton = app.querySelector('#check-response-button');
@@ -1408,6 +1408,7 @@
         responseInput.disabled = false;
       }
       if (responseSection) responseSection.hidden = true;
+      if (contestantPromptSection) contestantPromptSection.hidden = Boolean(activeClue.completed);
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = Boolean(activeClue.completed);
       if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
@@ -1435,11 +1436,12 @@
       showClueVerdict(buildAnswerVerdictPresentation({ result }));
       showAnswer();
       if (responseSection) responseSection.hidden = true;
+      if (contestantPromptSection) contestantPromptSection.hidden = true;
       if (responseInput) responseInput.disabled = true;
       if (checkResponseButton) checkResponseButton.disabled = true;
       if (noBuzzButton) noBuzzButton.disabled = true;
       if (clueFeedback) {
-        clueFeedback.textContent = 'No points changed. Review the correct answer, then choose Back to Board when ready.';
+        clueFeedback.textContent = 'No points changed. The correct answer is shown below.';
       }
     }
 
@@ -1504,8 +1506,9 @@
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
           if (responseSection) responseSection.hidden = true;
+          if (contestantPromptSection) contestantPromptSection.hidden = true;
           if (clueFeedback) {
-            clueFeedback.textContent = 'The correct answer is shown below. Choose Back to Board when everyone has had time to read it.';
+            clueFeedback.textContent = 'The correct answer is shown below.';
           }
           return;
         }
@@ -1514,8 +1517,9 @@
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
           if (responseSection) responseSection.hidden = true;
+          if (contestantPromptSection) contestantPromptSection.hidden = true;
           if (clueFeedback) {
-            clueFeedback.textContent = 'All contestants have attempted this clue. Review the correct answer, then choose Back to Board when ready.';
+            clueFeedback.textContent = 'All contestants have attempted this clue. The correct answer is shown below.';
           }
           return;
         }

@@ -21,6 +21,13 @@ function sampleGeneratedGame() {
   };
 }
 
+function cssRule(css, selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  assert.ok(match, `Expected CSS rule for ${selector}`);
+  return match[1];
+}
+
 test('supports common lesson upload file types used by small groups', () => {
   assert.equal(game.isSupportedLessonFile({ name: 'lesson.pdf', type: 'application/pdf' }), true);
   assert.equal(game.isSupportedLessonFile({ name: 'notes.txt', type: 'text/plain' }), true);
@@ -157,7 +164,8 @@ test('builds clear verdict announcements without auto-closing revealed answers',
   assert.match(correctPresentation.message, /Correct/i);
   assert.match(correctPresentation.message, /Ada/);
   assert.match(correctPresentation.message, /\$100/);
-  assert.match(correctPresentation.message, /Back to Board/);
+  assert.doesNotMatch(correctPresentation.message, /Use Back to Board when everyone has had time to read it\./);
+  assert.doesNotMatch(correctPresentation.message, /Back to Board/);
   assert.equal(game.shouldAutoCloseAfterAnswerResult(correct), false);
 
   const incorrect = game.applyAnswerJudgment({
@@ -185,6 +193,19 @@ test('includes visible verdict styles for correct and incorrect answer judgments
   assert.match(css, /\.clue-verdict--correct\s*{/);
   assert.match(css, /\.clue-verdict--incorrect\s*{/);
   assert.match(css, /font-weight:\s*(?:800|900|bold)/);
+});
+
+test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+  const panelRule = cssRule(css, '.active-clue-panel');
+  const cardRule = cssRule(css, '.active-clue-card');
+
+  assert.doesNotMatch(panelRule, /overflow-y:\s*auto/i);
+  assert.doesNotMatch(cardRule, /overflow-y:\s*auto/i);
+  assert.match(cardRule, /overflow:\s*hidden/i);
+  assert.match(cardRule, /max-height:\s*calc\(100dvh - clamp\(1rem, 4vw, 3rem\)\)/i);
+  assert.match(cardRule, /display:\s*grid/i);
+  assert.match(css, /\.active-clue-card > \*\s*{[\s\S]*min-width:\s*0/i);
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {
