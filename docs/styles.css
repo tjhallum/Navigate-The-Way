@@ -2041,10 +2041,10 @@ button.primary-action {
   display: grid;
   place-items: center;
   margin: 0;
-  padding: clamp(0.75rem, 2vw, 1.5rem);
+  padding: clamp(0.5rem, 2vw, 1.5rem);
   background: rgba(2, 6, 18, 0.76);
   backdrop-filter: blur(4px);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .active-clue-panel[hidden] {
@@ -2052,14 +2052,20 @@ button.primary-action {
 }
 
 .active-clue-card {
-  width: min(760px, 100%);
-  max-height: min(90vh, 760px);
-  overflow-y: auto;
+  width: min(820px, 100%);
+  max-height: calc(100dvh - clamp(1rem, 4vw, 3rem));
+  overflow: hidden;
+  display: grid;
+  gap: 0.45rem;
   border: 1px solid rgba(255, 206, 72, 0.42);
   border-radius: 16px;
-  padding: 1rem;
+  padding: clamp(0.72rem, 1.6vw, 1rem);
   background: rgba(5, 11, 30, 0.96);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+}
+
+.active-clue-card > * {
+  min-width: 0;
 }
 
 body.has-active-clue-modal {
@@ -2067,29 +2073,30 @@ body.has-active-clue-modal {
 }
 
 .active-clue-text {
-  margin: 0.5rem 0 1rem;
-  font-size: clamp(1.2rem, 3vw, 1.75rem);
-  line-height: 1.35;
+  margin: 0.25rem 0 0.35rem;
+  font-size: clamp(1.1rem, 2.45vw, 1.55rem);
+  line-height: 1.25;
   color: #f7faff;
   font-weight: 750;
 }
 
 .answer-box {
-  margin: 0.6rem 0;
-  padding: 0.75rem;
+  margin: 0.25rem 0;
+  padding: 0.58rem 0.65rem;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.045);
+  line-height: 1.32;
 }
 
 .clue-verdict {
-  margin: 0.75rem 0 0.6rem;
-  padding: 0.8rem 0.9rem;
+  margin: 0.35rem 0 0.25rem;
+  padding: 0.6rem 0.7rem;
   border-radius: 12px;
   border: 1px solid currentColor;
-  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-size: clamp(1rem, 1.55vw, 1.16rem);
   font-weight: 900;
-  line-height: 1.35;
+  line-height: 1.28;
 }
 
 .clue-verdict[hidden] {
@@ -2118,9 +2125,13 @@ body.has-active-clue-modal {
 
 .contestant-choices {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.6rem;
-  margin: 0.5rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.45rem;
+  margin: 0.25rem 0;
+}
+
+.contestant-prompt-section[hidden] {
+  display: none;
 }
 
 .contestant-choice {
@@ -2128,7 +2139,7 @@ body.has-active-clue-modal {
   align-items: center;
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 0.65rem;
+  padding: 0.52rem 0.6rem;
   background: rgba(255, 255, 255, 0.035);
   cursor: pointer;
 }
@@ -2149,8 +2160,8 @@ body.has-active-clue-modal {
 
 .contestant-response-section {
   display: grid;
-  gap: 0.65rem;
-  margin: 0.75rem 0;
+  gap: 0.45rem;
+  margin: 0.35rem 0;
 }
 
 .contestant-response-section[hidden] {
@@ -2168,7 +2179,7 @@ body.has-active-clue-modal {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 0.72rem 0.8rem;
+  padding: 0.58rem 0.65rem;
   color: var(--text);
   background: rgba(5, 11, 30, 0.92);
   font: inherit;
@@ -2201,9 +2212,5 @@ body.has-active-clue-modal {
 
   .game-board__clue {
     font-size: 1rem;
-  }
-
-  .active-clue-card {
-    max-height: 92vh;
   }
 }
