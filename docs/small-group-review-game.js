@@ -197,6 +197,14 @@
     };
   }
 
+  function clearContestantChoiceSelection(inputs) {
+    const list = Array.from(inputs || []);
+    list.forEach((input) => {
+      if (input) input.checked = false;
+    });
+    return list;
+  }
+
   function buildAnswerVerdictPresentation({ result, contestantName }) {
     const name = coerceText(contestantName, 'The contestant') || 'The contestant';
     const awardedPoints = Number(result?.awardedPoints || 0);
@@ -1393,6 +1401,8 @@
         responseInput.disabled = false;
       }
       if (responseSection) responseSection.hidden = true;
+      clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
+      if (contestantChoices) contestantChoices.innerHTML = '';
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = false;
     }
@@ -1512,12 +1522,13 @@
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = Boolean(activeClue.completed);
       if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+      clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
       renderContestantChoices();
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
       scheduleActiveClueFit();
       window.requestAnimationFrame(() => {
-        contestantChoices?.querySelector('input[name="active-contestant"]:not(:disabled)')?.focus();
+        cluePanel?.focus();
       });
     }
 
@@ -1795,6 +1806,7 @@
     calculateClueModalScale,
     formatClueModalScaleForCss,
     getContestantChoiceRenderState,
+    clearContestantChoiceSelection,
     buildAnswerVerdictPresentation,
     createContestants,
     normalizeGeneratedGame,
