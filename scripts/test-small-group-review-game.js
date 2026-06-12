@@ -289,7 +289,17 @@ test('formats sub-thousandth clue modal scales without collapsing to zero', () =
   assert.notEqual(formattedScale, '0');
 });
 
-test('normalizes and validates a generated five-by-five review board', () => {
+test('uses game board wording consistently in small group game copy', () => {
+  const copy = [
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8'),
+  ].join('\n');
+
+  assert.doesNotMatch(copy, /\breview[- ]board\b/i);
+  assert.match(copy, /\bgame board\b/i);
+});
+
+test('normalizes and validates a generated five-by-five game board', () => {
   const normalized = game.normalizeGeneratedGame(sampleGeneratedGame());
   assert.equal(normalized.categories.length, 5);
   assert.equal(normalized.categories[0].id, 'category-1');
