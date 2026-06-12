@@ -241,6 +241,13 @@ test('calculates dynamic clue modal scaling to fit oversized content', () => {
     contentWidth: 820,
     contentHeight: 2000,
   }), 0.25);
+
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 820,
+    availableHeight: 500,
+    contentWidth: 820,
+    contentHeight: 4000,
+  }), 0.125);
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {
