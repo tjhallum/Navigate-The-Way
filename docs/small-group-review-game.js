@@ -1714,7 +1714,7 @@
           window.localStorage.setItem('ntwReviewGameEndpoint', endpoint);
           window.localStorage.setItem('ntwReviewGameModel', model.trim() || DEFAULT_MODEL);
         }
-        renderStatus(setupStatus, 'Calling the NTW API to generate the review board…', 'info');
+        renderStatus(setupStatus, 'Calling the NTW API to generate the game board…', 'info');
         gameData = await callOpenAiCompatibleApi({
           endpoint,
           apiKey: apiKeyInput?.value || '',
