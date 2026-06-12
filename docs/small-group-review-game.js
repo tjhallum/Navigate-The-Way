@@ -12,7 +12,6 @@
   const DEFAULT_BIBLE = 'bsb';
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
-  const MIN_CLUE_MODAL_SCALE = 0.15;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
@@ -152,12 +151,11 @@
     return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
   }
 
-  function calculateClueModalScale({ availableWidth, availableHeight, contentWidth, contentHeight, minScale = MIN_CLUE_MODAL_SCALE }) {
+  function calculateClueModalScale({ availableWidth, availableHeight, contentWidth, contentHeight }) {
     const safeAvailableWidth = Number(availableWidth);
     const safeAvailableHeight = Number(availableHeight);
     const safeContentWidth = Number(contentWidth);
     const safeContentHeight = Number(contentHeight);
-    const safeMinScale = Number(minScale);
     if (![safeAvailableWidth, safeAvailableHeight, safeContentWidth, safeContentHeight].every(Number.isFinite)) {
       return 1;
     }
@@ -165,8 +163,10 @@
       return 1;
     }
     const rawScale = Math.min(1, safeAvailableWidth / safeContentWidth, safeAvailableHeight / safeContentHeight);
-    const lowerBound = Number.isFinite(safeMinScale) && safeMinScale > 0 ? safeMinScale : MIN_CLUE_MODAL_SCALE;
-    return Math.max(lowerBound, Math.min(1, Number(rawScale.toFixed(3))));
+    if (rawScale >= 0.001) {
+      return Math.max(0.001, Math.min(1, Math.floor(rawScale * 1000) / 1000));
+    }
+    return rawScale;
   }
 
   function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
