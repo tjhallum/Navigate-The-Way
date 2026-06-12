@@ -633,7 +633,7 @@
       {
         role: 'user',
         content: [
-          'Build a Jeopardy-style lesson review board for a Christian small group leader.',
+          'Build a Jeopardy-style lesson game board for a Christian small group leader.',
           `Contestants: ${names.join(', ')}`,
           'Requirements:',
           '- Generate exactly 5 categories.',
