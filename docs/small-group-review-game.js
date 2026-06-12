@@ -1517,7 +1517,7 @@
       document.body?.classList.add('has-active-clue-modal');
       scheduleActiveClueFit();
       window.requestAnimationFrame(() => {
-        contestantChoices?.querySelector('input[name="active-contestant"]:not(:disabled)')?.focus();
+        cluePanel?.focus();
       });
     }
 

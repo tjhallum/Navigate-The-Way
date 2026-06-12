@@ -144,6 +144,15 @@ test('preserves selected contestant while pending checks disable the radio group
   assert.equal(alreadyAttempted.disabled, true);
 });
 
+test('does not focus a contestant choice before the leader selects who buzzed in', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+
+  assert.match(html, /<section id="active-clue-panel"[^>]*tabindex="-1"/);
+  assert.doesNotMatch(js, /querySelector\('input\[name="active-contestant"\]:not\(:disabled\)'\)\?\.focus\(\)/);
+  assert.match(js, /cluePanel\?\.focus\(\)/);
+});
+
 test('builds clear verdict announcements without auto-closing revealed answers', () => {
   const contestants = game.createContestants(['Ada', 'Boaz']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
