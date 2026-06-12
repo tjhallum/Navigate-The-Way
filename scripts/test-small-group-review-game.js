@@ -196,16 +196,51 @@ test('includes visible verdict styles for correct and incorrect answer judgments
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
   const panelRule = cssRule(css, '.active-clue-panel');
   const cardRule = cssRule(css, '.active-clue-card');
+  const contentRule = cssRule(css, '.active-clue-card__content');
 
+  assert.match(html, /class="active-clue-card__content"/);
   assert.doesNotMatch(panelRule, /overflow-y:\s*auto/i);
   assert.doesNotMatch(cardRule, /overflow-y:\s*auto/i);
   assert.match(cardRule, /overflow:\s*hidden/i);
+  assert.match(cardRule, /height:\s*var\(--active-clue-card-height,\s*auto\)/i);
   assert.match(cardRule, /max-height:\s*calc\(100dvh - clamp\(1rem, 4vw, 3rem\)\)/i);
-  assert.match(cardRule, /display:\s*grid/i);
-  assert.match(css, /\.active-clue-card > \*\s*{[\s\S]*min-width:\s*0/i);
+  assert.match(contentRule, /transform:\s*scale\(var\(--active-clue-scale,\s*1\)\)/i);
+  assert.match(contentRule, /transform-origin:\s*top left/i);
+  assert.match(contentRule, /width:\s*var\(--active-clue-content-width,\s*100%\)/i);
+});
+
+test('calculates dynamic clue modal scaling to fit oversized content', () => {
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 820,
+    availableHeight: 600,
+    contentWidth: 820,
+    contentHeight: 560,
+  }), 1);
+
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 820,
+    availableHeight: 500,
+    contentWidth: 820,
+    contentHeight: 1000,
+  }), 0.5);
+
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 500,
+    availableHeight: 600,
+    contentWidth: 1000,
+    contentHeight: 600,
+  }), 0.5);
+
+  assert.equal(game.calculateClueModalScale({
+    availableWidth: 820,
+    availableHeight: 500,
+    contentWidth: 820,
+    contentHeight: 2000,
+  }), 0.25);
 });
 
 test('normalizes and validates a generated five-by-five review board', () => {

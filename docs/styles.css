@@ -2053,19 +2053,25 @@ button.primary-action {
 
 .active-clue-card {
   width: min(820px, 100%);
+  height: var(--active-clue-card-height, auto);
   max-height: calc(100dvh - clamp(1rem, 4vw, 3rem));
   overflow: hidden;
-  display: grid;
-  gap: 0.45rem;
+  box-sizing: border-box;
   border: 1px solid rgba(255, 206, 72, 0.42);
   border-radius: 16px;
-  padding: clamp(0.72rem, 1.6vw, 1rem);
   background: rgba(5, 11, 30, 0.96);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
 }
 
-.active-clue-card > * {
+.active-clue-card__content {
+  box-sizing: border-box;
+  width: var(--active-clue-content-width, 100%);
   min-width: 0;
+  display: grid;
+  gap: 0.45rem;
+  padding: clamp(0.72rem, 1.6vw, 1rem);
+  transform: scale(var(--active-clue-scale, 1));
+  transform-origin: top left;
 }
 
 body.has-active-clue-modal {
