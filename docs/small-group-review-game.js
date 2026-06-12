@@ -12,6 +12,8 @@
   const DEFAULT_BIBLE = 'bsb';
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
+  const MIN_CLUE_MODAL_SCALE = 0.15;
+  const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
   ]);
@@ -148,6 +150,23 @@
 
   function canHandleNoBuzz({ activeClue, responseCheckInFlight }) {
     return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
+  }
+
+  function calculateClueModalScale({ availableWidth, availableHeight, contentWidth, contentHeight, minScale = MIN_CLUE_MODAL_SCALE }) {
+    const safeAvailableWidth = Number(availableWidth);
+    const safeAvailableHeight = Number(availableHeight);
+    const safeContentWidth = Number(contentWidth);
+    const safeContentHeight = Number(contentHeight);
+    const safeMinScale = Number(minScale);
+    if (![safeAvailableWidth, safeAvailableHeight, safeContentWidth, safeContentHeight].every(Number.isFinite)) {
+      return 1;
+    }
+    if (safeAvailableWidth <= 0 || safeAvailableHeight <= 0 || safeContentWidth <= 0 || safeContentHeight <= 0) {
+      return 1;
+    }
+    const rawScale = Math.min(1, safeAvailableWidth / safeContentWidth, safeAvailableHeight / safeContentHeight);
+    const lowerBound = Number.isFinite(safeMinScale) && safeMinScale > 0 ? safeMinScale : MIN_CLUE_MODAL_SCALE;
+    return Math.max(lowerBound, Math.min(1, Number(rawScale.toFixed(3))));
   }
 
   function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
@@ -1202,6 +1221,8 @@
     const exportButton = app.querySelector('#export-game-json');
     const resetButton = app.querySelector('#reset-game-button');
     const cluePanel = app.querySelector('#active-clue-panel');
+    const clueCard = app.querySelector('.active-clue-card');
+    const clueCardContent = app.querySelector('.active-clue-card__content');
     const clueHeading = app.querySelector('#active-clue-heading');
     const clueText = app.querySelector('#active-clue-text');
     const clueVerdict = app.querySelector('#clue-verdict');
@@ -1225,6 +1246,7 @@
     let activeClue = null;
     let answerRevealed = false;
     let responseCheckInFlight = false;
+    let clueFitFrame = 0;
 
     const savedEndpoint = window.localStorage?.getItem('ntwReviewGameEndpoint') || '';
     const savedModel = window.localStorage?.getItem('ntwReviewGameModel') || '';
@@ -1242,6 +1264,65 @@
         return `${supported ? '✅' : '⚠️'} ${file.name}`;
       });
       fileStatus.textContent = names.join(' · ');
+    }
+
+    function resetActiveClueFit() {
+      if (clueFitFrame) {
+        window.cancelAnimationFrame?.(clueFitFrame);
+        clueFitFrame = 0;
+      }
+      clueCard?.style.removeProperty('--active-clue-scale');
+      clueCard?.style.removeProperty('--active-clue-card-height');
+      clueCard?.style.removeProperty('--active-clue-content-width');
+      clueCard?.classList.remove('is-scaled');
+    }
+
+    function getPanelAvailableRect() {
+      if (!cluePanel) return { availableWidth: 0, availableHeight: 0 };
+      const styles = window.getComputedStyle(cluePanel);
+      const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+      const paddingY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
+      return {
+        availableWidth: Math.max(1, cluePanel.clientWidth - paddingX),
+        availableHeight: Math.max(1, cluePanel.clientHeight - paddingY),
+      };
+    }
+
+    function applyActiveClueScale(scale) {
+      if (!clueCard || !clueCardContent) return;
+      const normalizedScale = Number(scale.toFixed(3));
+      clueCard.style.setProperty('--active-clue-scale', String(normalizedScale));
+      clueCard.style.setProperty('--active-clue-content-width', `${100 / normalizedScale}%`);
+      const scaledHeight = Math.ceil(clueCardContent.scrollHeight * normalizedScale) + CLUE_MODAL_FIT_TOLERANCE_PX;
+      clueCard.style.setProperty('--active-clue-card-height', `${scaledHeight}px`);
+      clueCard.classList.toggle('is-scaled', normalizedScale < 0.999);
+    }
+
+    function fitActiveClueCard() {
+      clueFitFrame = 0;
+      if (!cluePanel || cluePanel.hidden || !clueCard || !clueCardContent) return;
+      resetActiveClueFit();
+      const available = getPanelAvailableRect();
+      const firstScale = calculateClueModalScale({
+        ...available,
+        contentWidth: clueCardContent.scrollWidth,
+        contentHeight: clueCardContent.scrollHeight,
+      });
+      applyActiveClueScale(firstScale);
+      const adjustedScale = calculateClueModalScale({
+        ...available,
+        contentWidth: clueCardContent.scrollWidth,
+        contentHeight: clueCardContent.scrollHeight,
+      });
+      if (Math.abs(adjustedScale - firstScale) > 0.001) {
+        applyActiveClueScale(adjustedScale);
+      }
+    }
+
+    function scheduleActiveClueFit() {
+      if (!cluePanel || cluePanel.hidden || !clueCard || !clueCardContent) return;
+      if (clueFitFrame) window.cancelAnimationFrame?.(clueFitFrame);
+      clueFitFrame = window.requestAnimationFrame(fitActiveClueCard);
     }
 
     function setSelectedFiles(files) {
@@ -1288,6 +1369,7 @@
 
     function closeActiveClue() {
       responseCheckInFlight = false;
+      resetActiveClueFit();
       if (cluePanel) cluePanel.hidden = true;
       document.body?.classList.remove('has-active-clue-modal');
       activeClue = null;
@@ -1335,6 +1417,7 @@
       if (noBuzzButton) {
         noBuzzButton.disabled = controlState.noBuzzButtonDisabled;
       }
+      scheduleActiveClueFit();
     }
 
     function renderContestantChoices() {
@@ -1366,6 +1449,7 @@
       clueVerdict.textContent = '';
       clueVerdict.className = 'clue-verdict';
       clueVerdict.hidden = true;
+      scheduleActiveClueFit();
     }
 
     function showClueVerdict(presentation) {
@@ -1373,6 +1457,7 @@
       clueVerdict.textContent = presentation.message || presentation.label || '';
       clueVerdict.className = presentation.className || 'clue-verdict';
       clueVerdict.hidden = false;
+      scheduleActiveClueFit();
     }
 
     function showAnswer() {
@@ -1380,12 +1465,14 @@
       if (clueAnswer) clueAnswer.hidden = false;
       if (clueExplanation) clueExplanation.hidden = false;
       if (clueSource) clueSource.hidden = false;
+      scheduleActiveClueFit();
     }
 
     function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
       responseCheckInFlight = false;
+      resetActiveClueFit();
       activeClue = found.clue;
       answerRevealed = false;
       clearClueVerdict();
@@ -1415,6 +1502,7 @@
       renderContestantChoices();
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
+      scheduleActiveClueFit();
       window.requestAnimationFrame(() => {
         contestantChoices?.querySelector('input[name="active-contestant"]:not(:disabled)')?.focus();
       });
@@ -1645,6 +1733,9 @@
         closeActiveClue();
       }
     });
+    window.addEventListener('resize', () => {
+      scheduleActiveClueFit();
+    });
     closeClueButton?.addEventListener('click', () => {
       closeActiveClue();
     });
@@ -1688,6 +1779,7 @@
     configureContestantNameInputs,
     getResponseEntryControlState,
     canHandleNoBuzz,
+    calculateClueModalScale,
     getContestantChoiceRenderState,
     buildAnswerVerdictPresentation,
     createContestants,

@@ -213,29 +213,31 @@
 
       <section id="active-clue-panel" class="active-clue-panel" role="dialog" aria-modal="true" aria-labelledby="active-clue-heading" hidden>
         <div class="active-clue-card">
-          <p class="eyebrow" id="active-clue-heading">Category for $100</p>
-          <p id="active-clue-text" class="active-clue-text"></p>
-          <p id="clue-verdict" class="clue-verdict" aria-live="polite" hidden></p>
-          <p id="active-clue-answer" class="answer-box" hidden></p>
-          <p id="active-clue-explanation" class="answer-box" hidden></p>
-          <p id="active-clue-source" class="answer-box" hidden></p>
+          <div class="active-clue-card__content">
+            <p class="eyebrow" id="active-clue-heading">Category for $100</p>
+            <p id="active-clue-text" class="active-clue-text"></p>
+            <p id="clue-verdict" class="clue-verdict" aria-live="polite" hidden></p>
+            <p id="active-clue-answer" class="answer-box" hidden></p>
+            <p id="active-clue-explanation" class="answer-box" hidden></p>
+            <p id="active-clue-source" class="answer-box" hidden></p>
 
-          <div id="contestant-prompt-section" class="contestant-prompt-section">
-            <h3>Who buzzed in?</h3>
-            <div id="contestant-choices" class="contestant-choices"></div>
-          </div>
+            <div id="contestant-prompt-section" class="contestant-prompt-section">
+              <h3>Who buzzed in?</h3>
+              <div id="contestant-choices" class="contestant-choices"></div>
+            </div>
 
-          <div id="contestant-response-section" class="contestant-response-section" hidden>
-            <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
-              <textarea id="contestant-response-input" rows="3" maxlength="2000" placeholder="Type what the contestant said. Press Enter to check it, or Shift+Enter for a new line. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
-            </label>
-            <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
-          </div>
+            <div id="contestant-response-section" class="contestant-response-section" hidden>
+              <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
+                <textarea id="contestant-response-input" rows="3" maxlength="2000" placeholder="Type what the contestant said. Press Enter to check it, or Shift+Enter for a new line. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
+              </label>
+              <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
+            </div>
 
-          <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
-          <div class="clue-actions">
-            <button id="no-buzz-button" type="button">No one buzzed in</button>
-            <button id="close-clue-button" type="button">Back to Board</button>
+            <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
+            <div class="clue-actions">
+              <button id="no-buzz-button" type="button">No one buzzed in</button>
+              <button id="close-clue-button" type="button">Back to Board</button>
+            </div>
           </div>
         </div>
       </section>
@@ -252,6 +254,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260612-modal-no-scroll"></script>
+<script src="small-group-review-game.js?v=20260612-modal-dynamic-scale"></script>
 </body>
 </html>
