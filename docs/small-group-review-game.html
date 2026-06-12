@@ -215,6 +215,7 @@
         <div class="active-clue-card">
           <p class="eyebrow" id="active-clue-heading">Category for $100</p>
           <p id="active-clue-text" class="active-clue-text"></p>
+          <p id="clue-verdict" class="clue-verdict" aria-live="polite" hidden></p>
           <p id="active-clue-answer" class="answer-box" hidden></p>
           <p id="active-clue-explanation" class="answer-box" hidden></p>
           <p id="active-clue-source" class="answer-box" hidden></p>
@@ -232,7 +233,7 @@
           <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
           <div class="clue-actions">
             <button id="no-buzz-button" type="button">No one buzzed in</button>
-            <button id="close-clue-button" type="button">Close</button>
+            <button id="close-clue-button" type="button">Back to Board</button>
           </div>
         </div>
       </section>
@@ -249,6 +250,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260611-gameplay-completion"></script>
+<script src="small-group-review-game.js?v=20260611-verdict-manual-close"></script>
 </body>
 </html>

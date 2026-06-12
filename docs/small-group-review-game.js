@@ -10,7 +10,6 @@
   const DEFAULT_MODEL = 'openai/gpt/5.4';
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
-  const CORRECT_ANSWER_AUTO_CLOSE_MS = 6000;
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
@@ -149,6 +148,63 @@
 
   function canHandleNoBuzz({ activeClue, responseCheckInFlight }) {
     return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
+  }
+
+  function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
+    const contestantIdText = String(contestantId || '');
+    const attempted = Array.isArray(attemptedIds) && attemptedIds.map(String).includes(contestantIdText);
+    const controlState = getResponseEntryControlState({
+      hasSelectedContestant: true,
+      clueIsComplete,
+      responseCheckInFlight,
+    });
+    return {
+      attempted,
+      checked: contestantIdText !== '' && String(selectedContestantId || '') === contestantIdText && !attempted,
+      disabled: attempted || controlState.contestantChoicesDisabled,
+      choicesDisabled: controlState.contestantChoicesDisabled,
+    };
+  }
+
+  function buildAnswerVerdictPresentation({ result, contestantName }) {
+    const name = coerceText(contestantName, 'The contestant') || 'The contestant';
+    const awardedPoints = Number(result?.awardedPoints || 0);
+    const points = formatScore(Math.abs(awardedPoints));
+    const answerShown = Boolean(result?.answerShouldBeRevealed);
+    const backToBoard = 'Use Back to Board when everyone has had time to read it.';
+
+    if (result?.noBuzz) {
+      return {
+        label: 'No Buzz',
+        className: 'clue-verdict clue-verdict--neutral',
+        message: `No one buzzed in. No points changed. The correct answer is shown below. ${backToBoard}`,
+      };
+    }
+
+    const verdict = normalizeAnswerJudgment(result?.judgment || { verdict: result?.isCorrect ? 'correct' : 'incorrect' }).verdict;
+    if (verdict === 'correct') {
+      return {
+        label: 'Correct',
+        className: 'clue-verdict clue-verdict--correct',
+        message: `Correct — ${name}'s response was accepted. ${points} awarded. The correct answer is shown below. ${backToBoard}`,
+      };
+    }
+    if (verdict === 'partial') {
+      return {
+        label: 'Partial Credit',
+        className: 'clue-verdict clue-verdict--partial',
+        message: answerShown
+          ? `Partial credit — ${name} received ${points}. All contestants have attempted this clue, so the correct answer is shown below. ${backToBoard}`
+          : `Partial credit — ${name} received ${points}. The clue remains open for another buzzer.`,
+      };
+    }
+    return {
+      label: 'Incorrect',
+      className: 'clue-verdict clue-verdict--incorrect',
+      message: answerShown
+        ? `Incorrect — ${name}'s response was not accepted. ${points} subtracted. The correct answer is shown below. ${backToBoard}`
+        : `Incorrect — ${name}'s response was not accepted. ${points} subtracted. Call on another buzzer.`,
+    };
   }
 
   function createContestants(names) {
@@ -499,8 +555,8 @@
     };
   }
 
-  function shouldAutoCloseAfterAnswerResult(result) {
-    return Boolean(result?.answerShouldBeRevealed && result?.clue?.completed);
+  function shouldAutoCloseAfterAnswerResult() {
+    return false;
   }
 
   function truncateLessonContent(lessonContent, maxChars = MAX_LESSON_CHARS) {
@@ -1149,6 +1205,7 @@
     const cluePanel = app.querySelector('#active-clue-panel');
     const clueHeading = app.querySelector('#active-clue-heading');
     const clueText = app.querySelector('#active-clue-text');
+    const clueVerdict = app.querySelector('#clue-verdict');
     const clueAnswer = app.querySelector('#active-clue-answer');
     const clueExplanation = app.querySelector('#active-clue-explanation');
     const clueSource = app.querySelector('#active-clue-source');
@@ -1168,7 +1225,6 @@
     let activeClue = null;
     let answerRevealed = false;
     let responseCheckInFlight = false;
-    let clueAutoCloseTimer = null;
 
     const savedEndpoint = window.localStorage?.getItem('ntwReviewGameEndpoint') || '';
     const savedModel = window.localStorage?.getItem('ntwReviewGameModel') || '';
@@ -1230,20 +1286,13 @@
       return null;
     }
 
-    function clearClueAutoCloseTimer() {
-      if (clueAutoCloseTimer) {
-        window.clearTimeout(clueAutoCloseTimer);
-        clueAutoCloseTimer = null;
-      }
-    }
-
     function closeActiveClue() {
-      clearClueAutoCloseTimer();
       responseCheckInFlight = false;
       if (cluePanel) cluePanel.hidden = true;
       document.body?.classList.remove('has-active-clue-modal');
       activeClue = null;
       answerRevealed = false;
+      clearClueVerdict();
       if (responseInput) {
         responseInput.value = '';
         responseInput.disabled = false;
@@ -1293,22 +1342,37 @@
       const attemptedIds = Array.isArray(activeClue.attemptedContestantIds)
         ? activeClue.attemptedContestantIds
         : [];
+      const selectedId = selectedContestantId();
       contestantChoices.innerHTML = contestants.map((contestant) => {
-        const attempted = attemptedIds.includes(contestant.id);
-        const controlState = getResponseEntryControlState({
-          hasSelectedContestant: true,
+        const renderState = getContestantChoiceRenderState({
+          contestantId: contestant.id,
+          selectedContestantId: selectedId,
+          attemptedIds,
           clueIsComplete: Boolean(activeClue.completed),
           responseCheckInFlight,
         });
-        const disabled = attempted || controlState.contestantChoicesDisabled;
         return `
-          <label class="contestant-choice${attempted ? ' contestant-choice--attempted' : ''}${controlState.contestantChoicesDisabled ? ' contestant-choice--disabled' : ''}">
-            <input type="radio" name="active-contestant" value="${contestant.id}" ${disabled ? 'disabled' : ''} />
-            <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${attempted ? ' · already tried' : ''}</small></span>
+          <label class="contestant-choice${renderState.attempted ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}">
+            <input type="radio" name="active-contestant" value="${contestant.id}" ${renderState.checked ? 'checked' : ''} ${renderState.disabled ? 'disabled' : ''} />
+            <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${renderState.attempted ? ' · already tried' : ''}</small></span>
           </label>
         `;
       }).join('');
       updateResponseEntryState();
+    }
+
+    function clearClueVerdict() {
+      if (!clueVerdict) return;
+      clueVerdict.textContent = '';
+      clueVerdict.className = 'clue-verdict';
+      clueVerdict.hidden = true;
+    }
+
+    function showClueVerdict(presentation) {
+      if (!clueVerdict || !presentation) return;
+      clueVerdict.textContent = presentation.message || presentation.label || '';
+      clueVerdict.className = presentation.className || 'clue-verdict';
+      clueVerdict.hidden = false;
     }
 
     function showAnswer() {
@@ -1318,20 +1382,13 @@
       if (clueSource) clueSource.hidden = false;
     }
 
-    function scheduleClueAutoClose() {
-      clearClueAutoCloseTimer();
-      clueAutoCloseTimer = window.setTimeout(() => {
-        closeActiveClue();
-      }, CORRECT_ANSWER_AUTO_CLOSE_MS);
-    }
-
     function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
-      clearClueAutoCloseTimer();
       responseCheckInFlight = false;
       activeClue = found.clue;
       answerRevealed = false;
+      clearClueVerdict();
       if (clueHeading) clueHeading.textContent = `${found.category.title} for $${activeClue.value}`;
       if (clueText) clueText.textContent = activeClue.clue;
       if (clueAnswer) {
@@ -1375,16 +1432,14 @@
       const result = applyNoBuzzForClue({ contestants, clue: activeClue });
       contestants = result.contestants;
       replaceActiveClue(result.clue);
+      showClueVerdict(buildAnswerVerdictPresentation({ result }));
       showAnswer();
       if (responseSection) responseSection.hidden = true;
       if (responseInput) responseInput.disabled = true;
       if (checkResponseButton) checkResponseButton.disabled = true;
       if (noBuzzButton) noBuzzButton.disabled = true;
       if (clueFeedback) {
-        clueFeedback.textContent = 'No one buzzed in. No points changed. The answer is shown, and this panel will close in a moment.';
-      }
-      if (shouldAutoCloseAfterAnswerResult(result)) {
-        scheduleClueAutoClose();
+        clueFeedback.textContent = 'No points changed. Review the correct answer, then choose Back to Board when ready.';
       }
     }
 
@@ -1405,6 +1460,7 @@
           contestantName: contestant.name,
           contestantResponse,
         });
+        clearClueVerdict();
         responseCheckInFlight = true;
         startedResponseCheck = true;
         renderContestantChoices();
@@ -1445,31 +1501,21 @@
         replaceActiveClue(appliedClue);
 
         if (result.judgment.verdict === 'correct') {
+          showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
           if (responseSection) responseSection.hidden = true;
           if (clueFeedback) {
-            clueFeedback.textContent = `${contestant.name}'s response was judged correct. ${formatScore(result.awardedPoints)} awarded. The answer is shown, and this panel will close in a moment.`;
-          }
-          if (shouldAutoCloseAfterAnswerResult(result)) {
-            scheduleClueAutoClose();
+            clueFeedback.textContent = 'The correct answer is shown below. Choose Back to Board when everyone has had time to read it.';
           }
           return;
         }
 
         if (result.allContestantsAttempted) {
+          showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
           if (responseSection) responseSection.hidden = true;
           if (clueFeedback) {
-            const partialNote = result.judgment.verdict === 'partial' && result.awardedPoints > 0
-              ? `${contestant.name} received ${formatScore(result.awardedPoints)} partial credit. `
-              : '';
-            const missNote = result.judgment.verdict === 'incorrect'
-              ? `${formatScore(Math.abs(result.awardedPoints))} was subtracted for this miss. `
-              : '';
-            clueFeedback.textContent = `${partialNote}${missNote}All contestants have attempted this clue, so the answer is now shown and this panel will close in a moment.`;
-          }
-          if (shouldAutoCloseAfterAnswerResult(result)) {
-            scheduleClueAutoClose();
+            clueFeedback.textContent = 'All contestants have attempted this clue. Review the correct answer, then choose Back to Board when ready.';
           }
           return;
         }
@@ -1480,6 +1526,7 @@
         }
         if (checkResponseButton) checkResponseButton.disabled = false;
         if (noBuzzButton) noBuzzButton.disabled = false;
+        showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
         if (clueFeedback) {
           if (result.judgment.verdict === 'partial') {
             const remainingCredit = getFullCreditAward(appliedClue);
@@ -1637,6 +1684,8 @@
     configureContestantNameInputs,
     getResponseEntryControlState,
     canHandleNoBuzz,
+    getContestantChoiceRenderState,
+    buildAnswerVerdictPresentation,
     createContestants,
     normalizeGeneratedGame,
     applyScoreDecision,
