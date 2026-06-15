@@ -353,7 +353,7 @@
     });
 
     return {
-      title: pickText(rawGame, ['title', 'name'], 'Small Group Lesson Review'),
+      title: pickText(rawGame, ['title', 'name'], 'Berean Board Lesson Review'),
       categories,
       generatedAt: rawGame.generatedAt || new Date().toISOString(),
     };
@@ -1672,7 +1672,7 @@
 
     function completeSetupUi() {
       if (gameArea) gameArea.hidden = false;
-      if (gameTitle) gameTitle.textContent = gameData?.title || 'Small Group Lesson Review';
+      if (gameTitle) gameTitle.textContent = gameData?.title || 'Berean Board Lesson Review';
       renderScoreboard();
       renderBoard();
       gameArea?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1777,7 +1777,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'ntw-small-group-review-game.json';
+      link.download = 'ntw-berean-board-game.json';
       link.click();
       URL.revokeObjectURL(url);
     });
