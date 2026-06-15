@@ -1,6 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+  // GitHub Pages serves the homepage at /index as an extensionless alias.
+  // Send that duplicate URL back to the canonical homepage before analytics loads.
+  if (["/index", "/index.html", "/index/"].includes(window.location.pathname)) {
+    window.location.replace("/" + window.location.search + window.location.hash);
+  }
+</script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-PQRYDND927"></script>
 <script>
