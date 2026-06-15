@@ -29,7 +29,7 @@ Note: When guidance conflicts, prefer authoritative sources over supplementary s
 ## Supplementary sources
 - https://www.navtheway.com/creator — Creator background, mission intent, and stewardship context
 - https://www.navtheway.com/meet-ntw — Introductory explainer describing NTW capabilities and intended audience
-- https://www.navtheway.com/small-group-review-game — Small group Bible lesson review game generator using uploaded lesson files and NTW's Apologist Fusion Chat Completions API defaults
+- https://www.navtheway.com/small-group-review-game — Berean Board trivia-style Bible lesson review game generator using lesson files or typed lesson topics and NTW's Apologist Fusion Chat Completions API defaults
 - https://www.navtheway.com/feedback — User feedback channel and issue-reporting instructions
 
 ## Licensing and usage notes
