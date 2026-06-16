@@ -384,6 +384,30 @@
     return !playerNameListsMatch(currentPlayerNames || [], nextPlayerNames || []);
   }
 
+  function getSetupStepExpansionState(stage) {
+    switch (stage) {
+      case 'lesson':
+        return {
+          groupExpanded: false,
+          lessonExpanded: true,
+          lessonAvailable: true,
+        };
+      case 'game':
+        return {
+          groupExpanded: false,
+          lessonExpanded: false,
+          lessonAvailable: true,
+        };
+      case 'group':
+      default:
+        return {
+          groupExpanded: true,
+          lessonExpanded: false,
+          lessonAvailable: false,
+        };
+    }
+  }
+
   function serializeGroupMembersCookieValue(names) {
     const normalizedNames = normalizeGroupMemberList(names || [], { allowEmpty: true });
     return encodeURIComponent(JSON.stringify(normalizedNames));
@@ -1444,7 +1468,12 @@
     const playerPickerOptions = app.querySelector('#player-picker-options');
     const randomizePlayersButton = app.querySelector('#randomize-players-button');
     const confirmPlayersButton = app.querySelector('#confirm-players-button');
+    const groupSetupStep = app.querySelector('#group-setup-step');
+    const groupSetupToggle = app.querySelector('#group-setup-toggle');
+    const groupSetupContent = app.querySelector('#group-setup-content');
     const lessonSetupSection = app.querySelector('#lesson-setup-section');
+    const lessonSetupToggle = app.querySelector('#lesson-setup-toggle');
+    const lessonSetupContent = app.querySelector('#lesson-setup-content');
     const selectedPlayersSummary = app.querySelector('#selected-players-summary');
 
     let selectedFiles = [];
@@ -1463,6 +1492,82 @@
     if (endpointInput) endpointInput.value = savedEndpoint ? normalizeChatCompletionsEndpoint(savedEndpoint) : DEFAULT_CHAT_COMPLETIONS_ENDPOINT;
     if (modelInput) modelInput.value = savedModel || DEFAULT_MODEL;
 
+    function setSetupStepExpanded({ stepElement, toggleButton, contentElement, expanded, statusText }) {
+      if (!stepElement || !toggleButton || !contentElement) return;
+      contentElement.hidden = !expanded;
+      toggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      stepElement.classList.toggle('setup-step--expanded', expanded);
+      stepElement.classList.toggle('setup-step--collapsed', !expanded);
+      const statusElement = stepElement.querySelector('[data-setup-step-status]');
+      if (statusElement && statusText) {
+        statusElement.textContent = statusText;
+      }
+    }
+
+    function applySetupStepStage(stage) {
+      const state = getSetupStepExpansionState(stage);
+      const groupStatus = state.groupExpanded ? 'Current' : 'Done';
+      const lessonStatus = state.lessonAvailable ? (state.lessonExpanded ? 'Current' : 'Ready') : 'Locked';
+      setSetupStepExpanded({
+        stepElement: groupSetupStep,
+        toggleButton: groupSetupToggle,
+        contentElement: groupSetupContent,
+        expanded: state.groupExpanded,
+        statusText: groupStatus,
+      });
+      if (lessonSetupSection) {
+        lessonSetupSection.hidden = !state.lessonAvailable;
+      }
+      setSetupStepExpanded({
+        stepElement: lessonSetupSection,
+        toggleButton: lessonSetupToggle,
+        contentElement: lessonSetupContent,
+        expanded: state.lessonExpanded,
+        statusText: lessonStatus,
+      });
+    }
+
+    function toggleSetupStep(stepName) {
+      if (stepName === 'lesson' && lessonSetupSection?.hidden) return;
+      if (stepName === 'group') {
+        const shouldExpandGroup = Boolean(groupSetupContent?.hidden);
+        setSetupStepExpanded({
+          stepElement: groupSetupStep,
+          toggleButton: groupSetupToggle,
+          contentElement: groupSetupContent,
+          expanded: shouldExpandGroup,
+          statusText: shouldExpandGroup ? 'Current' : (lessonSetupSection?.hidden ? 'Current' : 'Done'),
+        });
+        if (shouldExpandGroup && !lessonSetupSection?.hidden) {
+          setSetupStepExpanded({
+            stepElement: lessonSetupSection,
+            toggleButton: lessonSetupToggle,
+            contentElement: lessonSetupContent,
+            expanded: false,
+            statusText: 'Ready',
+          });
+        }
+        return;
+      }
+      const shouldExpandLesson = Boolean(lessonSetupContent?.hidden);
+      setSetupStepExpanded({
+        stepElement: lessonSetupSection,
+        toggleButton: lessonSetupToggle,
+        contentElement: lessonSetupContent,
+        expanded: shouldExpandLesson,
+        statusText: shouldExpandLesson ? 'Current' : 'Ready',
+      });
+      if (shouldExpandLesson) {
+        setSetupStepExpanded({
+          stepElement: groupSetupStep,
+          toggleButton: groupSetupToggle,
+          contentElement: groupSetupContent,
+          expanded: false,
+          statusText: 'Done',
+        });
+      }
+    }
+
     function resetCurrentGameAfterPlayerChange() {
       contestants = [];
       gameData = null;
@@ -1472,8 +1577,8 @@
 
     function hideLessonSetup() {
       selectedPlayerNames = [];
-      if (lessonSetupSection) lessonSetupSection.hidden = true;
       if (selectedPlayersSummary) selectedPlayersSummary.textContent = '';
+      applySetupStepStage('group');
     }
 
     function renderSelectedPlayersSummary() {
@@ -1636,7 +1741,7 @@
       selectedPlayerNames = selection.playerNames;
       contestants = createContestants(selectedPlayerNames);
       renderStatus(groupSetupStatus, selection.message, 'success');
-      if (lessonSetupSection) lessonSetupSection.hidden = false;
+      applySetupStepStage('lesson');
       renderSelectedPlayersSummary();
       lessonSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -2045,6 +2150,7 @@
     }
 
     function completeSetupUi() {
+      applySetupStepStage('game');
       if (gameArea) gameArea.hidden = false;
       if (gameTitle) gameTitle.textContent = gameData?.title || 'Berean Board Lesson Review';
       renderScoreboard();
@@ -2052,6 +2158,12 @@
       gameArea?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    groupSetupToggle?.addEventListener('click', () => {
+      toggleSetupStep('group');
+    });
+    lessonSetupToggle?.addEventListener('click', () => {
+      toggleSetupStep('lesson');
+    });
     saveGroupMembersButton?.addEventListener('click', () => {
       saveGroupMembersFromEditor();
     });
@@ -2185,6 +2297,7 @@
       gameData = null;
       closeActiveClue();
       if (gameArea) gameArea.hidden = true;
+      applySetupStepStage('lesson');
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
     });
     exportButton?.addEventListener('click', () => {
@@ -2231,6 +2344,7 @@
     resolvePlayerSelection,
     selectRandomPlayers,
     shouldResetGeneratedGameForPlayerSelectionChange,
+    getSetupStepExpansionState,
     buildSavedGroupMembersCookie,
     buildClearGroupMembersCookie,
     readSavedGroupMembersCookie,

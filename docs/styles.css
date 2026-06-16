@@ -1801,6 +1801,59 @@ footer {
   gap: 1rem;
 }
 
+.setup-step {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(122, 168, 255, 0.24);
+  border-radius: 18px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.setup-step--collapsed {
+  opacity: 0.82;
+}
+
+.setup-step-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem !important;
+  text-align: left;
+  background: rgba(122, 168, 255, 0.09) !important;
+}
+
+.setup-step-title {
+  color: #f3f8ff;
+  font-size: clamp(1.18rem, 2.3vw, 1.45rem);
+  font-weight: 800;
+}
+
+.setup-step-status {
+  margin-left: auto;
+  color: #b8caff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-step-chevron {
+  color: #ffce48;
+  transition: transform 160ms ease;
+}
+
+.setup-step--expanded .setup-step-chevron {
+  transform: rotate(180deg);
+}
+
+.setup-step-content {
+  display: grid;
+  gap: 0.85rem;
+}
+
 .small-group-game-page [hidden] {
   display: none !important;
 }
