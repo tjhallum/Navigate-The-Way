@@ -114,6 +114,32 @@ test('randomly selects four players from checked group members', () => {
   );
 });
 
+test('requires clearing a generated game board when the confirmed players change', () => {
+  assert.equal(game.shouldResetGeneratedGameForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Daniel'],
+    hasGeneratedGame: true,
+  }), true);
+
+  assert.equal(game.shouldResetGeneratedGameForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: [],
+    hasGeneratedGame: true,
+  }), true);
+
+  assert.equal(game.shouldResetGeneratedGameForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    hasGeneratedGame: true,
+  }), false);
+
+  assert.equal(game.shouldResetGeneratedGameForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Daniel'],
+    hasGeneratedGame: false,
+  }), false);
+});
+
 test('renders group setup wizard controls before lesson setup in the browser form', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
 

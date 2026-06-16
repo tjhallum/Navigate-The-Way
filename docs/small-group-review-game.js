@@ -367,6 +367,23 @@
       .map((entry) => entry.name);
   }
 
+  function normalizePlayerNameListForComparison(names) {
+    return normalizeGroupMemberList(names || [], { allowEmpty: true });
+  }
+
+  function playerNameListsMatch(firstNames, secondNames) {
+    const first = normalizePlayerNameListForComparison(firstNames);
+    const second = normalizePlayerNameListForComparison(secondNames);
+    return first.length === second.length && first.every((name, index) => name === second[index]);
+  }
+
+  function shouldResetGeneratedGameForPlayerSelectionChange({ currentPlayerNames, nextPlayerNames, hasGeneratedGame }) {
+    if (!hasGeneratedGame) {
+      return false;
+    }
+    return !playerNameListsMatch(currentPlayerNames || [], nextPlayerNames || []);
+  }
+
   function serializeGroupMembersCookieValue(names) {
     const normalizedNames = normalizeGroupMemberList(names || [], { allowEmpty: true });
     return encodeURIComponent(JSON.stringify(normalizedNames));
@@ -1517,6 +1534,11 @@
         chosenPlayerNames = [];
       }
       const selection = resolvePlayerSelection({ attendingNames, chosenPlayerNames });
+      const shouldClearGeneratedGame = shouldResetGeneratedGameForPlayerSelectionChange({
+        currentPlayerNames: selectedPlayerNames,
+        nextPlayerNames: selection.canContinue ? selection.playerNames : [],
+        hasGeneratedGame: Boolean(gameData),
+      });
 
       if (playerPickerPanel) {
         playerPickerPanel.hidden = !selection.needsPlayerPick;
@@ -1536,11 +1558,18 @@
       renderStatus(groupSetupStatus, selection.message, statusType);
 
       if (!selection.canContinue) {
+        if (shouldClearGeneratedGame) {
+          resetCurrentGameAfterPlayerChange();
+        }
         hideLessonSetup();
         return selection;
       }
 
       if (keepLessonOpen && lessonSetupSection && !lessonSetupSection.hidden) {
+        if (shouldClearGeneratedGame) {
+          resetCurrentGameAfterPlayerChange();
+          renderStatus(groupSetupStatus, 'Players changed, so the current game board was cleared. Generate a new board after confirming the players.', 'info');
+        }
         selectedPlayerNames = selection.playerNames;
         contestants = createContestants(selectedPlayerNames);
         renderSelectedPlayersSummary();
@@ -2201,6 +2230,7 @@
     getCheckedGroupMemberNames,
     resolvePlayerSelection,
     selectRandomPlayers,
+    shouldResetGeneratedGameForPlayerSelectionChange,
     buildSavedGroupMembersCookie,
     buildClearGroupMembersCookie,
     readSavedGroupMembersCookie,
