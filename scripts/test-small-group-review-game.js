@@ -144,17 +144,30 @@ test('maps setup stages to the step that should be expanded', () => {
   assert.deepEqual(game.getSetupStepExpansionState('group'), {
     groupExpanded: true,
     lessonExpanded: false,
+    apiExpanded: false,
     lessonAvailable: false,
+    apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('lesson'), {
     groupExpanded: false,
     lessonExpanded: true,
+    apiExpanded: false,
     lessonAvailable: true,
+    apiAvailable: true,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('api'), {
+    groupExpanded: false,
+    lessonExpanded: false,
+    apiExpanded: true,
+    lessonAvailable: true,
+    apiAvailable: true,
   });
   assert.deepEqual(game.getSetupStepExpansionState('game'), {
     groupExpanded: false,
     lessonExpanded: false,
+    apiExpanded: false,
     lessonAvailable: true,
+    apiAvailable: true,
   });
   assert.deepEqual(game.getSetupStepExpansionState('unknown'), game.getSetupStepExpansionState('group'));
 });
@@ -179,13 +192,19 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /Or type the lesson topic, summary, or focus instructions/);
   assert.match(html, /focus more attention on/);
   assert.match(html, /Use this field with uploaded files to steer emphasis/);
+  assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>3\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
+  assert.match(html, /<section id="api-setup-section" class="api-setup-section setup-step" data-setup-step="api" aria-labelledby="api-setup-title" hidden>/);
+  assert.match(html, /<button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content">/);
+  assert.match(html, /<span id="api-setup-title" class="setup-step-title">3\. Connect to NTW’s API<\/span>/);
+  assert.match(html, /<div id="api-setup-content" class="setup-step-content" hidden>/);
+  assert.match(html, /<div class="api-grid">/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-lesson-instructions"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-api-setup-step"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {

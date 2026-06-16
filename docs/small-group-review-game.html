@@ -214,8 +214,16 @@
             <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8 and adoption in Christ. Or with an uploaded file: From my attached lesson I want to focus more attention on assurance and less on historical background."></textarea>
           </label>
           <p class="privacy-note">Use this field by itself when you do not have lesson-specific files. Use this field with uploaded files to steer emphasis, focus, or level of difficulty for the generated game board.</p>
+        </div>
+      </section>
 
-          <h2>3. Connect to NTW’s API</h2>
+      <section id="api-setup-section" class="api-setup-section setup-step" data-setup-step="api" aria-labelledby="api-setup-title" hidden>
+        <button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content">
+          <span id="api-setup-title" class="setup-step-title">3. Connect to NTW’s API</span>
+          <span class="setup-step-status" data-setup-step-status>Locked</span>
+          <span class="setup-step-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div id="api-setup-content" class="setup-step-content" hidden>
           <div class="api-grid">
             <label>Chat completions endpoint
               <input id="ntw-api-endpoint" type="url" value="https://navtheway.apologist.ai/api/v1/chat/completions" placeholder="https://navtheway.apologist.ai/api/v1/chat/completions" required />
@@ -293,6 +301,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260616-lesson-instructions"></script>
+<script src="small-group-review-game.js?v=20260616-api-setup-step"></script>
 </body>
 </html>

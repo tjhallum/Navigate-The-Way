@@ -391,20 +391,34 @@
         return {
           groupExpanded: false,
           lessonExpanded: true,
+          apiExpanded: false,
           lessonAvailable: true,
+          apiAvailable: true,
+        };
+      case 'api':
+        return {
+          groupExpanded: false,
+          lessonExpanded: false,
+          apiExpanded: true,
+          lessonAvailable: true,
+          apiAvailable: true,
         };
       case 'game':
         return {
           groupExpanded: false,
           lessonExpanded: false,
+          apiExpanded: false,
           lessonAvailable: true,
+          apiAvailable: true,
         };
       case 'group':
       default:
         return {
           groupExpanded: true,
           lessonExpanded: false,
+          apiExpanded: false,
           lessonAvailable: false,
+          apiAvailable: false,
         };
     }
   }
@@ -1499,6 +1513,9 @@
     const lessonSetupSection = app.querySelector('#lesson-setup-section');
     const lessonSetupToggle = app.querySelector('#lesson-setup-toggle');
     const lessonSetupContent = app.querySelector('#lesson-setup-content');
+    const apiSetupSection = app.querySelector('#api-setup-section');
+    const apiSetupToggle = app.querySelector('#api-setup-toggle');
+    const apiSetupContent = app.querySelector('#api-setup-content');
     const selectedPlayersSummary = app.querySelector('#selected-players-summary');
 
     let selectedFiles = [];
@@ -1532,7 +1549,12 @@
     function applySetupStepStage(stage) {
       const state = getSetupStepExpansionState(stage);
       const groupStatus = state.groupExpanded ? 'Current' : 'Done';
-      const lessonStatus = state.lessonAvailable ? (state.lessonExpanded ? 'Current' : 'Ready') : 'Locked';
+      const lessonStatus = state.lessonAvailable
+        ? (state.lessonExpanded ? 'Current' : (stage === 'game' ? 'Done' : 'Ready'))
+        : 'Locked';
+      const apiStatus = state.apiAvailable
+        ? (state.apiExpanded ? 'Current' : (stage === 'game' ? 'Done' : 'Ready'))
+        : 'Locked';
       setSetupStepExpanded({
         stepElement: groupSetupStep,
         toggleButton: groupSetupToggle,
@@ -1550,10 +1572,21 @@
         expanded: state.lessonExpanded,
         statusText: lessonStatus,
       });
+      if (apiSetupSection) {
+        apiSetupSection.hidden = !state.apiAvailable;
+      }
+      setSetupStepExpanded({
+        stepElement: apiSetupSection,
+        toggleButton: apiSetupToggle,
+        contentElement: apiSetupContent,
+        expanded: state.apiExpanded,
+        statusText: apiStatus,
+      });
     }
 
     function toggleSetupStep(stepName) {
       if (stepName === 'lesson' && lessonSetupSection?.hidden) return;
+      if (stepName === 'api' && apiSetupSection?.hidden) return;
       if (stepName === 'group') {
         const shouldExpandGroup = Boolean(groupSetupContent?.hidden);
         setSetupStepExpanded({
@@ -1572,17 +1605,34 @@
             statusText: 'Ready',
           });
         }
+        if (shouldExpandGroup && !apiSetupSection?.hidden) {
+          setSetupStepExpanded({
+            stepElement: apiSetupSection,
+            toggleButton: apiSetupToggle,
+            contentElement: apiSetupContent,
+            expanded: false,
+            statusText: 'Ready',
+          });
+        }
         return;
       }
-      const shouldExpandLesson = Boolean(lessonSetupContent?.hidden);
+
+      const isApiStep = stepName === 'api';
+      const targetStep = isApiStep ? apiSetupSection : lessonSetupSection;
+      const targetToggle = isApiStep ? apiSetupToggle : lessonSetupToggle;
+      const targetContent = isApiStep ? apiSetupContent : lessonSetupContent;
+      const otherStep = isApiStep ? lessonSetupSection : apiSetupSection;
+      const otherToggle = isApiStep ? lessonSetupToggle : apiSetupToggle;
+      const otherContent = isApiStep ? lessonSetupContent : apiSetupContent;
+      const shouldExpandTarget = Boolean(targetContent?.hidden);
       setSetupStepExpanded({
-        stepElement: lessonSetupSection,
-        toggleButton: lessonSetupToggle,
-        contentElement: lessonSetupContent,
-        expanded: shouldExpandLesson,
-        statusText: shouldExpandLesson ? 'Current' : 'Ready',
+        stepElement: targetStep,
+        toggleButton: targetToggle,
+        contentElement: targetContent,
+        expanded: shouldExpandTarget,
+        statusText: shouldExpandTarget ? 'Current' : 'Ready',
       });
-      if (shouldExpandLesson) {
+      if (shouldExpandTarget) {
         setSetupStepExpanded({
           stepElement: groupSetupStep,
           toggleButton: groupSetupToggle,
@@ -1590,6 +1640,15 @@
           expanded: false,
           statusText: 'Done',
         });
+        if (!otherStep?.hidden) {
+          setSetupStepExpanded({
+            stepElement: otherStep,
+            toggleButton: otherToggle,
+            contentElement: otherContent,
+            expanded: false,
+            statusText: 'Ready',
+          });
+        }
       }
     }
 
@@ -2188,6 +2247,9 @@
     });
     lessonSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('lesson');
+    });
+    apiSetupToggle?.addEventListener('click', () => {
+      toggleSetupStep('api');
     });
     saveGroupMembersButton?.addEventListener('click', () => {
       saveGroupMembersFromEditor();
