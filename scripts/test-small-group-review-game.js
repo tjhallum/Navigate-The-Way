@@ -638,6 +638,31 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[1].content, /Lesson material about Romans 8/);
 });
 
+test('preserves leader focus instructions when long uploaded lessons are truncated', () => {
+  const focusInstructions = 'Focus especially on prayer, dependence on Christ, and group application.';
+  const lessonContent = [
+    'UPLOADED LESSON FILES:',
+    'A'.repeat(game.MAX_LESSON_CHARS + 1000),
+    '',
+    '---',
+    '',
+    'LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:',
+    focusInstructions,
+  ].join('\n');
+
+  const messages = game.buildOpenAiMessages({
+    contestantNames: ['Ada', 'Boaz'],
+    lessonContent,
+  });
+  const lessonBlock = messages[1].content.match(/<<<LESSON_CONTENT_START>>>([\s\S]*)<<<LESSON_CONTENT_END>>>/)[1];
+
+  assert.match(messages[1].content, /NOTE: The supplied lesson material was truncated/);
+  assert.match(lessonBlock, /UPLOADED LESSON FILES:/);
+  assert.match(lessonBlock, /LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:/);
+  assert.match(lessonBlock, new RegExp(focusInstructions));
+  assert.ok(lessonBlock.trim().length <= game.MAX_LESSON_CHARS);
+});
+
 test('builds answer judgment prompts without requiring verbatim wording', () => {
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
   const messages = game.buildAnswerJudgmentMessages({
