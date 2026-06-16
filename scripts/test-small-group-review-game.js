@@ -36,7 +36,7 @@ test('supports common lesson upload file types used by small groups', () => {
   assert.equal(game.isSupportedLessonFile({ name: 'image.png', type: 'image/png' }), false);
 });
 
-test('builds scorekeeping contestants from two to four supplied names', () => {
+test('builds scorekeeping contestants from one to four selected player names', () => {
   const contestants = game.createContestants(['Ada', 'Boaz', '', 'Daniel']);
   assert.deepEqual(contestants, [
     { id: 'contestant-1', name: 'Ada', score: 0 },
@@ -44,28 +44,88 @@ test('builds scorekeeping contestants from two to four supplied names', () => {
     { id: 'contestant-3', name: 'Daniel', score: 0 },
   ]);
 
-  const twoContestants = game.createContestants(['Ada', 'Boaz']);
-  assert.deepEqual(twoContestants, [
+  const oneContestant = game.createContestants(['Ada']);
+  assert.deepEqual(oneContestant, [
     { id: 'contestant-1', name: 'Ada', score: 0 },
-    { id: 'contestant-2', name: 'Boaz', score: 0 },
   ]);
 });
 
-test('requires between two and four contestant names', () => {
-  assert.throws(() => game.createContestants(['Ada']), /two to four/i);
-  assert.throws(() => game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve']), /two to four/i);
-  assert.throws(() => game.createContestants(['Ada', ' ', ' ', ' ']), /two to four/i);
+test('requires between one and four selected player names', () => {
+  assert.throws(() => game.createContestants([]), /one to four/i);
+  assert.throws(() => game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve']), /one to four/i);
+  assert.throws(() => game.createContestants([' ', ' ', ' ', ' ']), /one to four/i);
 });
 
-test('keeps only the first two contestant fields required in the browser form', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
-  const inputMatches = [...html.matchAll(/<input class="contestant-name-input"[^>]*>/g)].map((match) => match[0]);
+test('parses and stores saved group member names in a cookie-safe value', () => {
+  const parsed = game.parseGroupMemberNames(' Ada, Boaz , Chloe, Ada, Daniel ');
+  assert.deepEqual(parsed, ['Ada', 'Boaz', 'Chloe', 'Daniel']);
 
-  assert.equal(inputMatches.length, 4);
-  assert.match(inputMatches[0], /\brequired\b/);
-  assert.match(inputMatches[1], /\brequired\b/);
-  assert.doesNotMatch(inputMatches[2], /\brequired\b/);
-  assert.doesNotMatch(inputMatches[3], /\brequired\b/);
+  const cookie = game.buildSavedGroupMembersCookie(parsed);
+  assert.match(cookie, /^ntwBereanBoardGroupMembers=/);
+  assert.match(cookie, /Max-Age=31536000/);
+  assert.match(cookie, /SameSite=Lax/);
+  assert.deepEqual(game.readSavedGroupMembersCookie(`theme=dark; ${cookie}; other=yes`), parsed);
+
+  const clearCookie = game.buildClearGroupMembersCookie();
+  assert.match(clearCookie, /^ntwBereanBoardGroupMembers=/);
+  assert.match(clearCookie, /Max-Age=0/);
+});
+
+test('defaults checked group members to players until more than four are present', () => {
+  const attendance = game.createGroupAttendance(['Ada', 'Boaz', 'Chloe']);
+  assert.deepEqual(attendance, [
+    { name: 'Ada', checked: true },
+    { name: 'Boaz', checked: true },
+    { name: 'Chloe', checked: true },
+  ]);
+  assert.deepEqual(game.getCheckedGroupMemberNames(attendance), ['Ada', 'Boaz', 'Chloe']);
+
+  const defaultSelection = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe'],
+    chosenPlayerNames: [],
+  });
+  assert.deepEqual(defaultSelection.playerNames, ['Ada', 'Boaz', 'Chloe']);
+  assert.equal(defaultSelection.needsPlayerPick, false);
+  assert.equal(defaultSelection.canContinue, true);
+
+  const needsFourPicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve'],
+    chosenPlayerNames: [],
+  });
+  assert.equal(needsFourPicked.needsPlayerPick, true);
+  assert.equal(needsFourPicked.canContinue, false);
+  assert.deepEqual(needsFourPicked.playerNames, []);
+
+  const manuallyPicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve'],
+    chosenPlayerNames: ['Eve', 'Boaz', 'Ada', 'Daniel'],
+  });
+  assert.equal(manuallyPicked.needsPlayerPick, true);
+  assert.equal(manuallyPicked.canContinue, true);
+  assert.deepEqual(manuallyPicked.playerNames, ['Eve', 'Boaz', 'Ada', 'Daniel']);
+});
+
+test('randomly selects four players from checked group members', () => {
+  const randomValues = [0.42, 0.05, 0.9, 0.2, 0.7];
+  const random = () => randomValues.shift();
+  assert.deepEqual(
+    game.selectRandomPlayers(['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve'], random),
+    ['Boaz', 'Daniel', 'Ada', 'Eve']
+  );
+});
+
+test('renders group setup wizard controls before lesson setup in the browser form', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+
+  assert.match(html, /<textarea id="group-member-names"/);
+  assert.match(html, /<button id="save-group-members-button" type="button"/);
+  assert.match(html, /<div id="group-member-checklist"/);
+  assert.match(html, /<button id="edit-group-members-button" type="button"/);
+  assert.match(html, /<button id="clear-group-cookie-button" type="button"/);
+  assert.match(html, /<section id="player-picker-panel"[^>]*hidden>/);
+  assert.match(html, /<button id="randomize-players-button" type="button"/);
+  assert.match(html, /<button id="confirm-players-button" type="button" class="primary-action"/);
+  assert.match(html, /<section id="lesson-setup-section"[^>]*hidden>/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);

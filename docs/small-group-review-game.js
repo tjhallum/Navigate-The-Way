@@ -13,6 +13,8 @@
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
+  const GROUP_MEMBERS_COOKIE_NAME = 'ntwBereanBoardGroupMembers';
+  const GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS = 31536000;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
   ]);
@@ -247,17 +249,172 @@
 
   function createContestants(names) {
     if (!Array.isArray(names)) {
-      throw new Error('Please supply two to four contestant names.');
+      throw new Error('Please supply one to four selected player names.');
     }
-    const suppliedNames = names.map((name) => coerceText(name)).filter(Boolean);
-    if (suppliedNames.length < 2 || suppliedNames.length > 4) {
-      throw new Error('Please supply two to four contestant names.');
+    const suppliedNames = normalizeGroupMemberList(names, { allowEmpty: true });
+    if (suppliedNames.length < 1 || suppliedNames.length > 4) {
+      throw new Error('Please supply one to four selected player names.');
     }
     return suppliedNames.map((name, index) => ({
       id: `contestant-${index + 1}`,
       name: normalizeContestantName(name, index),
       score: 0,
     }));
+  }
+
+  function normalizeGroupMemberName(name, index) {
+    const normalized = coerceText(name);
+    if (!normalized) {
+      throw new Error(`Group member ${index + 1} needs a name.`);
+    }
+    if (normalized.length > 40) {
+      throw new Error(`Group member ${index + 1}'s name must be 40 characters or fewer.`);
+    }
+    return normalized;
+  }
+
+  function normalizeGroupMemberList(names, options = {}) {
+    const allowEmpty = Boolean(options.allowEmpty);
+    const source = Array.isArray(names) ? names : [];
+    const normalizedNames = [];
+    const seen = new Set();
+    source.forEach((name, index) => {
+      const raw = coerceText(name);
+      if (!raw) return;
+      const normalized = normalizeGroupMemberName(raw, index);
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      normalizedNames.push(normalized);
+    });
+    if (!allowEmpty && normalizedNames.length === 0) {
+      throw new Error('Enter at least one group member name.');
+    }
+    return normalizedNames;
+  }
+
+  function parseGroupMemberNames(text) {
+    const parts = String(text || '').split(',');
+    return normalizeGroupMemberList(parts);
+  }
+
+  function createGroupAttendance(names) {
+    return normalizeGroupMemberList(names).map((name) => ({ name, checked: true }));
+  }
+
+  function getCheckedGroupMemberNames(attendanceEntries) {
+    const entries = Array.isArray(attendanceEntries) ? attendanceEntries : [];
+    return normalizeGroupMemberList(
+      entries
+        .filter((entry) => Boolean(entry?.checked))
+        .map((entry) => entry.name),
+      { allowEmpty: true }
+    );
+  }
+
+  function resolvePlayerSelection({ attendingNames, chosenPlayerNames }) {
+    const attending = normalizeGroupMemberList(attendingNames || [], { allowEmpty: true });
+    if (attending.length === 0) {
+      return {
+        attendingNames: attending,
+        playerNames: [],
+        needsPlayerPick: false,
+        canContinue: false,
+        message: 'Check at least one attending group member before continuing.',
+      };
+    }
+    if (attending.length <= 4) {
+      return {
+        attendingNames: attending,
+        playerNames: attending,
+        needsPlayerPick: false,
+        canContinue: true,
+        message: `${attending.length} ${attending.length === 1 ? 'player is' : 'players are'} selected for this game.`,
+      };
+    }
+
+    const attendingKeys = new Set(attending.map((name) => name.toLowerCase()));
+    const chosen = normalizeGroupMemberList(chosenPlayerNames || [], { allowEmpty: true })
+      .filter((name) => attendingKeys.has(name.toLowerCase()));
+    const canContinue = chosen.length === 4;
+    return {
+      attendingNames: attending,
+      playerNames: canContinue ? chosen : [],
+      needsPlayerPick: true,
+      canContinue,
+      message: canContinue
+        ? `Four players are selected: ${chosen.join(', ')}.`
+        : 'More than four group members are present. Pick exactly four players, or let Berean Board choose four randomly.',
+    };
+  }
+
+  function selectRandomPlayers(names, random = Math.random) {
+    const pool = normalizeGroupMemberList(names || [], { allowEmpty: true });
+    if (pool.length <= 4) {
+      return pool;
+    }
+    return pool
+      .map((name, index) => {
+        const rank = Number(random());
+        return {
+          name,
+          index,
+          rank: Number.isFinite(rank) ? rank : 1,
+        };
+      })
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .slice(0, 4)
+      .map((entry) => entry.name);
+  }
+
+  function serializeGroupMembersCookieValue(names) {
+    const normalizedNames = normalizeGroupMemberList(names || [], { allowEmpty: true });
+    return encodeURIComponent(JSON.stringify(normalizedNames));
+  }
+
+  function buildSavedGroupMembersCookie(names, options = {}) {
+    const maxAge = Number.isFinite(Number(options.maxAgeSeconds))
+      ? Math.max(0, Math.floor(Number(options.maxAgeSeconds)))
+      : GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS;
+    return `${GROUP_MEMBERS_COOKIE_NAME}=${serializeGroupMembersCookieValue(names)}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
+  }
+
+  function buildClearGroupMembersCookie() {
+    return `${GROUP_MEMBERS_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Lax`;
+  }
+
+  function readSavedGroupMembersCookie(cookieString) {
+    const source = String(cookieString || '');
+    const pairs = source.split(';').map((part) => part.trim()).filter(Boolean);
+    const prefix = `${GROUP_MEMBERS_COOKIE_NAME}=`;
+    const pair = pairs.find((item) => item.startsWith(prefix));
+    if (!pair) {
+      return [];
+    }
+    try {
+      const rawValue = pair.slice(prefix.length);
+      if (!rawValue) return [];
+      const parsed = JSON.parse(decodeURIComponent(rawValue));
+      return Array.isArray(parsed)
+        ? normalizeGroupMemberList(parsed, { allowEmpty: true })
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function writeSavedGroupMembersCookie(names, documentRef = typeof document !== 'undefined' ? document : null) {
+    if (!documentRef) return '';
+    const cookie = buildSavedGroupMembersCookie(names);
+    documentRef.cookie = cookie;
+    return cookie;
+  }
+
+  function clearSavedGroupMembersCookie(documentRef = typeof document !== 'undefined' ? document : null) {
+    if (!documentRef) return '';
+    const cookie = buildClearGroupMembersCookie();
+    documentRef.cookie = cookie;
+    return cookie;
   }
 
   function coerceText(value, fallback = '') {
@@ -1258,9 +1415,25 @@
     const clueFeedback = app.querySelector('#clue-feedback');
     const noBuzzButton = app.querySelector('#no-buzz-button');
     const closeClueButton = app.querySelector('#close-clue-button');
-    const nameInputs = configureContestantNameInputs(app.querySelectorAll('.contestant-name-input'));
+    const groupEditor = app.querySelector('#group-member-editor');
+    const groupMemberTextarea = app.querySelector('#group-member-names');
+    const saveGroupMembersButton = app.querySelector('#save-group-members-button');
+    const groupReview = app.querySelector('#group-member-review');
+    const groupChecklist = app.querySelector('#group-member-checklist');
+    const editGroupMembersButton = app.querySelector('#edit-group-members-button');
+    const clearGroupCookieButton = app.querySelector('#clear-group-cookie-button');
+    const groupSetupStatus = app.querySelector('#group-setup-status');
+    const playerPickerPanel = app.querySelector('#player-picker-panel');
+    const playerPickerOptions = app.querySelector('#player-picker-options');
+    const randomizePlayersButton = app.querySelector('#randomize-players-button');
+    const confirmPlayersButton = app.querySelector('#confirm-players-button');
+    const lessonSetupSection = app.querySelector('#lesson-setup-section');
+    const selectedPlayersSummary = app.querySelector('#selected-players-summary');
 
     let selectedFiles = [];
+    let groupMemberNames = readSavedGroupMembersCookie(document.cookie);
+    let chosenPlayerNames = [];
+    let selectedPlayerNames = [];
     let contestants = [];
     let gameData = null;
     let activeClue = null;
@@ -1272,6 +1445,178 @@
     const savedModel = window.localStorage?.getItem('ntwReviewGameModel') || '';
     if (endpointInput) endpointInput.value = savedEndpoint ? normalizeChatCompletionsEndpoint(savedEndpoint) : DEFAULT_CHAT_COMPLETIONS_ENDPOINT;
     if (modelInput) modelInput.value = savedModel || DEFAULT_MODEL;
+
+    function resetCurrentGameAfterPlayerChange() {
+      contestants = [];
+      gameData = null;
+      closeActiveClue();
+      if (gameArea) gameArea.hidden = true;
+    }
+
+    function hideLessonSetup() {
+      selectedPlayerNames = [];
+      if (lessonSetupSection) lessonSetupSection.hidden = true;
+      if (selectedPlayersSummary) selectedPlayersSummary.textContent = '';
+    }
+
+    function renderSelectedPlayersSummary() {
+      if (!selectedPlayersSummary) return;
+      if (!selectedPlayerNames.length) {
+        selectedPlayersSummary.textContent = '';
+        return;
+      }
+      selectedPlayersSummary.textContent = `Players for this game: ${selectedPlayerNames.join(', ')}.`;
+    }
+
+    function getAttendanceEntriesFromChecklist() {
+      if (!groupChecklist) return [];
+      return Array.from(groupChecklist.querySelectorAll('input[name="group-member-present"]')).map((input) => ({
+        name: input.value,
+        checked: input.checked,
+      }));
+    }
+
+    function getAttendingNamesFromChecklist() {
+      return getCheckedGroupMemberNames(getAttendanceEntriesFromChecklist());
+    }
+
+    function getChosenPlayerNamesFromPicker() {
+      if (!playerPickerOptions) return [];
+      return normalizeGroupMemberList(
+        Array.from(playerPickerOptions.querySelectorAll('input[name="selected-player"]:checked')).map((input) => input.value),
+        { allowEmpty: true }
+      );
+    }
+
+    function renderPlayerPickerOptions(attendingNames) {
+      if (!playerPickerOptions) return;
+      const chosenKeys = new Set(chosenPlayerNames.map((name) => name.toLowerCase()));
+      playerPickerOptions.innerHTML = attendingNames.map((name, index) => {
+        const inputId = `selected-player-${index}`;
+        return `
+          <label class="group-member-option player-picker-option" for="${inputId}">
+            <input id="${inputId}" type="checkbox" name="selected-player" value="${escapeHtml(name)}" ${chosenKeys.has(name.toLowerCase()) ? 'checked' : ''} />
+            <span>${escapeHtml(name)}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function currentPlayerSelection() {
+      const attendingNames = getAttendingNamesFromChecklist();
+      if (attendingNames.length > 4) {
+        const attendingKeys = new Set(attendingNames.map((name) => name.toLowerCase()));
+        chosenPlayerNames = chosenPlayerNames.filter((name) => attendingKeys.has(name.toLowerCase()));
+      }
+      return resolvePlayerSelection({ attendingNames, chosenPlayerNames });
+    }
+
+    function refreshPlayerSelectionUi({ keepLessonOpen = false } = {}) {
+      const attendingNames = getAttendingNamesFromChecklist();
+      if (attendingNames.length <= 4) {
+        chosenPlayerNames = [];
+      }
+      const selection = resolvePlayerSelection({ attendingNames, chosenPlayerNames });
+
+      if (playerPickerPanel) {
+        playerPickerPanel.hidden = !selection.needsPlayerPick;
+      }
+      if (selection.needsPlayerPick) {
+        renderPlayerPickerOptions(attendingNames);
+      } else if (playerPickerOptions) {
+        playerPickerOptions.innerHTML = '';
+      }
+
+      if (confirmPlayersButton) {
+        confirmPlayersButton.hidden = groupMemberNames.length === 0;
+        confirmPlayersButton.disabled = !selection.canContinue;
+      }
+
+      const statusType = selection.canContinue ? 'success' : (attendingNames.length === 0 ? 'error' : 'info');
+      renderStatus(groupSetupStatus, selection.message, statusType);
+
+      if (!selection.canContinue) {
+        hideLessonSetup();
+        return selection;
+      }
+
+      if (keepLessonOpen && lessonSetupSection && !lessonSetupSection.hidden) {
+        selectedPlayerNames = selection.playerNames;
+        contestants = createContestants(selectedPlayerNames);
+        renderSelectedPlayersSummary();
+      }
+      return selection;
+    }
+
+    function renderGroupMemberChecklist() {
+      if (!groupChecklist) return;
+      groupChecklist.innerHTML = groupMemberNames.map((name, index) => {
+        const inputId = `group-member-present-${index}`;
+        return `
+          <label class="group-member-option" for="${inputId}">
+            <input id="${inputId}" type="checkbox" name="group-member-present" value="${escapeHtml(name)}" checked />
+            <span>${escapeHtml(name)}</span>
+          </label>
+        `;
+      }).join('');
+      refreshPlayerSelectionUi();
+    }
+
+    function showGroupEditor(names = groupMemberNames) {
+      if (groupMemberTextarea) groupMemberTextarea.value = normalizeGroupMemberList(names || [], { allowEmpty: true }).join(', ');
+      if (groupEditor) groupEditor.hidden = false;
+      if (groupReview) groupReview.hidden = true;
+      if (playerPickerPanel) playerPickerPanel.hidden = true;
+      if (confirmPlayersButton) confirmPlayersButton.hidden = true;
+      chosenPlayerNames = [];
+      hideLessonSetup();
+      resetCurrentGameAfterPlayerChange();
+      renderStatus(groupSetupStatus, 'Enter your group member names separated by commas.', 'info');
+    }
+
+    function showGroupReview(names, message = 'Group saved. Uncheck anyone who is absent, then continue.') {
+      groupMemberNames = normalizeGroupMemberList(names || [], { allowEmpty: true });
+      if (groupMemberTextarea) groupMemberTextarea.value = groupMemberNames.join(', ');
+      if (groupEditor) groupEditor.hidden = true;
+      if (groupReview) groupReview.hidden = false;
+      chosenPlayerNames = [];
+      hideLessonSetup();
+      resetCurrentGameAfterPlayerChange();
+      renderGroupMemberChecklist();
+      const selection = currentPlayerSelection();
+      renderStatus(groupSetupStatus, selection.needsPlayerPick ? selection.message : message, selection.needsPlayerPick ? 'info' : 'success');
+    }
+
+    function saveGroupMembersFromEditor() {
+      try {
+        const names = parseGroupMemberNames(groupMemberTextarea?.value || '');
+        writeSavedGroupMembersCookie(names);
+        showGroupReview(names, 'Group saved in this browser. Uncheck absent members, then continue.');
+      } catch (error) {
+        renderStatus(groupSetupStatus, error.message || 'Could not save those group members.', 'error');
+      }
+    }
+
+    function confirmPlayerSelection() {
+      const selection = currentPlayerSelection();
+      if (!selection.canContinue) {
+        renderStatus(groupSetupStatus, selection.message, 'error');
+        hideLessonSetup();
+        return;
+      }
+      selectedPlayerNames = selection.playerNames;
+      contestants = createContestants(selectedPlayerNames);
+      renderStatus(groupSetupStatus, selection.message, 'success');
+      if (lessonSetupSection) lessonSetupSection.hidden = false;
+      renderSelectedPlayersSummary();
+      lessonSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    if (groupMemberNames.length > 0) {
+      showGroupReview(groupMemberNames, 'Saved group loaded. Uncheck absent members, then continue.');
+    } else {
+      showGroupEditor([]);
+    }
 
     function updateFileStatus() {
       if (!fileStatus) return;
@@ -1678,6 +2023,42 @@
       gameArea?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    saveGroupMembersButton?.addEventListener('click', () => {
+      saveGroupMembersFromEditor();
+    });
+    groupMemberTextarea?.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        saveGroupMembersFromEditor();
+      }
+    });
+    editGroupMembersButton?.addEventListener('click', () => {
+      showGroupEditor(groupMemberNames);
+    });
+    clearGroupCookieButton?.addEventListener('click', () => {
+      clearSavedGroupMembersCookie();
+      groupMemberNames = [];
+      chosenPlayerNames = [];
+      hideLessonSetup();
+      showGroupEditor([]);
+      renderStatus(groupSetupStatus, 'Saved group cleared from this browser.', 'info');
+    });
+    groupChecklist?.addEventListener('change', () => {
+      refreshPlayerSelectionUi({ keepLessonOpen: true });
+    });
+    playerPickerOptions?.addEventListener('change', () => {
+      chosenPlayerNames = getChosenPlayerNamesFromPicker();
+      refreshPlayerSelectionUi({ keepLessonOpen: true });
+    });
+    randomizePlayersButton?.addEventListener('click', () => {
+      const attendingNames = getAttendingNamesFromChecklist();
+      chosenPlayerNames = selectRandomPlayers(attendingNames);
+      refreshPlayerSelectionUi({ keepLessonOpen: true });
+    });
+    confirmPlayersButton?.addEventListener('click', () => {
+      confirmPlayerSelection();
+    });
+
     fileInput?.addEventListener('change', () => setSelectedFiles(fileInput.files));
 
     dropZone?.addEventListener('dragover', (event) => {
@@ -1696,7 +2077,13 @@
     setupForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
-        contestants = createContestants(nameInputs.map((input) => input.value));
+        const selection = currentPlayerSelection();
+        if (!selection.canContinue) {
+          throw new Error(selection.message || 'Select one to four players before generating the game board.');
+        }
+        selectedPlayerNames = selection.playerNames;
+        contestants = createContestants(selectedPlayerNames);
+        renderSelectedPlayersSummary();
         renderStatus(setupStatus, 'Preparing lesson material in your browser…', 'info');
         if (generateButton) generateButton.disabled = true;
         const lessonContent = await buildLessonSourceContent({
@@ -1809,6 +2196,16 @@
     clearContestantChoiceSelection,
     buildAnswerVerdictPresentation,
     createContestants,
+    parseGroupMemberNames,
+    createGroupAttendance,
+    getCheckedGroupMemberNames,
+    resolvePlayerSelection,
+    selectRandomPlayers,
+    buildSavedGroupMembersCookie,
+    buildClearGroupMembersCookie,
+    readSavedGroupMembersCookie,
+    writeSavedGroupMembersCookie,
+    clearSavedGroupMembersCookie,
     normalizeGeneratedGame,
     applyScoreDecision,
     applyAnswerJudgment,

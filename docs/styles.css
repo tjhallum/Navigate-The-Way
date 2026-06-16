@@ -1801,6 +1801,87 @@ footer {
   gap: 1rem;
 }
 
+.small-group-game-page [hidden] {
+  display: none !important;
+}
+
+.group-setup-step,
+.lesson-setup-section,
+.group-member-editor,
+.group-member-review,
+.player-picker-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.setup-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.setup-section-header h3,
+.player-picker-panel h3 {
+  margin: 0 0 0.25rem;
+  color: #f3f8ff;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.button-row--compact {
+  justify-content: flex-end;
+}
+
+.group-member-checklist,
+.player-picker-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+
+.group-member-option {
+  display: flex !important;
+  align-items: center;
+  gap: 0.6rem !important;
+  border: 1px solid rgba(122, 168, 255, 0.28);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #dbe7ff;
+  font-weight: 700;
+}
+
+.group-member-option input {
+  width: auto !important;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  padding: 0;
+}
+
+.player-picker-panel {
+  border: 1px solid rgba(255, 206, 72, 0.42);
+  border-radius: 16px;
+  padding: 1rem;
+  background: rgba(255, 206, 72, 0.07);
+}
+
+.selected-players-summary {
+  margin: 0;
+  border: 1px solid rgba(157, 240, 177, 0.35);
+  border-radius: 12px;
+  padding: 0.72rem 0.85rem;
+  color: #dfffe7;
+  background: rgba(83, 196, 111, 0.09);
+  font-weight: 700;
+}
+
 .contestant-grid,
 .api-grid,
 .scoreboard {
