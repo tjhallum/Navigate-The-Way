@@ -136,7 +136,8 @@
       <summary id="review-game-how-title">How it works</summary>
       <div class="review-game-intro__content">
         <ol>
-          <li>Enter two to four contestants.</li>
+          <li>Save your group members once, then check the people who are present each time you play.</li>
+          <li>If more than four people are present, pick four players yourself or let Berean Board choose four at random.</li>
           <li>Drag in the week’s lesson files, type a brief lesson topic/summary, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
@@ -149,51 +150,77 @@
     </details>
 
     <form id="game-setup-form" class="card review-game-setup" autocomplete="off">
-      <h2>1. Set up contestants</h2>
-      <p class="privacy-note">Enter at least two contestants. Contestants 3 and 4 are optional.</p>
-      <div class="contestant-grid">
-        <label>Contestant 1
-          <input class="contestant-name-input" type="text" maxlength="40" placeholder="Name" required />
-        </label>
-        <label>Contestant 2
-          <input class="contestant-name-input" type="text" maxlength="40" placeholder="Name" required />
-        </label>
-        <label>Contestant 3 <span class="optional-label">optional</span>
-          <input class="contestant-name-input" type="text" maxlength="40" placeholder="Name" />
-        </label>
-        <label>Contestant 4 <span class="optional-label">optional</span>
-          <input class="contestant-name-input" type="text" maxlength="40" placeholder="Name" />
-        </label>
-      </div>
+      <section class="group-setup-step" aria-labelledby="group-setup-title">
+        <h2 id="group-setup-title">1. Set up your group</h2>
+        <p class="privacy-note">Enter group member names once, separated by commas. Berean Board saves those names in this browser with a cookie so future game nights can start with a quick attendance check.</p>
 
-      <h2>2. Add lesson files or describe the lesson</h2>
-      <label id="lesson-drop-zone" class="lesson-drop-zone" for="lesson-files">
-        <span>Drop lesson files here, or click to choose files.</span>
-        <small>Supported: .txt, .md, .html, .json, .rtf, .pdf, .docx, .pptx</small>
-      </label>
-      <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-      <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
-      <label for="lesson-topic-text">Or type the lesson topic / summary
-        <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8, adoption in Christ, assurance in suffering, and how believers pray when they feel weak."></textarea>
-      </label>
-      <p class="privacy-note">Use the text field if you do not have lesson-specific files. You may also use it to add emphasis or context alongside uploaded files.</p>
+        <div id="group-member-editor" class="group-member-editor">
+          <label for="group-member-names">Group member names
+            <textarea id="group-member-names" rows="4" maxlength="1600" placeholder="Example: Ada, Boaz, Chloe, Daniel, Eve"></textarea>
+          </label>
+          <div class="button-row">
+            <button id="save-group-members-button" type="button" class="primary-action">Save Group Members</button>
+          </div>
+        </div>
 
-      <h2>3. Connect to NTW’s API</h2>
-      <div class="api-grid">
-        <label>Chat completions endpoint
-          <input id="ntw-api-endpoint" type="url" value="https://navtheway.apologist.ai/api/v1/chat/completions" placeholder="https://navtheway.apologist.ai/api/v1/chat/completions" required />
-        </label>
-        <label>Model
-          <input id="ntw-api-model" type="text" value="openai/gpt/5.4" placeholder="openai/gpt/5.4" required />
-        </label>
-        <label>API key
-          <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
-        </label>
-      </div>
-      <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+        <div id="group-member-review" class="group-member-review" hidden>
+          <div class="setup-section-header">
+            <div>
+              <h3>Who is here today?</h3>
+              <p class="privacy-note">Everyone is checked by default. Uncheck anyone who is absent.</p>
+            </div>
+            <div class="button-row button-row--compact">
+              <button id="edit-group-members-button" type="button">Edit Names</button>
+              <button id="clear-group-cookie-button" type="button">Clear Saved Group</button>
+            </div>
+          </div>
+          <div id="group-member-checklist" class="group-member-checklist" role="group" aria-label="Group member attendance"></div>
+        </div>
 
-      <button id="generate-game-button" type="submit" class="primary-action">Generate Game Board</button>
-      <p id="game-setup-status" class="game-status" aria-live="polite"></p>
+        <section id="player-picker-panel" class="player-picker-panel" aria-labelledby="player-picker-title" hidden>
+          <h3 id="player-picker-title">Choose four players</h3>
+          <p class="privacy-note">More than four group members are checked as present. Pick exactly four players, or let Berean Board randomly select four from the checked names.</p>
+          <div id="player-picker-options" class="player-picker-options" role="group" aria-label="Player choices"></div>
+          <div class="button-row">
+            <button id="randomize-players-button" type="button">Randomly Select Four Players</button>
+          </div>
+        </section>
+
+        <p id="group-setup-status" class="game-status" aria-live="polite"></p>
+        <button id="confirm-players-button" type="button" class="primary-action" hidden>Continue to Lesson Setup</button>
+      </section>
+
+      <section id="lesson-setup-section" class="lesson-setup-section" aria-labelledby="lesson-setup-title" hidden>
+        <h2 id="lesson-setup-title">2. Add lesson files or describe the lesson</h2>
+        <p id="selected-players-summary" class="selected-players-summary" aria-live="polite"></p>
+        <label id="lesson-drop-zone" class="lesson-drop-zone" for="lesson-files">
+          <span>Drop lesson files here, or click to choose files.</span>
+          <small>Supported: .txt, .md, .html, .json, .rtf, .pdf, .docx, .pptx</small>
+        </label>
+        <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+        <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
+        <label for="lesson-topic-text">Or type the lesson topic / summary
+          <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8, adoption in Christ, assurance in suffering, and how believers pray when they feel weak."></textarea>
+        </label>
+        <p class="privacy-note">Use the text field if you do not have lesson-specific files. You may also use it to add emphasis or context alongside uploaded files.</p>
+
+        <h2>3. Connect to NTW’s API</h2>
+        <div class="api-grid">
+          <label>Chat completions endpoint
+            <input id="ntw-api-endpoint" type="url" value="https://navtheway.apologist.ai/api/v1/chat/completions" placeholder="https://navtheway.apologist.ai/api/v1/chat/completions" required />
+          </label>
+          <label>Model
+            <input id="ntw-api-model" type="text" value="openai/gpt/5.4" placeholder="openai/gpt/5.4" required />
+          </label>
+          <label>API key
+            <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
+          </label>
+        </div>
+        <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+
+        <button id="generate-game-button" type="submit" class="primary-action">Generate Game Board</button>
+        <p id="game-setup-status" class="game-status" aria-live="polite"></p>
+      </section>
     </form>
 
     <section id="game-play-area" class="card review-game-play" hidden>
@@ -254,6 +281,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260614-berean-board"></script>
+<script src="small-group-review-game.js?v=20260616-group-cookie-setup"></script>
 </body>
 </html>
