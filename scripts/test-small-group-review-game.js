@@ -140,9 +140,31 @@ test('requires clearing a generated game board when the confirmed players change
   }), false);
 });
 
+test('maps setup stages to the step that should be expanded', () => {
+  assert.deepEqual(game.getSetupStepExpansionState('group'), {
+    groupExpanded: true,
+    lessonExpanded: false,
+    lessonAvailable: false,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('lesson'), {
+    groupExpanded: false,
+    lessonExpanded: true,
+    lessonAvailable: true,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('game'), {
+    groupExpanded: false,
+    lessonExpanded: false,
+    lessonAvailable: true,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('unknown'), game.getSetupStepExpansionState('group'));
+});
+
 test('renders group setup wizard controls before lesson setup in the browser form', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
 
+  assert.match(html, /<section id="group-setup-step" class="group-setup-step setup-step setup-step--expanded" data-setup-step="group" aria-labelledby="group-setup-title">/);
+  assert.match(html, /<button id="group-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="true" aria-controls="group-setup-content">/);
+  assert.match(html, /<div id="group-setup-content" class="setup-step-content">/);
   assert.match(html, /<textarea id="group-member-names"/);
   assert.match(html, /<button id="save-group-members-button" type="button"/);
   assert.match(html, /<div id="group-member-checklist"/);
@@ -151,14 +173,25 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<section id="player-picker-panel"[^>]*hidden>/);
   assert.match(html, /<button id="randomize-players-button" type="button"/);
   assert.match(html, /<button id="confirm-players-button" type="button" class="primary-action"/);
-  assert.match(html, /<section id="lesson-setup-section"[^>]*hidden>/);
+  assert.match(html, /<section id="lesson-setup-section" class="lesson-setup-section setup-step" data-setup-step="lesson" aria-labelledby="lesson-setup-title" hidden>/);
+  assert.match(html, /<button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content">/);
+  assert.match(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-player-change-reset"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-collapsible-setup"><\/script>/);
+});
+
+test('styles setup steps as expandable/collapsible panels', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+
+  assert.match(cssRule(css, '.setup-step'), /border:\s*1px solid rgba\(122, 168, 255, 0\.24\)/);
+  assert.match(cssRule(css, '.setup-step-toggle'), /justify-content:\s*space-between/);
+  assert.match(cssRule(css, '.setup-step--collapsed'), /opacity:\s*0\.82/);
+  assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
 });
 
 test('defensively clears required validation from optional contestant inputs at startup', () => {
