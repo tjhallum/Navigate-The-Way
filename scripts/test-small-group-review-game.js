@@ -176,13 +176,16 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<section id="lesson-setup-section" class="lesson-setup-section setup-step" data-setup-step="lesson" aria-labelledby="lesson-setup-title" hidden>/);
   assert.match(html, /<button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content">/);
   assert.match(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>/);
+  assert.match(html, /Or type the lesson topic, summary, or focus instructions/);
+  assert.match(html, /focus more attention on/);
+  assert.match(html, /Use this field with uploaded files to steer emphasis/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-collapsible-setup"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-lesson-instructions"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
@@ -456,22 +459,30 @@ test('accepts leader-provided lesson text as an alternative to uploaded files', 
 
   assert.match(topicOnly, /leader-provided lesson topic/i);
   assert.match(topicOnly, /Romans 8/);
+});
 
+test('combines uploaded lesson files with leader focus instructions', async () => {
   const combined = await game.buildLessonSourceContent({
-    lessonTopicText: 'The leader wants application questions about prayer and dependence on Christ.',
+    lessonTopicText: 'From my attached lesson I want to focus more attention on prayer and less on historical background.',
     files: [{ name: 'leader-guide.md' }],
     fileExtractor: async () => 'SOURCE FILE: leader-guide.md\nLesson notes about abiding in Christ.',
   });
 
-  assert.match(combined, /leader-provided lesson topic/i);
-  assert.match(combined, /uploaded lesson files/i);
-  assert.match(combined, /abiding in Christ/i);
+  assert.match(combined, /UPLOADED LESSON FILES:/);
+  assert.match(combined, /LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:/);
+  assert.match(combined, /abiding in Christ/);
+  assert.match(combined, /focus more attention on prayer/);
+  assert.ok(
+    combined.indexOf('UPLOADED LESSON FILES:') < combined.indexOf('LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:'),
+    'file content should appear before focus instructions so the instructions clearly steer the supplied lesson material'
+  );
+  assert.doesNotMatch(combined, /LEADER-PROVIDED LESSON TOPIC OR SUMMARY:[\s\S]*focus more attention/);
 });
 
 test('still requires either a lesson file or a leader-provided lesson description', async () => {
   await assert.rejects(
     () => game.buildLessonSourceContent({ lessonTopicText: '   ', files: [] }),
-    /lesson file or describe the lesson topic/i
+    /lesson file or type a lesson topic, summary, or focus instructions/i
   );
 });
 
@@ -619,6 +630,9 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.equal(messages[0].role, 'system');
   assert.match(messages[0].content, /Navigate The Way/i);
   assert.match(messages[0].content, /Do not quote Scripture from memory/i);
+  assert.match(messages[0].content, /leader-provided focus instructions/i);
+  assert.match(messages[0].content, /shape the game board emphasis/i);
+  assert.match(messages[0].content, /do not treat focus instructions as new lesson facts/i);
   assert.match(messages[1].content, /exactly 5 categories/i);
   assert.match(messages[1].content, /Ada, Boaz, Chloe, Daniel/);
   assert.match(messages[1].content, /Lesson material about Romans 8/);

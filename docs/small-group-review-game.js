@@ -820,8 +820,9 @@
         content: [
           'You are Navigate The Way ✝️ (NTW✝️), serving a small group leader by creating a Bible lesson review game.',
           'Create content that is conservative, historic, confessional, Reformed evangelical, Scripture-centered, charitable, and pastorally careful.',
-          'Use ONLY the lesson material supplied by the user as the factual source for this game. The material may include uploaded files, a leader-provided lesson topic or summary, or both.',
+          'Use ONLY the lesson material supplied by the user as the factual source for this game. The material may include uploaded files, a leader-provided lesson topic or summary, leader-provided focus instructions, or a combination of those.',
           'If the leader supplied only a brief topic or summary, create broadly applicable review content for that stated lesson subject without claiming unpublished lesson details.',
+          'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts.',
           'Do not quote Scripture from memory. If exact Scripture text appears in the supplied lesson material, you may use that supplied text; otherwise cite references without fabricating verse wording.',
           'Do not invent doctrines, anecdotes, precise lesson details, or source claims that are not supported by the supplied material.',
           'Keep the tone warm, clear, and suitable for a fun small group review activity.',
@@ -839,7 +840,7 @@
           '- Clue values must be 100, 200, 300, 400, and 500 in that order for every category.',
           '- The displayed "clue" should ask or prompt recall/application from the lesson.',
           '- The "correctResponse" should be short enough for a leader to judge a spoken answer.',
-          '- Include a brief explanation and a sourceAnchor pointing to the uploaded file, leader-provided topic/summary, lesson section, heading, or passage reference when available.',
+          '- Include a brief explanation and a sourceAnchor pointing to the uploaded file, leader-provided topic/summary, lesson section, heading, or passage reference when available. Use any leader focus instructions to guide emphasis rather than as a sourceAnchor.',
           '- Avoid trick questions and avoid mocking wrong answers.',
           '- Prefer questions that reinforce faithful understanding, careful application, and Christ-centered theological clarity.',
           '',
@@ -1369,20 +1370,25 @@
     const list = Array.from(files || []);
     const topic = normalizeLongFormText(lessonTopicText);
     const sections = [];
-
-    if (topic) {
-      sections.push(`LEADER-PROVIDED LESSON TOPIC OR SUMMARY:\n${topic}`);
-    }
+    let hasReadableFileContent = false;
 
     if (list.length > 0) {
       const fileContent = normalizeLongFormText(await fileExtractor(list));
       if (fileContent) {
+        hasReadableFileContent = true;
         sections.push(`UPLOADED LESSON FILES:\n${fileContent}`);
       }
     }
 
+    if (topic) {
+      const heading = hasReadableFileContent
+        ? 'LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME'
+        : 'LEADER-PROVIDED LESSON TOPIC OR SUMMARY';
+      sections.push(`${heading}:\n${topic}`);
+    }
+
     if (sections.length === 0) {
-      throw new Error('Add at least one lesson file or describe the lesson topic before generating a game.');
+      throw new Error('Add at least one lesson file or type a lesson topic, summary, or focus instructions before generating a game.');
     }
 
     return sections.join('\n\n---\n\n');
