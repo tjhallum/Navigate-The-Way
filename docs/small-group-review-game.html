@@ -138,7 +138,7 @@
         <ol>
           <li>Save your group members once, then check the people who are present each time you play.</li>
           <li>If more than four people are present, pick four players yourself or let Berean Board choose four at random.</li>
-          <li>Drag in the week’s lesson files, type a brief lesson topic/summary, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
+          <li>Drag in the week’s lesson files, type a brief lesson topic/summary, add focus instructions for uploaded files, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
           <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
@@ -198,7 +198,7 @@
 
       <section id="lesson-setup-section" class="lesson-setup-section setup-step" data-setup-step="lesson" aria-labelledby="lesson-setup-title" hidden>
         <button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content">
-          <span id="lesson-setup-title" class="setup-step-title">2. Add lesson files or describe the lesson</span>
+          <span id="lesson-setup-title" class="setup-step-title">2. Add lesson files, topic, or instructions</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
         </button>
@@ -210,10 +210,10 @@
           </label>
           <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
           <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
-          <label for="lesson-topic-text">Or type the lesson topic / summary
-            <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8, adoption in Christ, assurance in suffering, and how believers pray when they feel weak."></textarea>
+          <label for="lesson-topic-text">Or type the lesson topic, summary, or focus instructions
+            <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8 and adoption in Christ. Or with an uploaded file: From my attached lesson I want to focus more attention on assurance and less on historical background."></textarea>
           </label>
-          <p class="privacy-note">Use the text field if you do not have lesson-specific files. You may also use it to add emphasis or context alongside uploaded files.</p>
+          <p class="privacy-note">Use this field by itself when you do not have lesson-specific files. Use this field with uploaded files to steer emphasis, focus, or level of difficulty for the generated game board.</p>
 
           <h2>3. Connect to NTW’s API</h2>
           <div class="api-grid">
@@ -227,7 +227,7 @@
               <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
             </label>
           </div>
-          <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed descriptions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+          <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed lesson descriptions/instructions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
 
           <button id="generate-game-button" type="submit" class="primary-action">Generate Game Board</button>
           <p id="game-setup-status" class="game-status" aria-live="polite"></p>
@@ -293,6 +293,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260616-collapsible-setup"></script>
+<script src="small-group-review-game.js?v=20260616-lesson-instructions"></script>
 </body>
 </html>
