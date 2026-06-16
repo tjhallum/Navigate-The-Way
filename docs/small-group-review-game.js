@@ -10,6 +10,7 @@
   const DEFAULT_MODEL = 'openai/gpt/5.4';
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
+  const FOCUS_INSTRUCTIONS_HEADING = 'LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:';
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
@@ -796,15 +797,33 @@
   }
 
   function truncateLessonContent(lessonContent, maxChars = MAX_LESSON_CHARS) {
-    const normalized = String(lessonContent || '').replace(/\r\n/g, '\n').trim();
+    const normalized = String(lessonContent || '').replaceAll(String.fromCharCode(13, 10), '\n').trim();
     if (normalized.length <= maxChars) {
       return { content: normalized, truncated: false, originalLength: normalized.length };
     }
     return {
-      content: normalized.slice(0, maxChars),
+      content: preserveFocusInstructionsDuringTruncation(normalized, maxChars),
       truncated: true,
       originalLength: normalized.length,
     };
+  }
+
+  function preserveFocusInstructionsDuringTruncation(normalized, maxChars) {
+    const focusStart = normalized.lastIndexOf(FOCUS_INSTRUCTIONS_HEADING);
+    if (focusStart === -1) {
+      return normalized.slice(0, maxChars);
+    }
+
+    const separator = '\n\n---\n\n';
+    const separatorStart = normalized.lastIndexOf(separator, focusStart);
+    const focusSectionStart = separatorStart === -1 ? focusStart : separatorStart;
+    const focusSection = normalized.slice(focusSectionStart);
+    if (focusSection.length >= maxChars) {
+      return normalized.slice(focusStart, focusStart + maxChars);
+    }
+
+    const prefixBudget = maxChars - focusSection.length;
+    return `${normalized.slice(0, prefixBudget).trimEnd()}${focusSection}`;
   }
 
   function buildOpenAiMessages({ contestantNames, lessonContent }) {
@@ -1382,7 +1401,7 @@
 
     if (topic) {
       const heading = hasReadableFileContent
-        ? 'LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME'
+        ? FOCUS_INSTRUCTIONS_HEADING.slice(0, -1)
         : 'LEADER-PROVIDED LESSON TOPIC OR SUMMARY';
       sections.push(`${heading}:\n${topic}`);
     }
