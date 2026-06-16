@@ -158,7 +158,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=[^"]+"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-player-change-reset"><\/script>/);
 });
 
 test('defensively clears required validation from optional contestant inputs at startup', () => {
