@@ -139,6 +139,7 @@
           <li>Save your group members once, then check the people who are present each time you play.</li>
           <li>If more than four people are present, pick four players yourself or let Berean Board choose four at random.</li>
           <li>Drag in the week’s lesson files, type a brief lesson topic/summary, add focus instructions for uploaded files, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
+          <li>Select a difficulty level—Little Lamb, Catechumen, Disciple, Berean, or Theologian—so generated clues adjust both theological complexity and wording readability to the intended Flesch-Kincaid grade range.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
           <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
@@ -213,15 +214,61 @@
           <label for="lesson-topic-text">Or type the lesson topic, summary, or focus instructions
             <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8 and adoption in Christ. Or with an uploaded file: From my attached lesson I want to focus more attention on assurance and less on historical background."></textarea>
           </label>
-          <p class="privacy-note">Use this field by itself when you do not have lesson-specific files. Use this field with uploaded files to steer emphasis, focus, or level of difficulty for the generated game board.</p>
-          <button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup</button>
+          <p class="privacy-note">Use this field by itself when you do not have lesson-specific files. Use this field with uploaded files to steer emphasis or focus for the generated game board.</p>
+          <button id="continue-to-difficulty-setup-button" type="button" class="primary-action" disabled>Continue to Difficulty Setup</button>
           <p id="lesson-setup-status" class="game-status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="difficulty-setup-section" class="difficulty-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="difficulty" aria-labelledby="difficulty-setup-title">
+        <button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>
+          <span id="difficulty-setup-title" class="setup-step-title">3. Choose the game difficulty</span>
+          <span class="setup-step-status" data-setup-step-status>Locked</span>
+          <span class="setup-step-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div id="difficulty-setup-content" class="setup-step-content" hidden>
+          <p id="difficulty-setup-description" class="privacy-note">Select the age and reading level for this game board. NTW will adjust both the theological complexity of the questions and the readability of the wording so each prompt is age-appropriate and aimed at the selected Flesch-Kincaid grade range.</p>
+          <fieldset class="difficulty-options" aria-describedby="difficulty-setup-description">
+            <legend class="difficulty-options__legend">Game difficulty level</legend>
+            <label class="difficulty-option">
+              <input type="radio" name="game-difficulty" value="child" />
+              <span class="difficulty-option__level">Child</span>
+              <span class="difficulty-option__name">Little Lamb</span>
+              <span class="difficulty-option__grade">Target Flesch-Kincaid: Grade 1-2</span>
+            </label>
+            <label class="difficulty-option">
+              <input type="radio" name="game-difficulty" value="preteen" />
+              <span class="difficulty-option__level">Pre-teen</span>
+              <span class="difficulty-option__name">Catechumen</span>
+              <span class="difficulty-option__grade">Target Flesch-Kincaid: Grade 4-5</span>
+            </label>
+            <label class="difficulty-option">
+              <input type="radio" name="game-difficulty" value="teen" />
+              <span class="difficulty-option__level">Teen</span>
+              <span class="difficulty-option__name">Disciple</span>
+              <span class="difficulty-option__grade">Target Flesch-Kincaid: Grade 6-8</span>
+            </label>
+            <label class="difficulty-option">
+              <input type="radio" name="game-difficulty" value="adult" />
+              <span class="difficulty-option__level">Adult</span>
+              <span class="difficulty-option__name">Berean</span>
+              <span class="difficulty-option__grade">Target Flesch-Kincaid: Grade 9-11</span>
+            </label>
+            <label class="difficulty-option">
+              <input type="radio" name="game-difficulty" value="theologian" />
+              <span class="difficulty-option__level">Theologian</span>
+              <span class="difficulty-option__name">Theologian</span>
+              <span class="difficulty-option__grade">Target Flesch-Kincaid: Grade 12-16+</span>
+            </label>
+          </fieldset>
+          <button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup</button>
+          <p id="difficulty-setup-status" class="game-status" aria-live="polite"></p>
         </div>
       </section>
 
       <section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">
         <button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>
-          <span id="api-setup-title" class="setup-step-title">3. Connect to NTW’s API</span>
+          <span id="api-setup-title" class="setup-step-title">4. Connect to NTW’s API</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
         </button>
@@ -303,6 +350,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260617-start-over-step-one"></script>
+<script src="small-group-review-game.js?v=20260617-difficulty-step"></script>
 </body>
 </html>
