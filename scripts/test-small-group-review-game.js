@@ -245,7 +245,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-locked-setup-steps"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-start-over-step-one"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
