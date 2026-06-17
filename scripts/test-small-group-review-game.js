@@ -283,8 +283,9 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>[\s\S]*id="difficulty-storybook-disciple-growth-leaf"/);
   assert.doesNotMatch(html, /difficulty-storybook-disciple-(?:path|backpack|sky|hill)/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*<span class="difficulty-option__grade">Grade 9-11<\/span>[\s\S]*id="difficulty-storybook-berean-lens"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-storybook-theologian-bible-cover"/);
-  assert.doesNotMatch(html, /difficulty-storybook-theologian-scroll/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-storybook-theologian-bible-cover"[\s\S]*M24 80c9-5 17-5 26 1v23[\s\S]*M50 81c8-5 17-5 25 1v23/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*M88 40v23[\s\S]*circle cx="88" cy="68"/);
+  assert.doesNotMatch(html, /difficulty-storybook-theologian-scroll|M23 76h43c5 0 9 4 9 9v18|M94 42v35|circle cx="94" cy="83"/);
   assert.doesNotMatch(html, /M33 30h9M37\.5 25\.5v9|M31 31h9M35\.5 26\.5v9|M74 76h12M80 70v12/);
   assert.equal((html.match(/class="difficulty-option__svg difficulty-option__svg--storybook"/g) || []).length, 5);
   assert.doesNotMatch(html, /difficulty-[a-z-]+-premium-|difficulty-child-panel|difficulty-explorer-panel|difficulty-disciple-panel|difficulty-berean-panel|difficulty-theologian-panel/);
