@@ -2066,16 +2066,22 @@ footer {
 
 @media (max-width: 390px) {
   .difficulty-option {
-    grid-template-columns: auto minmax(0, 1fr) minmax(4.9rem, 5.15rem);
+    grid-template-columns: auto minmax(0, 1fr) minmax(4.35rem, 4.7rem);
     padding-right: 0.42rem;
   }
 
   .difficulty-option__art {
-    width: min(5.15rem, 100%);
+    width: min(4.7rem, 100%);
   }
 
   .difficulty-option__art--portrait {
-    width: min(4.35rem, 100%);
+    width: min(4rem, 100%);
+  }
+
+  .difficulty-option__name,
+  .difficulty-option__grade {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 
