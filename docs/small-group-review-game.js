@@ -473,6 +473,31 @@
     return cookie;
   }
 
+  function safeGetBrowserStorageItem(windowRef, key, fallback = '') {
+    try {
+      const storage = windowRef?.localStorage;
+      if (!storage || typeof storage.getItem !== 'function') {
+        return fallback;
+      }
+      return storage.getItem(key) || fallback;
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  function safeSetBrowserStorageItem(windowRef, key, value) {
+    try {
+      const storage = windowRef?.localStorage;
+      if (!storage || typeof storage.setItem !== 'function') {
+        return false;
+      }
+      storage.setItem(key, value);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
   function coerceText(value, fallback = '') {
     if (typeof value === 'string') {
       return value.replace(/\s+/g, ' ').trim();
@@ -1536,8 +1561,8 @@
     let responseCheckInFlight = false;
     let clueFitFrame = 0;
 
-    const savedEndpoint = window.localStorage?.getItem('ntwReviewGameEndpoint') || '';
-    const savedModel = window.localStorage?.getItem('ntwReviewGameModel') || '';
+    const savedEndpoint = safeGetBrowserStorageItem(window, 'ntwReviewGameEndpoint');
+    const savedModel = safeGetBrowserStorageItem(window, 'ntwReviewGameModel');
     if (endpointInput) endpointInput.value = savedEndpoint ? normalizeChatCompletionsEndpoint(savedEndpoint) : DEFAULT_CHAT_COMPLETIONS_ENDPOINT;
     if (modelInput) modelInput.value = savedModel || DEFAULT_MODEL;
 
@@ -2393,10 +2418,8 @@
         const endpoint = normalizeChatCompletionsEndpoint(endpointInput?.value || DEFAULT_CHAT_COMPLETIONS_ENDPOINT);
         const model = modelInput?.value || DEFAULT_MODEL;
         if (endpointInput) endpointInput.value = endpoint;
-        if (window.localStorage) {
-          window.localStorage.setItem('ntwReviewGameEndpoint', endpoint);
-          window.localStorage.setItem('ntwReviewGameModel', model.trim() || DEFAULT_MODEL);
-        }
+        safeSetBrowserStorageItem(window, 'ntwReviewGameEndpoint', endpoint);
+        safeSetBrowserStorageItem(window, 'ntwReviewGameModel', model.trim() || DEFAULT_MODEL);
         renderStatus(setupStatus, 'Calling the NTW API to generate the game board…', 'info');
         gameData = await callOpenAiCompatibleApi({
           endpoint,
@@ -2507,6 +2530,8 @@
     readSavedGroupMembersCookie,
     writeSavedGroupMembersCookie,
     clearSavedGroupMembersCookie,
+    safeGetBrowserStorageItem,
+    safeSetBrowserStorageItem,
     normalizeGeneratedGame,
     applyScoreDecision,
     applyAnswerJudgment,
