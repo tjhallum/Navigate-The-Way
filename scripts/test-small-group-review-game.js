@@ -179,6 +179,15 @@ test('detects whether lesson setup has a source before unlocking API setup', () 
   assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: 'Romans 8 adoption in Christ' }), true);
 });
 
+test('start over returns leaders to group setup before rebuilding a game', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const resetHandlerMatch = js.match(/resetButton\?\.addEventListener\('click', \(\) => \{[\s\S]*?renderStatus\(setupStatus, 'Ready to build a new game\.', 'info'\);[\s\S]*?\n    \}\);/);
+
+  assert.ok(resetHandlerMatch, 'expected Start Over click handler to be present');
+  assert.match(resetHandlerMatch[0], /applySetupStepStage\('group'\)/);
+  assert.doesNotMatch(resetHandlerMatch[0], /applySetupStepStage\('lesson'\)/);
+});
+
 test('keeps setup usable when browser local storage is unavailable', () => {
   const blockedWindow = {};
   Object.defineProperty(blockedWindow, 'localStorage', {
