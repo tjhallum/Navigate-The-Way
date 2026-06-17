@@ -202,14 +202,14 @@ test('defines Berean Board difficulty levels and generation guidance', () => {
     game.DIFFICULTY_LEVELS.map(({ level, name, gradeRange }) => ({ level, name, gradeRange })),
     [
       { level: 'Child', name: 'Little Lamb', gradeRange: 'Grade 1-2' },
-      { level: 'Pre-teen', name: 'Catechumen', gradeRange: 'Grade 4-5' },
+      { level: 'Pre-teen', name: 'Bible Explorer', gradeRange: 'Grade 4-5' },
       { level: 'Teen', name: 'Disciple', gradeRange: 'Grade 6-8' },
       { level: 'Adult', name: 'Berean', gradeRange: 'Grade 9-11' },
       { level: 'Theologian', name: 'Theologian', gradeRange: 'Grade 12-16+' },
     ]
   );
   assert.equal(game.getDifficultyLevelConfig('Little Lamb').value, 'child');
-  assert.equal(game.getDifficultyLevelConfig('pre-teen').value, 'preteen');
+  assert.equal(game.getDifficultyLevelConfig('Bible Explorer').value, 'preteen');
   assert.equal(game.getDifficultyLevelSummary('teen'), 'Teen — Disciple (Grade 6-8)');
   assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Grade 12-16\+/);
   assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Theological complexity and readability guidance/);
@@ -278,11 +278,13 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<span id="difficulty-setup-title" class="setup-step-title">3\. Choose the game difficulty<\/span>/);
   assert.match(html, /theological complexity of the questions and the readability of the wording/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*Grade 1-2/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Catechumen[\s\S]*Grade 4-5/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*Grade 6-8/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*Grade 9-11/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*Grade 12-16\+/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*<span class="difficulty-option__icon" aria-hidden="true">🐑<\/span>[\s\S]*Little Lamb[\s\S]*<span class="difficulty-option__grade">Grade 1-2<\/span>/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*<span class="difficulty-option__icon" aria-hidden="true">🧭<\/span>[\s\S]*Bible Explorer[\s\S]*<span class="difficulty-option__grade">Grade 4-5<\/span>/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*<span class="difficulty-option__icon" aria-hidden="true">🕊️<\/span>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*<span class="difficulty-option__icon" aria-hidden="true">📖<\/span>[\s\S]*Berean[\s\S]*<span class="difficulty-option__grade">Grade 9-11<\/span>/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*<span class="difficulty-option__icon" aria-hidden="true">🎓<\/span>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>/);
+  assert.doesNotMatch(html, /Catechumen/);
+  assert.doesNotMatch(html, /Target Flesch-Kincaid:/);
   assert.match(html, /<button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup<\/button>/);
   assert.match(html, /<p id="difficulty-setup-status" class="game-status" aria-live="polite"><\/p>/);
   assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>4\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
@@ -298,7 +300,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-step"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-tile-icons"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
@@ -311,7 +313,9 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(220px, 1fr\)\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto 1fr/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto auto minmax\(0, 1fr\)/);
+  assert.match(cssRule(css, '.difficulty-option__icon'), /display:\s*inline-grid/);
+  assert.match(cssRule(css, '.difficulty-option__icon'), /border-radius:\s*999px/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
 });
 

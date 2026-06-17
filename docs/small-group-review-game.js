@@ -23,7 +23,7 @@
     {
       value: 'preteen',
       level: 'Pre-teen',
-      name: 'Catechumen',
+      name: 'Bible Explorer',
       gradeRange: 'Grade 4-5',
       guidance: 'Use clear upper-elementary wording, basic Bible-study vocabulary, and simple doctrine explained with context. Keep questions concrete with light application.',
     },
