@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260617-difficulty-mobile-grid" />
+  <link rel="stylesheet" href="styles.css?v=20260617-difficulty-context-art" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -235,36 +235,46 @@
               <span class="difficulty-option__level">Child</span>
               <span class="difficulty-option__name">Little Lamb</span>
               <span class="difficulty-option__grade">Grade 1-2</span>
-              <span class="difficulty-option__art" aria-hidden="true">
-                <svg class="difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
+              <span class="difficulty-option__art difficulty-option__art--portrait" aria-hidden="true">
+                <svg class="difficulty-option__svg difficulty-option__svg--storybook" viewBox="0 0 96 132" focusable="false">
                   <defs>
-                    <radialGradient id="difficulty-lamb-premium-glow" cx="32%" cy="18%" r="86%">
-                      <stop offset="0" stop-color="#fff6c8" />
-                      <stop offset="0.44" stop-color="#6f8dff" />
-                      <stop offset="1" stop-color="#111a48" />
-                    </radialGradient>
-                    <linearGradient id="difficulty-lamb-premium-wool" x1="25" x2="94" y1="32" y2="93" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#ffffff" />
-                      <stop offset="0.52" stop-color="#f2e8cb" />
-                      <stop offset="1" stop-color="#c7d9ff" />
+                    <linearGradient id="difficulty-storybook-lamb-face" x1="28" x2="69" y1="38" y2="86" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#ffe6bd" />
+                      <stop offset="1" stop-color="#f3be82" />
                     </linearGradient>
-                    <linearGradient id="difficulty-lamb-premium-face" x1="39" x2="83" y1="50" y2="86" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#ffe8bd" />
-                      <stop offset="1" stop-color="#cfa66f" />
+                    <linearGradient id="difficulty-storybook-lamb-bible" x1="51" x2="92" y1="88" y2="122" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#253d70" />
+                      <stop offset="1" stop-color="#101b35" />
+                    </linearGradient>
+                    <linearGradient id="difficulty-storybook-lamb-wool" x1="14" x2="78" y1="12" y2="112" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#ffffff" />
+                      <stop offset="1" stop-color="#edf2f7" />
                     </linearGradient>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#difficulty-lamb-premium-glow)" />
-                  <circle cx="60" cy="60" r="44" fill="#101b46" opacity="0.58" />
-                  <path d="M35 64c-8-2-13-9-11-18 2-9 11-14 20-10 5-12 25-17 39-5 8 7 9 16 5 25 8 4 10 14 4 21-6 8-18 8-26 1-10 8-25 8-35-1-4-4-3-9 4-13Z" fill="url(#difficulty-lamb-premium-wool)" />
-                  <path d="M33 63c-5 5-5 13 0 17 7-2 12-7 14-15-3-5-9-6-14-2Z" fill="#c69d65" />
-                  <path d="M87 63c5 5 5 13 0 17-7-2-12-7-14-15 3-5 9-6 14-2Z" fill="#c69d65" />
-                  <ellipse cx="60" cy="66" rx="23" ry="21" fill="url(#difficulty-lamb-premium-face)" />
-                  <path d="M43 48c7-15 28-20 43-6" fill="none" stroke="#ffdc63" stroke-width="6" stroke-linecap="round" />
-                  <circle cx="52" cy="62" r="3.1" fill="#20264f" />
-                  <circle cx="68" cy="62" r="3.1" fill="#20264f" />
-                  <path d="M58 70h4l-2 3.5Z" fill="#7a4a3b" />
-                  <path d="M51 78c5 4 13 4 18 0" fill="none" stroke="#7a4a3b" stroke-width="3.7" stroke-linecap="round" />
-                  <path d="M90 30l2.6 5.1 5.4 2.4-5.4 2.4L90 45l-2.6-5.1-5.4-2.4 5.4-2.4Z" fill="#fff3a4" />
+                  <ellipse cx="48" cy="124" rx="34" ry="5.8" fill="#091326" opacity="0.26" />
+                  <ellipse cx="42" cy="89" rx="27" ry="32" fill="url(#difficulty-storybook-lamb-wool)" stroke="#5b2b1a" stroke-width="4.5" />
+                  <path d="M23 103c-5 9-4 17 4 19 8-1 12-7 10-16" fill="#70402a" stroke="#5b2b1a" stroke-width="4" stroke-linejoin="round" />
+                  <path d="M55 103c-4 9-3 17 5 19 8-1 12-7 10-16" fill="#70402a" stroke="#5b2b1a" stroke-width="4" stroke-linejoin="round" />
+                  <path d="M16 51c-12 4-15 20-4 27 9 5 20-2 25-13" fill="#ffd8a8" stroke="#5b2b1a" stroke-width="4.5" stroke-linecap="round" />
+                  <path d="M80 51c12 4 15 20 4 27-9 5-20-2-25-13" fill="#ffd8a8" stroke="#5b2b1a" stroke-width="4.5" stroke-linecap="round" />
+                  <path d="M18 61c7-3 14-1 18 5-6 5-14 6-20 3" fill="#ff8fac" opacity="0.84" />
+                  <path d="M78 61c-7-3-14-1-18 5 6 5 14 6 20 3" fill="#ff8fac" opacity="0.84" />
+                  <path d="M18 36c-1-9 7-16 16-13 5-11 20-14 29-6 8-6 22-3 26 7 7 2 9 11 4 18 7 5 5 17-4 21 1 10-10 17-20 12-6 8-21 8-29 1-10 4-20-2-19-13-9-5-10-20-3-27Z" fill="url(#difficulty-storybook-lamb-wool)" stroke="#5b2b1a" stroke-width="4.5" stroke-linejoin="round" />
+                  <path d="M29 44c7 8 17 10 25 2 7 7 18 6 25-2l4 33c-5 12-19 18-31 18s-26-6-31-18Z" fill="url(#difficulty-storybook-lamb-face)" stroke="#5b2b1a" stroke-width="4.5" stroke-linejoin="round" />
+                  <path d="M29 44c7 8 17 10 25 2 7 7 18 6 25-2" fill="none" stroke="#d6d6d6" stroke-width="5" stroke-linecap="round" opacity="0.78" />
+                  <circle cx="39" cy="62" r="6.7" fill="#4b2418" />
+                  <circle cx="65" cy="62" r="6.7" fill="#4b2418" />
+                  <circle cx="41.5" cy="59.5" r="2.4" fill="#ffffff" />
+                  <circle cx="67.5" cy="59.5" r="2.4" fill="#ffffff" />
+                  <circle cx="31" cy="71" r="5.4" fill="#ff9fb5" opacity="0.82" />
+                  <circle cx="73" cy="71" r="5.4" fill="#ff9fb5" opacity="0.82" />
+                  <path d="M48 70c3-2 7-2 10 0-1 5-9 5-10 0Z" fill="#5b2b1a" />
+                  <path d="M48 76c3 5 8 5 11 0" fill="none" stroke="#5b2b1a" stroke-width="3.2" stroke-linecap="round" />
+                  <path d="M50 91c8-5 17-5 27 1v27c-10-6-19-6-27-1Z" fill="url(#difficulty-storybook-lamb-bible)" stroke="#5b2b1a" stroke-width="3.5" stroke-linejoin="round" />
+                  <path d="M77 92c6-4 12-4 18 1v27c-6-4-12-4-18-1Z" fill="#fbf1cf" stroke="#5b2b1a" stroke-width="3.5" stroke-linejoin="round" />
+                  <path d="M77 92v27" stroke="#5b2b1a" stroke-width="3.5" />
+                  <path d="M61 98h9M61 106h9" stroke="#fff3d3" stroke-width="2.6" stroke-linecap="round" />
+                  <path d="M86 101v12M80 107h12" stroke="#f7c75b" stroke-width="3.2" stroke-linecap="round" />
                 </svg>
               </span>
             </label>
@@ -274,33 +284,31 @@
               <span class="difficulty-option__name">Bible Explorer</span>
               <span class="difficulty-option__grade">Grade 4-5</span>
               <span class="difficulty-option__art" aria-hidden="true">
-                <svg class="difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
+                <svg class="difficulty-option__svg difficulty-option__svg--storybook" viewBox="6 8 108 108" focusable="false">
                   <defs>
-                    <radialGradient id="difficulty-explorer-premium-glow" cx="30%" cy="18%" r="88%">
-                      <stop offset="0" stop-color="#fff7b0" />
-                      <stop offset="0.42" stop-color="#53d6ff" />
-                      <stop offset="1" stop-color="#13204e" />
-                    </radialGradient>
-                    <linearGradient id="difficulty-explorer-premium-pages" x1="26" x2="92" y1="68" y2="100" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#fff2c7" />
-                      <stop offset="1" stop-color="#c2dcff" />
+                    <linearGradient id="difficulty-storybook-explorer-pages" x1="23" x2="96" y1="62" y2="103" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff8e4" />
+                      <stop offset="1" stop-color="#dceaff" />
                     </linearGradient>
-                    <linearGradient id="difficulty-explorer-premium-needle" x1="40" x2="80" y1="23" y2="63" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#ff5d94" />
-                      <stop offset="1" stop-color="#ffdd62" />
+                    <linearGradient id="difficulty-storybook-explorer-cover" x1="22" x2="98" y1="75" y2="108" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#2d4f91" />
+                      <stop offset="1" stop-color="#121f3d" />
+                    </linearGradient>
+                    <linearGradient id="difficulty-storybook-explorer-compass" x1="39" x2="81" y1="18" y2="60" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fef8d4" />
+                      <stop offset="1" stop-color="#7dcfff" />
                     </linearGradient>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#difficulty-explorer-premium-glow)" />
-                  <path d="M29 77c10-7 21-8 31-2v25c-10-6-21-5-31 2Z" fill="url(#difficulty-explorer-premium-pages)" />
-                  <path d="M60 75c10-6 21-5 31 2v25c-10-7-21-8-31-2Z" fill="#f3f8ff" />
-                  <path d="M60 75v25" stroke="#5f7bff" stroke-width="3.5" stroke-linecap="round" />
-                  <path d="M36 85c5-2 11-2 17 0M67 85c5-2 11-2 17 0" stroke="#40568f" stroke-width="2.4" stroke-linecap="round" opacity="0.75" />
-                  <circle cx="60" cy="48" r="27" fill="#101944" stroke="#ffe06d" stroke-width="4" />
-                  <circle cx="60" cy="48" r="18" fill="#243878" stroke="#9be5ff" stroke-width="3" />
-                  <path d="M60 20l8 28-8 28-8-28Z" fill="url(#difficulty-explorer-premium-needle)" />
-                  <path d="M88 48l-28 8-28-8 28-8Z" fill="#9be5ff" opacity="0.92" />
-                  <circle cx="60" cy="48" r="5" fill="#ffffff" />
-                  <path d="M42 30c11-8 25-9 37-1" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.28" />
+                  <ellipse cx="60" cy="108" rx="40" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M24 74c13-8 25-7 36 2v29c-11-8-23-9-36-2Z" fill="url(#difficulty-storybook-explorer-cover)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M60 76c11-9 24-10 36-2v29c-13-7-25-6-36 2Z" fill="url(#difficulty-storybook-explorer-pages)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M60 76v29" stroke="#5b2b1a" stroke-width="4" />
+                  <path d="M34 83h13M34 92h11M71 83h13M71 92h10" stroke="#40568f" stroke-width="2.7" stroke-linecap="round" opacity="0.72" />
+                  <circle cx="60" cy="42" r="23" fill="url(#difficulty-storybook-explorer-compass)" stroke="#5b2b1a" stroke-width="4.2" />
+                  <circle cx="60" cy="42" r="15" fill="#223b70" stroke="#f7c75b" stroke-width="3" />
+                  <path d="M60 20l6 22-6 22-6-22Z" fill="#ff8fac" stroke="#5b2b1a" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M82 42l-22 6-22-6 22-6Z" fill="#bfefff" opacity="0.92" />
+                  <circle cx="60" cy="42" r="4.4" fill="#fff6cf" stroke="#5b2b1a" stroke-width="2" />
                 </svg>
               </span>
             </label>
@@ -310,34 +318,28 @@
               <span class="difficulty-option__name">Disciple</span>
               <span class="difficulty-option__grade">Grade 6-8</span>
               <span class="difficulty-option__art" aria-hidden="true">
-                <svg class="difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
+                <svg class="difficulty-option__svg difficulty-option__svg--storybook" viewBox="6 8 108 108" focusable="false">
                   <defs>
-                    <radialGradient id="difficulty-disciple-premium-glow" cx="34%" cy="18%" r="88%">
-                      <stop offset="0" stop-color="#d7fff3" />
-                      <stop offset="0.48" stop-color="#7aa8ff" />
-                      <stop offset="1" stop-color="#121d4a" />
-                    </radialGradient>
-                    <linearGradient id="difficulty-disciple-premium-path" x1="35" x2="83" y1="103" y2="34" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#ffe06d" />
-                      <stop offset="0.55" stop-color="#7cf0d2" />
-                      <stop offset="1" stop-color="#f7fbff" />
+                    <linearGradient id="difficulty-storybook-disciple-growth-stem" x1="52" x2="67" y1="99" y2="38" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#f7c75b" />
+                      <stop offset="1" stop-color="#fff8d7" />
                     </linearGradient>
-                    <linearGradient id="difficulty-disciple-premium-hill" x1="22" x2="99" y1="76" y2="92" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#162a62" />
-                      <stop offset="1" stop-color="#263f88" />
+                    <linearGradient id="difficulty-storybook-disciple-growth-leaf" x1="28" x2="91" y1="31" y2="82" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#c8f5b2" />
+                      <stop offset="1" stop-color="#4fb47a" />
+                    </linearGradient>
+                    <linearGradient id="difficulty-storybook-disciple-growth-seed" x1="36" x2="85" y1="80" y2="104" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#ffe5a0" />
+                      <stop offset="1" stop-color="#d79345" />
                     </linearGradient>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#difficulty-disciple-premium-glow)" />
-                  <path d="M20 85c19-15 31-14 49-5 11 5 22 5 31-3v31H20Z" fill="url(#difficulty-disciple-premium-hill)" opacity="0.9" />
-                  <path d="M37 103c3-20 12-35 27-47 8-7 12-14 14-24" fill="none" stroke="url(#difficulty-disciple-premium-path)" stroke-width="8" stroke-linecap="round" />
-                  <path d="M77 22v37M62 40h30" stroke="#fff6c5" stroke-width="6" stroke-linecap="round" />
-                  <path d="M77 22v37M62 40h30" stroke="#ffce48" stroke-width="3" stroke-linecap="round" />
-                  <ellipse cx="42" cy="88" rx="5.8" ry="3.7" fill="#fff6c5" transform="rotate(-35 42 88)" />
-                  <ellipse cx="52" cy="76" rx="5" ry="3.2" fill="#d7fff3" transform="rotate(-35 52 76)" />
-                  <ellipse cx="63" cy="65" rx="4.5" ry="2.9" fill="#ffffff" transform="rotate(-35 63 65)" />
-                  <path d="M34 49c7-10 21-11 31-2-12 0-22 4-31 13Z" fill="#f7fbff" opacity="0.92" />
-                  <path d="M75 31c-10 12-12 24-5 36 13-8 19-20 17-36-4 6-7 9-12 0Z" fill="#eef8ff" opacity="0.95" />
-                  <path d="M50 48c6 3 11 8 15 14" fill="none" stroke="#9ee8ff" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+                  <ellipse cx="60" cy="108" rx="36" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M35 91c13-9 38-9 51 0l-7 14H42Z" fill="url(#difficulty-storybook-disciple-growth-seed)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M60 92c-1-17 2-32 9-47" fill="none" stroke="#5b2b1a" stroke-width="10" stroke-linecap="round" />
+                  <path d="M60 92c-1-17 2-32 9-47" fill="none" stroke="url(#difficulty-storybook-disciple-growth-stem)" stroke-width="5.5" stroke-linecap="round" />
+                  <path d="M64 61c-15-18-32-20-43-7 8 18 27 20 43 7Z" fill="url(#difficulty-storybook-disciple-growth-leaf)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M67 55c7-21 23-30 39-22 0 20-17 32-39 22Z" fill="url(#difficulty-storybook-disciple-growth-leaf)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M50 57c7 1 12 2 18 1M78 50c6-4 12-7 19-10" stroke="#eaffd4" stroke-width="3" stroke-linecap="round" opacity="0.7" />
                 </svg>
               </span>
             </label>
@@ -347,31 +349,31 @@
               <span class="difficulty-option__name">Berean</span>
               <span class="difficulty-option__grade">Grade 9-11</span>
               <span class="difficulty-option__art" aria-hidden="true">
-                <svg class="difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
+                <svg class="difficulty-option__svg difficulty-option__svg--storybook" viewBox="6 8 108 108" focusable="false">
                   <defs>
-                    <radialGradient id="difficulty-berean-premium-glow" cx="32%" cy="18%" r="88%">
-                      <stop offset="0" stop-color="#fff7bd" />
-                      <stop offset="0.48" stop-color="#82b5ff" />
-                      <stop offset="1" stop-color="#121d4b" />
-                    </radialGradient>
-                    <linearGradient id="difficulty-berean-premium-pages" x1="26" x2="90" y1="42" y2="88" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#fff7df" />
-                      <stop offset="1" stop-color="#d6e5ff" />
+                    <linearGradient id="difficulty-storybook-berean-pages" x1="23" x2="96" y1="40" y2="94" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff8e4" />
+                      <stop offset="1" stop-color="#dceaff" />
                     </linearGradient>
-                    <linearGradient id="difficulty-berean-premium-lens" x1="66" x2="98" y1="63" y2="99" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#ffffff" stop-opacity="0.92" />
-                      <stop offset="1" stop-color="#8edfff" stop-opacity="0.44" />
+                    <linearGradient id="difficulty-storybook-berean-cover" x1="22" x2="98" y1="42" y2="98" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#2d4f91" />
+                      <stop offset="1" stop-color="#121f3d" />
+                    </linearGradient>
+                    <linearGradient id="difficulty-storybook-berean-lens" x1="68" x2="103" y1="62" y2="97" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95" />
+                      <stop offset="1" stop-color="#a9eeff" stop-opacity="0.55" />
                     </linearGradient>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#difficulty-berean-premium-glow)" />
-                  <path d="M25 42c11-6 24-5 35 3v42c-11-8-24-9-35-3Z" fill="url(#difficulty-berean-premium-pages)" />
-                  <path d="M60 45c11-8 24-9 35-3v42c-11-6-24-5-35 3Z" fill="#f7fbff" />
-                  <path d="M60 45v42" stroke="#6275cb" stroke-width="3.3" stroke-linecap="round" />
-                  <path d="M35 55h15M35 64h14M69 55h15M69 64h11" stroke="#3e528e" stroke-width="3" stroke-linecap="round" opacity="0.76" />
-                  <circle cx="78" cy="75" r="17" fill="url(#difficulty-berean-premium-lens)" stroke="#ffdf6d" stroke-width="6" />
-                  <path d="M90 88l13 13" stroke="#ffdf6d" stroke-width="8" stroke-linecap="round" />
-                  <path d="M72 75h12M78 69v12" stroke="#334881" stroke-width="2.6" stroke-linecap="round" opacity="0.88" />
-                  <path d="M33 32h12M39 26v12" stroke="#fff1a6" stroke-width="3" stroke-linecap="round" opacity="0.9" />
+                  <ellipse cx="60" cy="108" rx="40" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M24 42c13-7 25-6 36 3v45c-11-9-23-10-36-3Z" fill="url(#difficulty-storybook-berean-cover)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M60 45c11-9 24-10 36-3v45c-13-7-25-6-36 3Z" fill="url(#difficulty-storybook-berean-pages)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M60 45v45" stroke="#5b2b1a" stroke-width="4" />
+                  <path d="M35 55h14M35 64h13M35 73h11M71 55h13M71 64h11" stroke="#40568f" stroke-width="2.8" stroke-linecap="round" opacity="0.72" />
+                  <circle cx="80" cy="76" r="18" fill="url(#difficulty-storybook-berean-lens)" stroke="#5b2b1a" stroke-width="4.2" />
+                  <circle cx="80" cy="76" r="14" fill="none" stroke="#f7c75b" stroke-width="3" />
+                  <path id="difficulty-storybook-berean-lens-cross" d="M80 68v18M73 75h14" stroke="#263d83" stroke-width="2.8" stroke-linecap="round" opacity="0.84" />
+                  <path d="M93 89l12 12" stroke="#5b2b1a" stroke-width="7.2" stroke-linecap="round" />
+                  <path d="M93 89l12 12" stroke="#f7c75b" stroke-width="4" stroke-linecap="round" />
                 </svg>
               </span>
             </label>
@@ -381,32 +383,38 @@
               <span class="difficulty-option__name">Theologian</span>
               <span class="difficulty-option__grade">Grade 12-16+</span>
               <span class="difficulty-option__art" aria-hidden="true">
-                <svg class="difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
+                <svg class="difficulty-option__svg difficulty-option__svg--storybook" viewBox="6 8 108 108" focusable="false">
                   <defs>
-                    <radialGradient id="difficulty-theologian-premium-glow" cx="34%" cy="18%" r="88%">
-                      <stop offset="0" stop-color="#f8e7ff" />
-                      <stop offset="0.44" stop-color="#9d75ff" />
-                      <stop offset="1" stop-color="#171a4d" />
-                    </radialGradient>
-                    <linearGradient id="difficulty-theologian-premium-scroll" x1="28" x2="92" y1="62" y2="95" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#fff2c4" />
-                      <stop offset="1" stop-color="#d4c4ff" />
+                    <linearGradient id="difficulty-storybook-theologian-cap" x1="31" x2="92" y1="25" y2="63" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#2b3f78" />
+                      <stop offset="1" stop-color="#0e1730" />
                     </linearGradient>
-                    <linearGradient id="difficulty-theologian-premium-cap" x1="28" x2="93" y1="31" y2="58" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#141936" />
-                      <stop offset="0.58" stop-color="#253172" />
-                      <stop offset="1" stop-color="#0d122e" />
+                    <linearGradient id="difficulty-storybook-theologian-bible-cover" x1="22" x2="73" y1="79" y2="104" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#2d4f91" />
+                      <stop offset="1" stop-color="#121f3d" />
+                    </linearGradient>
+                    <linearGradient id="difficulty-storybook-theologian-bible-pages" x1="48" x2="80" y1="80" y2="105" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fbf1cf" />
+                      <stop offset="1" stop-color="#d8c18b" />
                     </linearGradient>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#difficulty-theologian-premium-glow)" />
-                  <path d="M25 42l35-16 35 16-35 16Z" fill="url(#difficulty-theologian-premium-cap)" stroke="#d9c9ff" stroke-width="3" />
-                  <path d="M40 51v16c10 8 30 8 40 0V51" fill="#28367c" stroke="#9fbdff" stroke-width="3" />
-                  <path d="M94 42v24" stroke="#ffe06d" stroke-width="4" stroke-linecap="round" />
-                  <circle cx="94" cy="72" r="5.5" fill="#ffe06d" />
-                  <path d="M32 74c0-9 8-15 17-15h28c9 0 15 6 15 15s-6 15-15 15H40c-5 0-8 3-8 8 0-7 4-12 10-13-6-1-10-5-10-10Z" fill="url(#difficulty-theologian-premium-scroll)" />
-                  <path d="M50 70h26M48 79h30" stroke="#624d91" stroke-width="3" stroke-linecap="round" opacity="0.78" />
-                  <path d="M25 27l3.3 6.5 6.7 3-6.7 3L25 46l-3.3-6.5-6.7-3 6.7-3Z" fill="#ffe06d" />
-                  <path d="M84 21l2.4 4.6 4.6 2.2-4.6 2.2L84 35l-2.4-5-4.6-2.2 4.6-2.2Z" fill="#d8efff" />
+                  <ellipse cx="60" cy="108" rx="38" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M30 39l31-14 33 14-33 15Z" fill="url(#difficulty-storybook-theologian-cap)" stroke="#5b2b1a" stroke-width="4.3" stroke-linejoin="round" />
+                  <path d="M44 52v12c10 7 25 7 35 0V52c-10 5-25 5-35 0Z" fill="#243763" stroke="#5b2b1a" stroke-width="3.8" stroke-linejoin="round" />
+                  <path d="M43 38c11-5 27-6 42 0" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.22" />
+                  <path d="M88 40v23" stroke="#5b2b1a" stroke-width="6.2" stroke-linecap="round" />
+                  <path d="M88 40v23" stroke="#f7c75b" stroke-width="3.4" stroke-linecap="round" />
+                  <circle cx="88" cy="68" r="4.8" fill="#f7c75b" stroke="#5b2b1a" stroke-width="2.2" />
+                  <path d="M85 72l-4 7M91 72l4 7" stroke="#f7c75b" stroke-width="2.6" stroke-linecap="round" />
+                  <g transform="rotate(-4 50 92)">
+                    <path d="M24 80c9-5 17-5 26 1v23c-9-6-18-6-26-1Z" fill="url(#difficulty-storybook-theologian-bible-cover)" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
+                    <path d="M50 81c8-5 17-5 25 1v23c-8-5-17-5-25-1Z" fill="url(#difficulty-storybook-theologian-bible-pages)" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
+                    <path d="M50 81v23" stroke="#5b2b1a" stroke-width="3.4" />
+                    <path d="M33 88h9M33 96h8" stroke="#fff3d3" stroke-width="2.4" stroke-linecap="round" />
+                    <path d="M65 88v11M59.5 93.5h11" stroke="#f7c75b" stroke-width="2.9" stroke-linecap="round" />
+                    <path id="difficulty-storybook-theologian-hand" d="M74 80c4-4 11-2 13 3 2 5-1 10-6 11-4 1-7-1-8-5-3 0-5-2-5-5 0-3 3-5 6-4Z" fill="#ffd8a8" stroke="#5b2b1a" stroke-width="2.7" stroke-linejoin="round" />
+                    <path d="M76 86c2 2 5 3 8 2" fill="none" stroke="#b87554" stroke-width="1.7" stroke-linecap="round" opacity="0.66" />
+                  </g>
                 </svg>
               </span>
             </label>

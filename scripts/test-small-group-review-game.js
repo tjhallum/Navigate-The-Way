@@ -278,12 +278,18 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<span id="difficulty-setup-title" class="setup-step-title">3\. Choose the game difficulty<\/span>/);
   assert.match(html, /theological complexity of the questions and the readability of the wording/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*<span class="difficulty-option__grade">Grade 1-2<\/span>[\s\S]*<span class="difficulty-option__art" aria-hidden="true">[\s\S]*viewBox="0 0 120 120"[\s\S]*id="difficulty-lamb-premium-glow"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Bible Explorer[\s\S]*<span class="difficulty-option__grade">Grade 4-5<\/span>[\s\S]*id="difficulty-explorer-premium-glow"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>[\s\S]*id="difficulty-disciple-premium-glow"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*<span class="difficulty-option__grade">Grade 9-11<\/span>[\s\S]*id="difficulty-berean-premium-glow"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-theologian-premium-glow"/);
-  assert.equal((html.match(/class="difficulty-option__svg"/g) || []).length, 5);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*<span class="difficulty-option__grade">Grade 1-2<\/span>[\s\S]*<span class="difficulty-option__art difficulty-option__art--portrait" aria-hidden="true">[\s\S]*viewBox="0 0 96 132"[\s\S]*id="difficulty-storybook-lamb-face"/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Bible Explorer[\s\S]*<span class="difficulty-option__grade">Grade 4-5<\/span>[\s\S]*id="difficulty-storybook-explorer-compass"/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>[\s\S]*id="difficulty-storybook-disciple-growth-leaf"/);
+  assert.doesNotMatch(html, /difficulty-storybook-disciple-(?:path|backpack|sky|hill)/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*<span class="difficulty-option__grade">Grade 9-11<\/span>[\s\S]*id="difficulty-storybook-berean-lens"[\s\S]*id="difficulty-storybook-berean-lens-cross" d="M80 68v18M73 75h14"/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-storybook-theologian-bible-cover"[\s\S]*M24 80c9-5 17-5 26 1v23[\s\S]*M50 81c8-5 17-5 25 1v23[\s\S]*id="difficulty-storybook-theologian-hand" d="M74 80c4-4 11-2 13 3/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*M88 40v23[\s\S]*circle cx="88" cy="68"/);
+  assert.doesNotMatch(html, /difficulty-storybook-theologian-scroll|M23 76h43c5 0 9 4 9 9v18|M94 42v35|circle cx="94" cy="83"|M34 100c7 6 20 7 31 2/);
+  assert.doesNotMatch(html, /M33 30h9M37\.5 25\.5v9|M31 31h9M35\.5 26\.5v9|M74 76h12M80 70v12/);
+  assert.equal((html.match(/class="difficulty-option__svg difficulty-option__svg--storybook"/g) || []).length, 5);
+  assert.doesNotMatch(html, /difficulty-[a-z-]+-premium-|difficulty-child-panel|difficulty-explorer-panel|difficulty-disciple-panel|difficulty-berean-panel|difficulty-theologian-panel/);
+  assert.doesNotMatch(html, /difficulty-storybook-(?:explorer|disciple|berean|theologian)-(?:face|wool)/);
   assert.doesNotMatch(html, /🐑|🧭|🕊️|📖|🎓/);
   assert.doesNotMatch(html, /Catechumen/);
   assert.doesNotMatch(html, /Target Flesch-Kincaid:/);
@@ -302,7 +308,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-mobile-grid" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-context-art" \/>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-svg-art"><\/script>/);
 });
 
@@ -316,13 +322,16 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 220px\), 1fr\)\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 3\.9rem 0\.72rem 0\.78rem/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(5\.25rem, 5\.65rem\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 0\.52rem 0\.72rem 0\.78rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
-  assert.match(cssRule(css, '.difficulty-option__art'), /position:\s*absolute/);
-  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*3\.8rem/);
+  assert.match(cssRule(css, '.difficulty-option__art'), /grid-column:\s*3/);
+  assert.match(cssRule(css, '.difficulty-option__art'), /justify-self:\s*center/);
+  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*min\(5\.65rem, 100%\)/);
   assert.match(cssRule(css, '.difficulty-option__art'), /aspect-ratio:\s*1/);
+  assert.match(cssRule(css, '.difficulty-option__art--portrait'), /aspect-ratio:\s*3\s*\/\s*4/);
   assert.match(cssRule(css, '.difficulty-option__svg'), /width:\s*100%/);
+  assert.match(cssRule(css, '.difficulty-option__svg--storybook'), /overflow:\s*visible/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
 });
 
