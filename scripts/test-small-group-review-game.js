@@ -144,39 +144,76 @@ test('maps setup stages to the step that should be expanded', () => {
   assert.deepEqual(game.getSetupStepExpansionState('group'), {
     groupExpanded: true,
     lessonExpanded: false,
+    difficultyExpanded: false,
     apiExpanded: false,
     lessonAvailable: false,
+    difficultyAvailable: false,
     apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('lesson'), {
     groupExpanded: false,
     lessonExpanded: true,
+    difficultyExpanded: false,
     apiExpanded: false,
     lessonAvailable: true,
+    difficultyAvailable: false,
+    apiAvailable: false,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('difficulty'), {
+    groupExpanded: false,
+    lessonExpanded: false,
+    difficultyExpanded: true,
+    apiExpanded: false,
+    lessonAvailable: true,
+    difficultyAvailable: true,
     apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('api'), {
     groupExpanded: false,
     lessonExpanded: false,
+    difficultyExpanded: false,
     apiExpanded: true,
     lessonAvailable: true,
+    difficultyAvailable: true,
     apiAvailable: true,
   });
   assert.deepEqual(game.getSetupStepExpansionState('game'), {
     groupExpanded: false,
     lessonExpanded: false,
+    difficultyExpanded: false,
     apiExpanded: false,
     lessonAvailable: true,
+    difficultyAvailable: true,
     apiAvailable: true,
   });
   assert.deepEqual(game.getSetupStepExpansionState('unknown'), game.getSetupStepExpansionState('group'));
 });
 
-test('detects whether lesson setup has a source before unlocking API setup', () => {
+test('detects whether lesson setup has a source before unlocking difficulty setup', () => {
   assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: '   ' }), false);
   assert.equal(game.hasLessonSourceInput({ files: null, lessonTopicText: '' }), false);
   assert.equal(game.hasLessonSourceInput({ files: [{ name: 'lesson.pdf' }], lessonTopicText: '' }), true);
   assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: 'Romans 8 adoption in Christ' }), true);
+});
+
+test('defines Berean Board difficulty levels and generation guidance', () => {
+  assert.equal(game.DEFAULT_DIFFICULTY_LEVEL, 'adult');
+  assert.deepEqual(
+    game.DIFFICULTY_LEVELS.map(({ level, name, gradeRange }) => ({ level, name, gradeRange })),
+    [
+      { level: 'Child', name: 'Little Lamb', gradeRange: 'Grade 1-2' },
+      { level: 'Pre-teen', name: 'Catechumen', gradeRange: 'Grade 4-5' },
+      { level: 'Teen', name: 'Disciple', gradeRange: 'Grade 6-8' },
+      { level: 'Adult', name: 'Berean', gradeRange: 'Grade 9-11' },
+      { level: 'Theologian', name: 'Theologian', gradeRange: 'Grade 12-16+' },
+    ]
+  );
+  assert.equal(game.getDifficultyLevelConfig('Little Lamb').value, 'child');
+  assert.equal(game.getDifficultyLevelConfig('pre-teen').value, 'preteen');
+  assert.equal(game.getDifficultyLevelSummary('teen'), 'Teen — Disciple (Grade 6-8)');
+  assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Grade 12-16\+/);
+  assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Theological complexity and readability guidance/);
+  assert.throws(() => game.requireDifficultyLevel(''), /difficulty level/i);
 });
 
 test('start over returns leaders to group setup before rebuilding a game', () => {
@@ -185,6 +222,9 @@ test('start over returns leaders to group setup before rebuilding a game', () =>
 
   assert.ok(resetHandlerMatch, 'expected Start Over click handler to be present');
   assert.match(resetHandlerMatch[0], /applySetupStepStage\('group'\)/);
+  assert.match(resetHandlerMatch[0], /difficultySetupComplete = false/);
+  assert.match(resetHandlerMatch[0], /selectedDifficultyLevel = ''/);
+  assert.match(resetHandlerMatch[0], /updateDifficultySetupControls\(\)/);
   assert.doesNotMatch(resetHandlerMatch[0], /applySetupStepStage\('lesson'\)/);
 });
 
@@ -230,13 +270,26 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /Or type the lesson topic, summary, or focus instructions/);
   assert.match(html, /focus more attention on/);
-  assert.match(html, /Use this field with uploaded files to steer emphasis/);
-  assert.match(html, /<button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup<\/button>/);
+  assert.match(html, /Use this field with uploaded files to steer emphasis or focus/);
+  assert.doesNotMatch(html, /Use this field with uploaded files to steer emphasis, focus, or level of difficulty/);
+  assert.match(html, /<button id="continue-to-difficulty-setup-button" type="button" class="primary-action" disabled>Continue to Difficulty Setup<\/button>/);
   assert.match(html, /<p id="lesson-setup-status" class="game-status" aria-live="polite"><\/p>/);
-  assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>3\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
+  assert.match(html, /<section id="difficulty-setup-section" class="difficulty-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="difficulty" aria-labelledby="difficulty-setup-title">/);
+  assert.match(html, /<button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>/);
+  assert.match(html, /<span id="difficulty-setup-title" class="setup-step-title">3\. Choose the game difficulty<\/span>/);
+  assert.match(html, /theological complexity of the questions and the readability of the wording/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*Grade 1-2/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Catechumen[\s\S]*Grade 4-5/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*Grade 6-8/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*Grade 9-11/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*Grade 12-16\+/);
+  assert.match(html, /<button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup<\/button>/);
+  assert.match(html, /<p id="difficulty-setup-status" class="game-status" aria-live="polite"><\/p>/);
+  assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>4\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
   assert.match(html, /<section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">/);
   assert.match(html, /<button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>/);
-  assert.match(html, /<span id="api-setup-title" class="setup-step-title">3\. Connect to NTW’s API<\/span>/);
+  assert.match(html, /<span id="api-setup-title" class="setup-step-title">4\. Connect to NTW’s API<\/span>/);
+  assert.doesNotMatch(html, /<span id="api-setup-title" class="setup-step-title">3\. Connect to NTW’s API<\/span>/);
   assert.match(html, /<div id="api-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /<div class="api-grid">/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
@@ -245,7 +298,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-start-over-step-one"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-step"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
@@ -257,6 +310,9 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step--locked'), /opacity:\s*0\.58/);
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
+  assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(220px, 1fr\)\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto 1fr/);
+  assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
 });
 
 test('defensively clears required validation from optional contestant inputs at startup', () => {
@@ -683,10 +739,11 @@ test('completes a two-player clue once both players have attempted without the e
   assert.equal(game.shouldAutoCloseAfterAnswerResult(secondMiss), false);
 });
 
-test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material', () => {
+test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material and selected difficulty', () => {
   const messages = game.buildOpenAiMessages({
     contestantNames: ['Ada', 'Boaz', 'Chloe', 'Daniel'],
     lessonContent: 'Lesson material about Romans 8 and adoption in Christ.',
+    difficultyLevel: 'child',
   });
 
   assert.equal(messages[0].role, 'system');
@@ -695,8 +752,15 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[0].content, /leader-provided focus instructions/i);
   assert.match(messages[0].content, /shape the game board emphasis/i);
   assert.match(messages[0].content, /do not treat focus instructions as new lesson facts/i);
+  assert.match(messages[0].content, /theological complexity and wording readability/i);
+  assert.match(messages[0].content, /Flesch-Kincaid grade range/i);
   assert.match(messages[1].content, /exactly 5 categories/i);
   assert.match(messages[1].content, /Ada, Boaz, Chloe, Daniel/);
+  assert.match(messages[1].content, /Difficulty level: Child/);
+  assert.match(messages[1].content, /Difficulty name: Little Lamb/);
+  assert.match(messages[1].content, /Target Flesch-Kincaid grade level: Grade 1-2/);
+  assert.match(messages[1].content, /theological complexity and readability/i);
+  assert.match(messages[1].content, /age-appropriate in substance/i);
   assert.match(messages[1].content, /Lesson material about Romans 8/);
 });
 

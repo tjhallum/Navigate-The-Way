@@ -76,7 +76,7 @@ Supplementary pages (expanded summaries):
 
 - https://www.navtheway.com/small-group-review-game
   Browser-based Berean Board trivia-style Bible lesson review game generator.
-  Turns uploaded lesson files or a typed lesson topic into a trivia-style game board, using NTW's Apologist Fusion Chat Completions endpoint to generate categories, clues, correct responses, explanations, and lesson anchors.
+  Turns uploaded lesson files or a typed lesson topic into a trivia-style game board, using a difficulty selector to target age-appropriate theological complexity and Flesch-Kincaid grade ranges before NTW's Apologist Fusion Chat Completions endpoint generates categories, clues, correct responses, explanations, and lesson anchors.
   Defaults to https://navtheway.apologist.ai/api/v1/chat/completions, English language metadata, and the premium OpenAI GPT-5.4 model ID openai/gpt/5.4.
   Useful for small group leaders planning review games while preserving cautions that generated content should be checked against Scripture, the lesson, and faithful church leadership.
 

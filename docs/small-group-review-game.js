@@ -11,6 +11,44 @@
   const DEFAULT_LANGUAGE = 'en';
   const DEFAULT_BIBLE = 'bsb';
   const FOCUS_INSTRUCTIONS_HEADING = 'LEADER-PROVIDED FOCUS INSTRUCTIONS FOR THIS GAME:';
+  const DEFAULT_DIFFICULTY_LEVEL = 'adult';
+  const DIFFICULTY_LEVELS = Object.freeze([
+    {
+      value: 'child',
+      level: 'Child',
+      name: 'Little Lamb',
+      gradeRange: 'Grade 1-2',
+      guidance: 'Use very short sentences, concrete Bible truths, familiar words, and simple recall prompts. Avoid abstract theological terms unless they are explained in plain child-level wording.',
+    },
+    {
+      value: 'preteen',
+      level: 'Pre-teen',
+      name: 'Catechumen',
+      gradeRange: 'Grade 4-5',
+      guidance: 'Use clear upper-elementary wording, basic Bible-study vocabulary, and simple doctrine explained with context. Keep questions concrete with light application.',
+    },
+    {
+      value: 'teen',
+      level: 'Teen',
+      name: 'Disciple',
+      gradeRange: 'Grade 6-8',
+      guidance: 'Use middle-school to junior-high readability, introduce core doctrine and application, and keep wording direct enough for teens to answer aloud.',
+    },
+    {
+      value: 'adult',
+      level: 'Adult',
+      name: 'Berean',
+      gradeRange: 'Grade 9-11',
+      guidance: 'Use adult small-group wording with moderate theological vocabulary, careful biblical reasoning, and application that rewards close attention to the lesson.',
+    },
+    {
+      value: 'theologian',
+      level: 'Theologian',
+      name: 'Theologian',
+      gradeRange: 'Grade 12-16+',
+      guidance: 'Use advanced theological vocabulary, confessional and doctrinal distinctions where supported by the lesson, and seminary-level reasoning while remaining playable.',
+    },
+  ]);
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
@@ -385,30 +423,83 @@
     return !playerNameListsMatch(currentPlayerNames || [], nextPlayerNames || []);
   }
 
+  function normalizeDifficultyKey(value) {
+    return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+  }
+
+  function getDifficultyLevelConfig(value) {
+    const key = normalizeDifficultyKey(value);
+    if (!key) return null;
+    return DIFFICULTY_LEVELS.find((difficulty) => (
+      difficulty.value === key ||
+      normalizeDifficultyKey(difficulty.level) === key ||
+      normalizeDifficultyKey(difficulty.name) === key
+    )) || null;
+  }
+
+  function requireDifficultyLevel(value) {
+    const difficulty = getDifficultyLevelConfig(value);
+    if (!difficulty) {
+      throw new Error('Select a Berean Board difficulty level before continuing.');
+    }
+    return difficulty;
+  }
+
+  function getDifficultyLevelSummary(value) {
+    const difficulty = getDifficultyLevelConfig(value) || getDifficultyLevelConfig(DEFAULT_DIFFICULTY_LEVEL);
+    return `${difficulty.level} — ${difficulty.name} (${difficulty.gradeRange})`;
+  }
+
+  function buildDifficultyGenerationInstructions(value) {
+    const difficulty = getDifficultyLevelConfig(value) || getDifficultyLevelConfig(DEFAULT_DIFFICULTY_LEVEL);
+    return [
+      `Difficulty level: ${difficulty.level}`,
+      `Difficulty name: ${difficulty.name}`,
+      `Target Flesch-Kincaid grade level: ${difficulty.gradeRange}`,
+      `Theological complexity and readability guidance: ${difficulty.guidance}`,
+    ].join('\n');
+  }
+
   function getSetupStepExpansionState(stage) {
     switch (stage) {
       case 'lesson':
         return {
           groupExpanded: false,
           lessonExpanded: true,
+          difficultyExpanded: false,
           apiExpanded: false,
           lessonAvailable: true,
+          difficultyAvailable: false,
+          apiAvailable: false,
+        };
+      case 'difficulty':
+        return {
+          groupExpanded: false,
+          lessonExpanded: false,
+          difficultyExpanded: true,
+          apiExpanded: false,
+          lessonAvailable: true,
+          difficultyAvailable: true,
           apiAvailable: false,
         };
       case 'api':
         return {
           groupExpanded: false,
           lessonExpanded: false,
+          difficultyExpanded: false,
           apiExpanded: true,
           lessonAvailable: true,
+          difficultyAvailable: true,
           apiAvailable: true,
         };
       case 'game':
         return {
           groupExpanded: false,
           lessonExpanded: false,
+          difficultyExpanded: false,
           apiExpanded: false,
           lessonAvailable: true,
+          difficultyAvailable: true,
           apiAvailable: true,
         };
       case 'group':
@@ -416,8 +507,10 @@
         return {
           groupExpanded: true,
           lessonExpanded: false,
+          difficultyExpanded: false,
           apiExpanded: false,
           lessonAvailable: false,
+          difficultyAvailable: false,
           apiAvailable: false,
         };
     }
@@ -865,9 +958,10 @@
     return `${normalized.slice(0, prefixBudget).trimEnd()}${focusSection}`;
   }
 
-  function buildOpenAiMessages({ contestantNames, lessonContent }) {
+  function buildOpenAiMessages({ contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL }) {
     const names = Array.isArray(contestantNames) ? contestantNames.map((name, index) => normalizeContestantName(name, index)) : [];
     const lesson = truncateLessonContent(lessonContent);
+    const difficulty = getDifficultyLevelConfig(difficultyLevel) || getDifficultyLevelConfig(DEFAULT_DIFFICULTY_LEVEL);
     const truncationNote = lesson.truncated
       ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before generation. Build the game only from the visible lesson material below.`
       : '';
@@ -883,6 +977,7 @@
           'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts.',
           'Do not quote Scripture from memory. If exact Scripture text appears in the supplied lesson material, you may use that supplied text; otherwise cite references without fabricating verse wording.',
           'Do not invent doctrines, anecdotes, precise lesson details, or source claims that are not supported by the supplied material.',
+          'Adjust both theological complexity and wording readability to the selected difficulty level, aiming for the selected Flesch-Kincaid grade range without weakening biblical or theological accuracy.',
           'Keep the tone warm, clear, and suitable for a fun small group review activity.',
           'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
         ].join('\n'),
@@ -892,10 +987,13 @@
         content: [
           'Build a Jeopardy-style lesson game board for a Christian small group leader.',
           `Contestants: ${names.join(', ')}`,
+          buildDifficultyGenerationInstructions(difficulty.value),
           'Requirements:',
           '- Generate exactly 5 categories.',
           '- Each category must contain exactly 5 clues.',
           '- Clue values must be 100, 200, 300, 400, and 500 in that order for every category.',
+          '- Adjust the theological complexity and readability of every clue, correctResponse, and explanation to the selected difficulty level.',
+          '- Aim the wording at the selected Flesch-Kincaid grade range while keeping prompts biblically accurate, age-appropriate in substance, and playable aloud.',
           '- The displayed "clue" should ask or prompt recall/application from the lesson.',
           '- The "correctResponse" should be short enough for a leader to judge a spoken answer.',
           '- Include a brief explanation and a sourceAnchor pointing to the uploaded file, leader-provided topic/summary, lesson section, heading, or passage reference when available. Use any leader focus instructions to guide emphasis rather than as a sourceAnchor.',
@@ -1542,8 +1640,14 @@
     const lessonSetupSection = app.querySelector('#lesson-setup-section');
     const lessonSetupToggle = app.querySelector('#lesson-setup-toggle');
     const lessonSetupContent = app.querySelector('#lesson-setup-content');
-    const continueToApiSetupButton = app.querySelector('#continue-to-api-setup-button');
+    const continueToDifficultySetupButton = app.querySelector('#continue-to-difficulty-setup-button');
     const lessonSetupStatus = app.querySelector('#lesson-setup-status');
+    const difficultySetupSection = app.querySelector('#difficulty-setup-section');
+    const difficultySetupToggle = app.querySelector('#difficulty-setup-toggle');
+    const difficultySetupContent = app.querySelector('#difficulty-setup-content');
+    const difficultySetupStatus = app.querySelector('#difficulty-setup-status');
+    const difficultyInputs = Array.from(app.querySelectorAll('input[name="game-difficulty"]'));
+    const continueToApiSetupButton = app.querySelector('#continue-to-api-setup-button');
     const apiSetupSection = app.querySelector('#api-setup-section');
     const apiSetupToggle = app.querySelector('#api-setup-toggle');
     const apiSetupContent = app.querySelector('#api-setup-content');
@@ -1554,6 +1658,8 @@
     let chosenPlayerNames = [];
     let selectedPlayerNames = [];
     let lessonSetupComplete = false;
+    let difficultySetupComplete = false;
+    let selectedDifficultyLevel = '';
     let contestants = [];
     let gameData = null;
     let activeClue = null;
@@ -1587,7 +1693,10 @@
       const state = getSetupStepExpansionState(stage);
       const groupStatus = state.groupExpanded ? 'Current' : 'Done';
       const lessonStatus = state.lessonAvailable
-        ? (state.lessonExpanded ? 'Current' : ((stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
+        ? (state.lessonExpanded ? 'Current' : ((stage === 'difficulty' || stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
+        : 'Locked';
+      const difficultyStatus = state.difficultyAvailable
+        ? (state.difficultyExpanded ? 'Current' : ((stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
         : 'Locked';
       const apiStatus = state.apiAvailable
         ? (state.apiExpanded ? 'Current' : (stage === 'game' ? 'Done' : 'Ready'))
@@ -1609,6 +1718,14 @@
         available: state.lessonAvailable,
       });
       setSetupStepExpanded({
+        stepElement: difficultySetupSection,
+        toggleButton: difficultySetupToggle,
+        contentElement: difficultySetupContent,
+        expanded: state.difficultyExpanded,
+        statusText: difficultyStatus,
+        available: state.difficultyAvailable,
+      });
+      setSetupStepExpanded({
         stepElement: apiSetupSection,
         toggleButton: apiSetupToggle,
         contentElement: apiSetupContent,
@@ -1619,8 +1736,24 @@
     }
 
     function toggleSetupStep(stepName) {
-      if (stepName === 'lesson' && lessonSetupToggle?.disabled) return;
-      if (stepName === 'api' && apiSetupToggle?.disabled) return;
+      const setupSteps = {
+        lesson: {
+          stepElement: lessonSetupSection,
+          toggleButton: lessonSetupToggle,
+          contentElement: lessonSetupContent,
+        },
+        difficulty: {
+          stepElement: difficultySetupSection,
+          toggleButton: difficultySetupToggle,
+          contentElement: difficultySetupContent,
+        },
+        api: {
+          stepElement: apiSetupSection,
+          toggleButton: apiSetupToggle,
+          contentElement: apiSetupContent,
+        },
+      };
+
       if (stepName === 'group') {
         const shouldExpandGroup = Boolean(groupSetupContent?.hidden);
         setSetupStepExpanded({
@@ -1631,41 +1764,26 @@
           statusText: shouldExpandGroup ? 'Current' : (lessonSetupToggle?.disabled ? 'Current' : 'Done'),
           available: true,
         });
-        if (shouldExpandGroup && !lessonSetupToggle?.disabled) {
-          setSetupStepExpanded({
-            stepElement: lessonSetupSection,
-            toggleButton: lessonSetupToggle,
-            contentElement: lessonSetupContent,
-            expanded: false,
-            statusText: 'Ready',
-            available: true,
-          });
-        }
-        if (shouldExpandGroup && !apiSetupToggle?.disabled) {
-          setSetupStepExpanded({
-            stepElement: apiSetupSection,
-            toggleButton: apiSetupToggle,
-            contentElement: apiSetupContent,
-            expanded: false,
-            statusText: 'Ready',
-            available: true,
+        if (shouldExpandGroup) {
+          Object.values(setupSteps).forEach((step) => {
+            if (step.toggleButton?.disabled) return;
+            setSetupStepExpanded({
+              ...step,
+              expanded: false,
+              statusText: 'Ready',
+              available: true,
+            });
           });
         }
         return;
       }
 
-      const isApiStep = stepName === 'api';
-      const targetStep = isApiStep ? apiSetupSection : lessonSetupSection;
-      const targetToggle = isApiStep ? apiSetupToggle : lessonSetupToggle;
-      const targetContent = isApiStep ? apiSetupContent : lessonSetupContent;
-      const otherStep = isApiStep ? lessonSetupSection : apiSetupSection;
-      const otherToggle = isApiStep ? lessonSetupToggle : apiSetupToggle;
-      const otherContent = isApiStep ? lessonSetupContent : apiSetupContent;
-      const shouldExpandTarget = Boolean(targetContent?.hidden);
+      const target = setupSteps[stepName];
+      if (!target || target.toggleButton?.disabled) return;
+
+      const shouldExpandTarget = Boolean(target.contentElement?.hidden);
       setSetupStepExpanded({
-        stepElement: targetStep,
-        toggleButton: targetToggle,
-        contentElement: targetContent,
+        ...target,
         expanded: shouldExpandTarget,
         statusText: shouldExpandTarget ? 'Current' : 'Ready',
         available: true,
@@ -1679,16 +1797,15 @@
           statusText: 'Done',
           available: true,
         });
-        if (!otherToggle?.disabled) {
+        Object.entries(setupSteps).forEach(([name, step]) => {
+          if (name === stepName || step.toggleButton?.disabled) return;
           setSetupStepExpanded({
-            stepElement: otherStep,
-            toggleButton: otherToggle,
-            contentElement: otherContent,
+            ...step,
             expanded: false,
             statusText: 'Ready',
             available: true,
           });
-        }
+        });
       }
     }
 
@@ -1702,8 +1819,12 @@
     function hideLessonSetup() {
       selectedPlayerNames = [];
       lessonSetupComplete = false;
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
       if (selectedPlayersSummary) selectedPlayersSummary.textContent = '';
       if (lessonSetupStatus) lessonSetupStatus.textContent = '';
+      if (difficultySetupStatus) difficultySetupStatus.textContent = '';
+      updateDifficultySetupControls();
       applySetupStepStage('group');
     }
 
@@ -1722,22 +1843,53 @@
 
     function updateLessonSetupControls() {
       const lessonSourcePresent = currentLessonSourceIsPresent();
-      if (continueToApiSetupButton) {
-        continueToApiSetupButton.disabled = !lessonSourcePresent;
+      if (continueToDifficultySetupButton) {
+        continueToDifficultySetupButton.disabled = !lessonSourcePresent;
       }
       return lessonSourcePresent;
     }
 
-    function markLessonSetupChanged() {
-      const wasComplete = lessonSetupComplete;
-      lessonSetupComplete = false;
-      updateLessonSetupControls();
+    function currentDifficultyLevel() {
+      const checkedInput = difficultyInputs.find((input) => input.checked);
+      return checkedInput?.value || '';
+    }
+
+    function updateDifficultySetupControls() {
+      const difficultySelected = Boolean(getDifficultyLevelConfig(currentDifficultyLevel()));
+      if (continueToApiSetupButton) {
+        continueToApiSetupButton.disabled = !difficultySelected;
+      }
+      return difficultySelected;
+    }
+
+    function markDifficultySetupChanged() {
+      const wasComplete = difficultySetupComplete;
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
+      updateDifficultySetupControls();
       if (wasComplete && selectedPlayerNames.length > 0) {
         gameData = null;
         closeActiveClue();
         if (gameArea) gameArea.hidden = true;
+        applySetupStepStage('difficulty');
+        renderStatus(difficultySetupStatus, 'Difficulty changed. Continue to API Setup again when the difficulty is ready.', 'info');
+      }
+    }
+
+    function markLessonSetupChanged() {
+      const wasComplete = lessonSetupComplete || difficultySetupComplete;
+      lessonSetupComplete = false;
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
+      updateLessonSetupControls();
+      updateDifficultySetupControls();
+      if (wasComplete && selectedPlayerNames.length > 0) {
+        gameData = null;
+        closeActiveClue();
+        if (gameArea) gameArea.hidden = true;
+        if (difficultySetupStatus) difficultySetupStatus.textContent = '';
         applySetupStepStage('lesson');
-        renderStatus(lessonSetupStatus, 'Lesson setup changed. Continue to API Setup again when the lesson source is ready.', 'info');
+        renderStatus(lessonSetupStatus, 'Lesson setup changed. Continue to Difficulty Setup again when the lesson source is ready.', 'info');
       }
     }
 
@@ -1747,7 +1899,28 @@
         return;
       }
       lessonSetupComplete = true;
-      renderStatus(lessonSetupStatus, 'Lesson source ready. Connect to NTW’s API to generate the game board.', 'success');
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
+      updateDifficultySetupControls();
+      renderStatus(lessonSetupStatus, 'Lesson source ready. Choose a difficulty level for this game board.', 'success');
+      applySetupStepStage('difficulty');
+      difficultySetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function completeDifficultySetup() {
+      if (!lessonSetupComplete) {
+        applySetupStepStage('lesson');
+        renderStatus(lessonSetupStatus, 'Complete lesson setup before choosing a difficulty level.', 'error');
+        return;
+      }
+      if (!updateDifficultySetupControls()) {
+        renderStatus(difficultySetupStatus, 'Select a difficulty level before continuing to NTW’s API setup.', 'error');
+        return;
+      }
+      const difficulty = requireDifficultyLevel(currentDifficultyLevel());
+      selectedDifficultyLevel = difficulty.value;
+      difficultySetupComplete = true;
+      renderStatus(difficultySetupStatus, `Difficulty set to ${getDifficultyLevelSummary(difficulty.value)}. Connect to NTW’s API to generate the game board.`, 'success');
       applySetupStepStage('api');
       apiSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -1903,8 +2076,12 @@
       selectedPlayerNames = selection.playerNames;
       contestants = createContestants(selectedPlayerNames);
       lessonSetupComplete = false;
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
       renderStatus(groupSetupStatus, selection.message, 'success');
       if (lessonSetupStatus) lessonSetupStatus.textContent = '';
+      if (difficultySetupStatus) difficultySetupStatus.textContent = '';
+      updateDifficultySetupControls();
       applySetupStepStage('lesson');
       updateLessonSetupControls();
       renderSelectedPlayersSummary();
@@ -2330,11 +2507,17 @@
     lessonSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('lesson');
     });
+    difficultySetupToggle?.addEventListener('click', () => {
+      toggleSetupStep('difficulty');
+    });
     apiSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('api');
     });
-    continueToApiSetupButton?.addEventListener('click', () => {
+    continueToDifficultySetupButton?.addEventListener('click', () => {
       completeLessonSetup();
+    });
+    continueToApiSetupButton?.addEventListener('click', () => {
+      completeDifficultySetup();
     });
     saveGroupMembersButton?.addEventListener('click', () => {
       saveGroupMembersFromEditor();
@@ -2376,6 +2559,11 @@
     lessonTopicInput?.addEventListener('input', () => {
       markLessonSetupChanged();
     });
+    difficultyInputs.forEach((input) => {
+      input.addEventListener('change', () => {
+        markDifficultySetupChanged();
+      });
+    });
 
     dropZone?.addEventListener('dragover', (event) => {
       event.preventDefault();
@@ -2402,9 +2590,16 @@
         renderSelectedPlayersSummary();
         if (!lessonSetupComplete) {
           applySetupStepStage('lesson');
-          renderStatus(lessonSetupStatus, 'Complete lesson setup before connecting to NTW’s API.', 'error');
-          throw new Error('Complete lesson setup before connecting to NTW’s API.');
+          renderStatus(lessonSetupStatus, 'Complete lesson setup before choosing a difficulty level.', 'error');
+          throw new Error('Complete lesson setup before choosing a difficulty level.');
         }
+        if (!difficultySetupComplete) {
+          applySetupStepStage('difficulty');
+          renderStatus(difficultySetupStatus, 'Choose a game difficulty before connecting to NTW’s API.', 'error');
+          throw new Error('Choose a game difficulty before connecting to NTW’s API.');
+        }
+        const difficulty = requireDifficultyLevel(selectedDifficultyLevel || currentDifficultyLevel());
+        selectedDifficultyLevel = difficulty.value;
         renderStatus(setupStatus, 'Preparing lesson material in your browser…', 'info');
         if (generateButton) generateButton.disabled = true;
         const lessonContent = await buildLessonSourceContent({
@@ -2414,6 +2609,7 @@
         const messages = buildOpenAiMessages({
           contestantNames: contestants.map((contestant) => contestant.name),
           lessonContent,
+          difficultyLevel: difficulty.value,
         });
         const endpoint = normalizeChatCompletionsEndpoint(endpointInput?.value || DEFAULT_CHAT_COMPLETIONS_ENDPOINT);
         const model = modelInput?.value || DEFAULT_MODEL;
@@ -2474,10 +2670,14 @@
       contestants = [];
       gameData = null;
       lessonSetupComplete = false;
+      difficultySetupComplete = false;
+      selectedDifficultyLevel = '';
       closeActiveClue();
       if (gameArea) gameArea.hidden = true;
+      if (difficultySetupStatus) difficultySetupStatus.textContent = '';
       applySetupStepStage('group');
       updateLessonSetupControls();
+      updateDifficultySetupControls();
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
     });
     exportButton?.addEventListener('click', () => {
@@ -2508,6 +2708,8 @@
     DEFAULT_MODEL,
     DEFAULT_LANGUAGE,
     DEFAULT_BIBLE,
+    DEFAULT_DIFFICULTY_LEVEL,
+    DIFFICULTY_LEVELS,
     isSupportedLessonFile,
     configureContestantNameInputs,
     getResponseEntryControlState,
@@ -2524,6 +2726,10 @@
     resolvePlayerSelection,
     selectRandomPlayers,
     shouldResetGeneratedGameForPlayerSelectionChange,
+    getDifficultyLevelConfig,
+    requireDifficultyLevel,
+    getDifficultyLevelSummary,
+    buildDifficultyGenerationInstructions,
     getSetupStepExpansionState,
     buildSavedGroupMembersCookie,
     buildClearGroupMembersCookie,
