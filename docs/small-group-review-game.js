@@ -2476,7 +2476,7 @@
       lessonSetupComplete = false;
       closeActiveClue();
       if (gameArea) gameArea.hidden = true;
-      applySetupStepStage('lesson');
+      applySetupStepStage('group');
       updateLessonSetupControls();
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
     });
