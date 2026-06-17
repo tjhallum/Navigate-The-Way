@@ -179,6 +179,29 @@ test('detects whether lesson setup has a source before unlocking API setup', () 
   assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: 'Romans 8 adoption in Christ' }), true);
 });
 
+test('keeps setup usable when browser local storage is unavailable', () => {
+  const blockedWindow = {};
+  Object.defineProperty(blockedWindow, 'localStorage', {
+    get() {
+      throw new Error('localStorage is blocked');
+    },
+  });
+
+  assert.equal(game.safeGetBrowserStorageItem(blockedWindow, 'ntwReviewGameEndpoint'), '');
+  assert.doesNotThrow(() => game.safeSetBrowserStorageItem(blockedWindow, 'ntwReviewGameEndpoint', 'https://example.test'));
+  assert.equal(game.safeSetBrowserStorageItem(blockedWindow, 'ntwReviewGameEndpoint', 'https://example.test'), false);
+
+  const values = new Map();
+  const storageWindow = {
+    localStorage: {
+      getItem: (key) => values.get(key) || '',
+      setItem: (key, value) => values.set(key, String(value)),
+    },
+  };
+  assert.equal(game.safeSetBrowserStorageItem(storageWindow, 'ntwReviewGameEndpoint', 'https://example.test'), true);
+  assert.equal(game.safeGetBrowserStorageItem(storageWindow, 'ntwReviewGameEndpoint'), 'https://example.test');
+});
+
 test('renders group setup wizard controls before lesson setup in the browser form', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
 
