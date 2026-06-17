@@ -302,7 +302,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-premium-difficulty-tiles" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-mobile-grid" \/>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-svg-art"><\/script>/);
 });
 
@@ -315,7 +315,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step--locked'), /opacity:\s*0\.58/);
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
-  assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(220px, 1fr\)\)/);
+  assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 220px\), 1fr\)\)/);
   assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\)/);
   assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 3\.9rem 0\.72rem 0\.78rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
