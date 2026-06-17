@@ -1941,7 +1941,7 @@ footer {
 
 .difficulty-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 0.75rem;
   margin: 0;
   padding: 0;
@@ -1957,14 +1957,17 @@ footer {
 
 .difficulty-option {
   display: grid !important;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.25rem 0.7rem !important;
+  grid-template-columns: auto minmax(0, 1fr) clamp(5.5rem, 18vw, 6.5rem);
+  align-items: center;
+  gap: 0.12rem 0.85rem !important;
+  min-height: 7.75rem;
   border: 1px solid rgba(122, 168, 255, 0.28);
-  border-radius: 14px;
-  padding: 0.8rem;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(122, 168, 255, 0.045));
   cursor: pointer;
+  overflow: hidden;
+  text-align: left;
 }
 
 .difficulty-option:has(input:checked) {
@@ -1982,23 +1985,29 @@ footer {
   accent-color: #ffce48;
 }
 
-.difficulty-option__icon {
-  grid-column: 2;
+.difficulty-option__art {
+  grid-column: 3;
   grid-row: 1 / span 3;
-  display: inline-grid;
-  place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 206, 72, 0.22), rgba(122, 168, 255, 0.18));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-  font-size: 1.45rem;
-  line-height: 1;
+  align-self: center;
+  justify-self: end;
+  display: block;
+  width: clamp(5.25rem, 17vw, 6.25rem);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.32));
+}
+
+.difficulty-option__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .difficulty-option__level,
 .difficulty-option__name {
-  grid-column: 3;
+  grid-column: 2;
+  min-width: 0;
+  text-align: left;
+  justify-self: stretch;
 }
 
 .difficulty-option__level {
@@ -2016,7 +2025,10 @@ footer {
 }
 
 .difficulty-option__grade {
-  grid-column: 3;
+  grid-column: 2;
+  min-width: 0;
+  justify-self: stretch;
+  text-align: left;
   display: block;
   color: var(--muted);
   font-size: 0.92rem;
