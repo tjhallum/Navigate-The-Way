@@ -232,38 +232,154 @@
             <legend class="difficulty-options__legend">Game difficulty level</legend>
             <label class="difficulty-option">
               <input type="radio" name="game-difficulty" value="child" />
-              <span class="difficulty-option__icon" aria-hidden="true">🐑</span>
               <span class="difficulty-option__level">Child</span>
               <span class="difficulty-option__name">Little Lamb</span>
               <span class="difficulty-option__grade">Grade 1-2</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="difficulty-option__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <radialGradient id="difficulty-lamb-glow" cx="34%" cy="24%" r="75%">
+                      <stop offset="0" stop-color="#fff7c8" />
+                      <stop offset="0.48" stop-color="#5f7bff" />
+                      <stop offset="1" stop-color="#18255a" />
+                    </radialGradient>
+                    <linearGradient id="difficulty-lamb-wool" x1="18" x2="78" y1="24" y2="76" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff6df" />
+                      <stop offset="1" stop-color="#d8e5ff" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="48" cy="48" r="42" fill="url(#difficulty-lamb-glow)" opacity="0.95" />
+                  <circle cx="48" cy="48" r="35" fill="#121b40" opacity="0.54" />
+                  <path d="M27 58c-8-1-13-8-11-16 2-9 11-12 18-8 4-9 17-13 27-7 7 4 10 11 9 19 8 3 11 12 6 19-4 7-13 8-19 4-8 7-21 7-30-1-2-2-3-5 0-10Z" fill="url(#difficulty-lamb-wool)" />
+                  <ellipse cx="33" cy="56" rx="9" ry="12" fill="#c8a46f" transform="rotate(-25 33 56)" />
+                  <ellipse cx="63" cy="56" rx="9" ry="12" fill="#c8a46f" transform="rotate(25 63 56)" />
+                  <ellipse cx="48" cy="57" rx="17" ry="16" fill="#f0d8aa" />
+                  <circle cx="42" cy="54" r="2.5" fill="#24233d" />
+                  <circle cx="54" cy="54" r="2.5" fill="#24233d" />
+                  <path d="M47 60h2l-1.1 2.1Z" fill="#8c5a45" />
+                  <path d="M41 65c4 4 10 4 14 0" fill="none" stroke="#8c5a45" stroke-width="3" stroke-linecap="round" />
+                  <path d="M34 23c7-9 22-11 32 0" fill="none" stroke="#ffdb72" stroke-width="4" stroke-linecap="round" opacity="0.9" />
+                </svg>
+              </span>
             </label>
             <label class="difficulty-option">
               <input type="radio" name="game-difficulty" value="preteen" />
-              <span class="difficulty-option__icon" aria-hidden="true">🧭</span>
               <span class="difficulty-option__level">Pre-teen</span>
               <span class="difficulty-option__name">Bible Explorer</span>
               <span class="difficulty-option__grade">Grade 4-5</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="difficulty-option__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <radialGradient id="difficulty-explorer-glow" cx="30%" cy="26%" r="78%">
+                      <stop offset="0" stop-color="#fdf0a5" />
+                      <stop offset="0.5" stop-color="#51d2ff" />
+                      <stop offset="1" stop-color="#1c275c" />
+                    </radialGradient>
+                    <linearGradient id="difficulty-explorer-pages" x1="22" x2="74" y1="50" y2="78" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fef1c7" />
+                      <stop offset="1" stop-color="#b9d7ff" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="48" cy="48" r="42" fill="url(#difficulty-explorer-glow)" opacity="0.95" />
+                  <path d="M25 57c8-7 16-8 23-3v25c-8-5-15-5-23 2Z" fill="url(#difficulty-explorer-pages)" />
+                  <path d="M48 54c7-5 15-4 23 3v24c-8-7-15-7-23-2Z" fill="#e2ecff" />
+                  <path d="M48 54v25" stroke="#7aa8ff" stroke-width="2.5" stroke-linecap="round" />
+                  <path d="M31 64c4-2 8-2 12 0M53 64c4-2 8-2 12 0" stroke="#445b92" stroke-width="2" stroke-linecap="round" opacity="0.75" />
+                  <circle cx="49" cy="38" r="20" fill="#152250" stroke="#ffdc72" stroke-width="3" />
+                  <circle cx="49" cy="38" r="13" fill="#243b7c" stroke="#89d8ff" stroke-width="2" />
+                  <path d="M49 20l5 18-5 18-5-18Z" fill="#ffdf75" />
+                  <path d="M67 38l-18 5-18-5 18-5Z" fill="#f18fb5" opacity="0.95" />
+                  <circle cx="49" cy="38" r="3" fill="#f8fbff" />
+                </svg>
+              </span>
             </label>
             <label class="difficulty-option">
               <input type="radio" name="game-difficulty" value="teen" />
-              <span class="difficulty-option__icon" aria-hidden="true">🕊️</span>
               <span class="difficulty-option__level">Teen</span>
               <span class="difficulty-option__name">Disciple</span>
               <span class="difficulty-option__grade">Grade 6-8</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="difficulty-option__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <radialGradient id="difficulty-disciple-glow" cx="30%" cy="22%" r="78%">
+                      <stop offset="0" stop-color="#d6fff1" />
+                      <stop offset="0.52" stop-color="#76a7ff" />
+                      <stop offset="1" stop-color="#162154" />
+                    </radialGradient>
+                    <linearGradient id="difficulty-disciple-path" x1="31" x2="68" y1="82" y2="36" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#ffdd75" />
+                      <stop offset="1" stop-color="#89f4d1" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="48" cy="48" r="42" fill="url(#difficulty-disciple-glow)" opacity="0.95" />
+                  <path d="M28 80c5-15 14-23 28-28 6-2 10-7 12-15" fill="none" stroke="url(#difficulty-disciple-path)" stroke-width="7" stroke-linecap="round" />
+                  <path d="M62 28c-4-8-13-10-22-4 8 1 14 5 18 12-11-3-22-1-31 7 17 1 30 6 39 17 1-9 7-16 17-21-8-1-15 1-21 6 4-6 4-11 0-17Z" fill="#f6fbff" />
+                  <path d="M53 36c5 2 9 6 12 12" fill="none" stroke="#87c7ff" stroke-width="3" stroke-linecap="round" opacity="0.85" />
+                  <circle cx="30" cy="79" r="4" fill="#ffdf75" />
+                  <circle cx="42" cy="65" r="3.2" fill="#d6fff1" />
+                  <circle cx="57" cy="53" r="2.8" fill="#ffffff" />
+                  <path d="M70 20v18M61 29h18" stroke="#ffdb72" stroke-width="3" stroke-linecap="round" opacity="0.95" />
+                </svg>
+              </span>
             </label>
             <label class="difficulty-option">
               <input type="radio" name="game-difficulty" value="adult" />
-              <span class="difficulty-option__icon" aria-hidden="true">📖</span>
               <span class="difficulty-option__level">Adult</span>
               <span class="difficulty-option__name">Berean</span>
               <span class="difficulty-option__grade">Grade 9-11</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="difficulty-option__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <radialGradient id="difficulty-berean-glow" cx="32%" cy="24%" r="76%">
+                      <stop offset="0" stop-color="#fff2a9" />
+                      <stop offset="0.55" stop-color="#7aa8ff" />
+                      <stop offset="1" stop-color="#182154" />
+                    </radialGradient>
+                    <linearGradient id="difficulty-berean-pages" x1="22" x2="69" y1="34" y2="72" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff5d7" />
+                      <stop offset="1" stop-color="#c8dcff" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="48" cy="48" r="42" fill="url(#difficulty-berean-glow)" opacity="0.95" />
+                  <path d="M23 34c8-4 17-3 25 3v35c-8-6-17-7-25-3Z" fill="url(#difficulty-berean-pages)" />
+                  <path d="M48 37c8-6 17-7 25-3v35c-8-4-17-3-25 3Z" fill="#eff5ff" />
+                  <path d="M48 37v35" stroke="#6d84d9" stroke-width="2.5" stroke-linecap="round" />
+                  <path d="M30 45h12M30 53h11M54 45h12M54 53h10" stroke="#4c5f9d" stroke-width="2.2" stroke-linecap="round" opacity="0.82" />
+                  <circle cx="61" cy="57" r="13" fill="none" stroke="#ffdf75" stroke-width="5" />
+                  <path d="M70 66l10 10" stroke="#ffdf75" stroke-width="6" stroke-linecap="round" />
+                  <path d="M55 57h12M61 51v12" stroke="#bde8ff" stroke-width="2.2" stroke-linecap="round" opacity="0.95" />
+                </svg>
+              </span>
             </label>
             <label class="difficulty-option">
               <input type="radio" name="game-difficulty" value="theologian" />
-              <span class="difficulty-option__icon" aria-hidden="true">🎓</span>
               <span class="difficulty-option__level">Theologian</span>
               <span class="difficulty-option__name">Theologian</span>
               <span class="difficulty-option__grade">Grade 12-16+</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="difficulty-option__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <radialGradient id="difficulty-theologian-glow" cx="32%" cy="24%" r="76%">
+                      <stop offset="0" stop-color="#f6e5ff" />
+                      <stop offset="0.5" stop-color="#9c77ff" />
+                      <stop offset="1" stop-color="#1a1f55" />
+                    </radialGradient>
+                    <linearGradient id="difficulty-theologian-scroll" x1="25" x2="73" y1="39" y2="72" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff2c1" />
+                      <stop offset="1" stop-color="#d3c0ff" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="48" cy="48" r="42" fill="url(#difficulty-theologian-glow)" opacity="0.95" />
+                  <path d="M24 36l24-11 24 11-24 11Z" fill="#111935" stroke="#d7c4ff" stroke-width="2.5" />
+                  <path d="M34 42v12c7 6 21 6 28 0V42" fill="#27336d" stroke="#8fb4ff" stroke-width="2.5" />
+                  <path d="M72 36v18" stroke="#ffdf75" stroke-width="3" stroke-linecap="round" />
+                  <circle cx="72" cy="59" r="4" fill="#ffdf75" />
+                  <path d="M29 60c0-6 5-10 11-10h21c6 0 10 4 10 10s-4 10-10 10H34c-3 0-5 2-5 5 0-5 2-8 6-9-4-1-6-3-6-6Z" fill="url(#difficulty-theologian-scroll)" />
+                  <path d="M41 58h20M40 65h23" stroke="#664f98" stroke-width="2.2" stroke-linecap="round" opacity="0.75" />
+                  <path d="M27 25l3 6 6 3-6 3-3 6-3-6-6-3 6-3Z" fill="#ffdf75" opacity="0.92" />
+                  <path d="M72 22l2 4 4 2-4 2-2 4-2-4-4-2 4-2Z" fill="#cde9ff" opacity="0.95" />
+                </svg>
+              </span>
             </label>
           </fieldset>
           <button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup</button>
@@ -355,6 +471,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260617-difficulty-tile-icons"></script>
+<script src="small-group-review-game.js?v=20260617-difficulty-svg-art"></script>
 </body>
 </html>
