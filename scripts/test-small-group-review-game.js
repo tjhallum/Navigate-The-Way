@@ -280,9 +280,12 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /theological complexity of the questions and the readability of the wording/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*<span class="difficulty-option__grade">Grade 1-2<\/span>[\s\S]*<span class="difficulty-option__art difficulty-option__art--portrait" aria-hidden="true">[\s\S]*viewBox="0 0 96 132"[\s\S]*id="difficulty-storybook-lamb-face"/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Bible Explorer[\s\S]*<span class="difficulty-option__grade">Grade 4-5<\/span>[\s\S]*id="difficulty-storybook-explorer-compass"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>[\s\S]*id="difficulty-storybook-disciple-path"/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="teen" \/>[\s\S]*Disciple[\s\S]*<span class="difficulty-option__grade">Grade 6-8<\/span>[\s\S]*id="difficulty-storybook-disciple-growth-leaf"/);
+  assert.doesNotMatch(html, /difficulty-storybook-disciple-(?:path|backpack|sky|hill)/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="adult" \/>[\s\S]*Berean[\s\S]*<span class="difficulty-option__grade">Grade 9-11<\/span>[\s\S]*id="difficulty-storybook-berean-lens"/);
-  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-storybook-theologian-scroll"/);
+  assert.match(html, /<input type="radio" name="game-difficulty" value="theologian" \/>[\s\S]*Theologian[\s\S]*<span class="difficulty-option__grade">Grade 12-16\+<\/span>[\s\S]*id="difficulty-storybook-theologian-bible-cover"/);
+  assert.doesNotMatch(html, /difficulty-storybook-theologian-scroll/);
+  assert.doesNotMatch(html, /M33 30h9M37\.5 25\.5v9|M31 31h9M35\.5 26\.5v9|M74 76h12M80 70v12/);
   assert.equal((html.match(/class="difficulty-option__svg difficulty-option__svg--storybook"/g) || []).length, 5);
   assert.doesNotMatch(html, /difficulty-[a-z-]+-premium-|difficulty-child-panel|difficulty-explorer-panel|difficulty-disciple-panel|difficulty-berean-panel|difficulty-theologian-panel/);
   assert.doesNotMatch(html, /difficulty-storybook-(?:explorer|disciple|berean|theologian)-(?:face|wool)/);
