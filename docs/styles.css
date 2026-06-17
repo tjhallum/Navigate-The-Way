@@ -1958,7 +1958,7 @@ footer {
 .difficulty-option {
   position: relative;
   display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) minmax(5.25rem, 5.65rem);
+  grid-template-columns: auto max-content minmax(0, 1fr);
   align-items: center;
   gap: 0.12rem 0.2rem !important;
   min-height: 6.95rem;
@@ -2066,7 +2066,7 @@ footer {
 
 @media (max-width: 390px) {
   .difficulty-option {
-    grid-template-columns: auto minmax(0, 1fr) minmax(4.35rem, 4.7rem);
+    grid-template-columns: auto max-content minmax(0, 1fr);
     padding-right: 0.42rem;
   }
 

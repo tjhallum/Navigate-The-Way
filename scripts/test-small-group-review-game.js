@@ -308,7 +308,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-mobile-labels" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-art-centered" \/>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-svg-art"><\/script>/);
 });
 
@@ -322,7 +322,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 220px\), 1fr\)\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(5\.25rem, 5\.65rem\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto max-content minmax\(0, 1fr\)/);
   assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 0\.52rem 0\.72rem 0\.78rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
   assert.match(cssRule(css, '.difficulty-option__art'), /grid-column:\s*3/);
@@ -333,7 +333,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.difficulty-option__svg'), /width:\s*100%/);
   assert.match(cssRule(css, '.difficulty-option__svg--storybook'), /overflow:\s*visible/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
-  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4\.35rem, 4\.7rem\)/);
+  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto max-content minmax\(0, 1fr\)/);
   assert.match(css, /@media \(max-width: 390px\)[\s\S]*\.difficulty-option__name,\s*\.difficulty-option__grade\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere;/);
 });
 
