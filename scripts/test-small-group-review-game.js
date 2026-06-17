@@ -153,7 +153,7 @@ test('maps setup stages to the step that should be expanded', () => {
     lessonExpanded: true,
     apiExpanded: false,
     lessonAvailable: true,
-    apiAvailable: true,
+    apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('api'), {
     groupExpanded: false,
@@ -172,6 +172,13 @@ test('maps setup stages to the step that should be expanded', () => {
   assert.deepEqual(game.getSetupStepExpansionState('unknown'), game.getSetupStepExpansionState('group'));
 });
 
+test('detects whether lesson setup has a source before unlocking API setup', () => {
+  assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: '   ' }), false);
+  assert.equal(game.hasLessonSourceInput({ files: null, lessonTopicText: '' }), false);
+  assert.equal(game.hasLessonSourceInput({ files: [{ name: 'lesson.pdf' }], lessonTopicText: '' }), true);
+  assert.equal(game.hasLessonSourceInput({ files: [], lessonTopicText: 'Romans 8 adoption in Christ' }), true);
+});
+
 test('renders group setup wizard controls before lesson setup in the browser form', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
 
@@ -186,15 +193,17 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<section id="player-picker-panel"[^>]*hidden>/);
   assert.match(html, /<button id="randomize-players-button" type="button"/);
   assert.match(html, /<button id="confirm-players-button" type="button" class="primary-action"/);
-  assert.match(html, /<section id="lesson-setup-section" class="lesson-setup-section setup-step" data-setup-step="lesson" aria-labelledby="lesson-setup-title" hidden>/);
-  assert.match(html, /<button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content">/);
+  assert.match(html, /<section id="lesson-setup-section" class="lesson-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="lesson" aria-labelledby="lesson-setup-title">/);
+  assert.match(html, /<button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /Or type the lesson topic, summary, or focus instructions/);
   assert.match(html, /focus more attention on/);
   assert.match(html, /Use this field with uploaded files to steer emphasis/);
+  assert.match(html, /<button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup<\/button>/);
+  assert.match(html, /<p id="lesson-setup-status" class="game-status" aria-live="polite"><\/p>/);
   assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>3\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
-  assert.match(html, /<section id="api-setup-section" class="api-setup-section setup-step" data-setup-step="api" aria-labelledby="api-setup-title" hidden>/);
-  assert.match(html, /<button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content">/);
+  assert.match(html, /<section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">/);
+  assert.match(html, /<button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<span id="api-setup-title" class="setup-step-title">3\. Connect to NTW’s API<\/span>/);
   assert.match(html, /<div id="api-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /<div class="api-grid">/);
@@ -204,7 +213,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260616-api-setup-step"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-locked-setup-steps"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
@@ -213,6 +222,8 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step'), /border:\s*1px solid rgba\(122, 168, 255, 0\.24\)/);
   assert.match(cssRule(css, '.setup-step-toggle'), /justify-content:\s*space-between/);
   assert.match(cssRule(css, '.setup-step--collapsed'), /opacity:\s*0\.82/);
+  assert.match(cssRule(css, '.setup-step--locked'), /opacity:\s*0\.58/);
+  assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
 });
 

@@ -196,8 +196,8 @@
         </div>
       </section>
 
-      <section id="lesson-setup-section" class="lesson-setup-section setup-step" data-setup-step="lesson" aria-labelledby="lesson-setup-title" hidden>
-        <button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content">
+      <section id="lesson-setup-section" class="lesson-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="lesson" aria-labelledby="lesson-setup-title">
+        <button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content" aria-disabled="true" disabled>
           <span id="lesson-setup-title" class="setup-step-title">2. Add lesson files, topic, or instructions</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
@@ -214,11 +214,13 @@
             <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8 and adoption in Christ. Or with an uploaded file: From my attached lesson I want to focus more attention on assurance and less on historical background."></textarea>
           </label>
           <p class="privacy-note">Use this field by itself when you do not have lesson-specific files. Use this field with uploaded files to steer emphasis, focus, or level of difficulty for the generated game board.</p>
+          <button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup</button>
+          <p id="lesson-setup-status" class="game-status" aria-live="polite"></p>
         </div>
       </section>
 
-      <section id="api-setup-section" class="api-setup-section setup-step" data-setup-step="api" aria-labelledby="api-setup-title" hidden>
-        <button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content">
+      <section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">
+        <button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>
           <span id="api-setup-title" class="setup-step-title">3. Connect to NTW’s API</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
@@ -301,6 +303,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260616-api-setup-step"></script>
+<script src="small-group-review-game.js?v=20260617-locked-setup-steps"></script>
 </body>
 </html>

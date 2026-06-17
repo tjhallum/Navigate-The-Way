@@ -393,7 +393,7 @@
           lessonExpanded: true,
           apiExpanded: false,
           lessonAvailable: true,
-          apiAvailable: true,
+          apiAvailable: false,
         };
       case 'api':
         return {
@@ -1399,6 +1399,10 @@
     return sections.join('\n\n---\n\n');
   }
 
+  function hasLessonSourceInput({ files, lessonTopicText } = {}) {
+    return Array.from(files || []).length > 0 || Boolean(normalizeLongFormText(lessonTopicText));
+  }
+
   async function buildLessonSourceContent({ files, lessonTopicText, fileExtractor = extractLessonTextFromFiles } = {}) {
     const list = Array.from(files || []);
     const topic = normalizeLongFormText(lessonTopicText);
@@ -1513,6 +1517,8 @@
     const lessonSetupSection = app.querySelector('#lesson-setup-section');
     const lessonSetupToggle = app.querySelector('#lesson-setup-toggle');
     const lessonSetupContent = app.querySelector('#lesson-setup-content');
+    const continueToApiSetupButton = app.querySelector('#continue-to-api-setup-button');
+    const lessonSetupStatus = app.querySelector('#lesson-setup-status');
     const apiSetupSection = app.querySelector('#api-setup-section');
     const apiSetupToggle = app.querySelector('#api-setup-toggle');
     const apiSetupContent = app.querySelector('#api-setup-content');
@@ -1522,6 +1528,7 @@
     let groupMemberNames = readSavedGroupMembersCookie(document.cookie);
     let chosenPlayerNames = [];
     let selectedPlayerNames = [];
+    let lessonSetupComplete = false;
     let contestants = [];
     let gameData = null;
     let activeClue = null;
@@ -1534,12 +1541,17 @@
     if (endpointInput) endpointInput.value = savedEndpoint ? normalizeChatCompletionsEndpoint(savedEndpoint) : DEFAULT_CHAT_COMPLETIONS_ENDPOINT;
     if (modelInput) modelInput.value = savedModel || DEFAULT_MODEL;
 
-    function setSetupStepExpanded({ stepElement, toggleButton, contentElement, expanded, statusText }) {
+    function setSetupStepExpanded({ stepElement, toggleButton, contentElement, expanded, statusText, available = true }) {
       if (!stepElement || !toggleButton || !contentElement) return;
-      contentElement.hidden = !expanded;
-      toggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      stepElement.classList.toggle('setup-step--expanded', expanded);
-      stepElement.classList.toggle('setup-step--collapsed', !expanded);
+      const isAvailable = available !== false;
+      const shouldExpand = isAvailable && expanded;
+      contentElement.hidden = !shouldExpand;
+      toggleButton.disabled = !isAvailable;
+      toggleButton.setAttribute('aria-disabled', isAvailable ? 'false' : 'true');
+      toggleButton.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+      stepElement.classList.toggle('setup-step--expanded', shouldExpand);
+      stepElement.classList.toggle('setup-step--collapsed', !shouldExpand);
+      stepElement.classList.toggle('setup-step--locked', !isAvailable);
       const statusElement = stepElement.querySelector('[data-setup-step-status]');
       if (statusElement && statusText) {
         statusElement.textContent = statusText;
@@ -1550,7 +1562,7 @@
       const state = getSetupStepExpansionState(stage);
       const groupStatus = state.groupExpanded ? 'Current' : 'Done';
       const lessonStatus = state.lessonAvailable
-        ? (state.lessonExpanded ? 'Current' : (stage === 'game' ? 'Done' : 'Ready'))
+        ? (state.lessonExpanded ? 'Current' : ((stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
         : 'Locked';
       const apiStatus = state.apiAvailable
         ? (state.apiExpanded ? 'Current' : (stage === 'game' ? 'Done' : 'Ready'))
@@ -1561,32 +1573,29 @@
         contentElement: groupSetupContent,
         expanded: state.groupExpanded,
         statusText: groupStatus,
+        available: true,
       });
-      if (lessonSetupSection) {
-        lessonSetupSection.hidden = !state.lessonAvailable;
-      }
       setSetupStepExpanded({
         stepElement: lessonSetupSection,
         toggleButton: lessonSetupToggle,
         contentElement: lessonSetupContent,
         expanded: state.lessonExpanded,
         statusText: lessonStatus,
+        available: state.lessonAvailable,
       });
-      if (apiSetupSection) {
-        apiSetupSection.hidden = !state.apiAvailable;
-      }
       setSetupStepExpanded({
         stepElement: apiSetupSection,
         toggleButton: apiSetupToggle,
         contentElement: apiSetupContent,
         expanded: state.apiExpanded,
         statusText: apiStatus,
+        available: state.apiAvailable,
       });
     }
 
     function toggleSetupStep(stepName) {
-      if (stepName === 'lesson' && lessonSetupSection?.hidden) return;
-      if (stepName === 'api' && apiSetupSection?.hidden) return;
+      if (stepName === 'lesson' && lessonSetupToggle?.disabled) return;
+      if (stepName === 'api' && apiSetupToggle?.disabled) return;
       if (stepName === 'group') {
         const shouldExpandGroup = Boolean(groupSetupContent?.hidden);
         setSetupStepExpanded({
@@ -1594,24 +1603,27 @@
           toggleButton: groupSetupToggle,
           contentElement: groupSetupContent,
           expanded: shouldExpandGroup,
-          statusText: shouldExpandGroup ? 'Current' : (lessonSetupSection?.hidden ? 'Current' : 'Done'),
+          statusText: shouldExpandGroup ? 'Current' : (lessonSetupToggle?.disabled ? 'Current' : 'Done'),
+          available: true,
         });
-        if (shouldExpandGroup && !lessonSetupSection?.hidden) {
+        if (shouldExpandGroup && !lessonSetupToggle?.disabled) {
           setSetupStepExpanded({
             stepElement: lessonSetupSection,
             toggleButton: lessonSetupToggle,
             contentElement: lessonSetupContent,
             expanded: false,
             statusText: 'Ready',
+            available: true,
           });
         }
-        if (shouldExpandGroup && !apiSetupSection?.hidden) {
+        if (shouldExpandGroup && !apiSetupToggle?.disabled) {
           setSetupStepExpanded({
             stepElement: apiSetupSection,
             toggleButton: apiSetupToggle,
             contentElement: apiSetupContent,
             expanded: false,
             statusText: 'Ready',
+            available: true,
           });
         }
         return;
@@ -1631,6 +1643,7 @@
         contentElement: targetContent,
         expanded: shouldExpandTarget,
         statusText: shouldExpandTarget ? 'Current' : 'Ready',
+        available: true,
       });
       if (shouldExpandTarget) {
         setSetupStepExpanded({
@@ -1639,14 +1652,16 @@
           contentElement: groupSetupContent,
           expanded: false,
           statusText: 'Done',
+          available: true,
         });
-        if (!otherStep?.hidden) {
+        if (!otherToggle?.disabled) {
           setSetupStepExpanded({
             stepElement: otherStep,
             toggleButton: otherToggle,
             contentElement: otherContent,
             expanded: false,
             statusText: 'Ready',
+            available: true,
           });
         }
       }
@@ -1661,7 +1676,9 @@
 
     function hideLessonSetup() {
       selectedPlayerNames = [];
+      lessonSetupComplete = false;
       if (selectedPlayersSummary) selectedPlayersSummary.textContent = '';
+      if (lessonSetupStatus) lessonSetupStatus.textContent = '';
       applySetupStepStage('group');
     }
 
@@ -1672,6 +1689,42 @@
         return;
       }
       selectedPlayersSummary.textContent = `Players for this game: ${selectedPlayerNames.join(', ')}.`;
+    }
+
+    function currentLessonSourceIsPresent() {
+      return hasLessonSourceInput({ files: selectedFiles, lessonTopicText: lessonTopicInput?.value || '' });
+    }
+
+    function updateLessonSetupControls() {
+      const lessonSourcePresent = currentLessonSourceIsPresent();
+      if (continueToApiSetupButton) {
+        continueToApiSetupButton.disabled = !lessonSourcePresent;
+      }
+      return lessonSourcePresent;
+    }
+
+    function markLessonSetupChanged() {
+      const wasComplete = lessonSetupComplete;
+      lessonSetupComplete = false;
+      updateLessonSetupControls();
+      if (wasComplete && selectedPlayerNames.length > 0) {
+        gameData = null;
+        closeActiveClue();
+        if (gameArea) gameArea.hidden = true;
+        applySetupStepStage('lesson');
+        renderStatus(lessonSetupStatus, 'Lesson setup changed. Continue to API Setup again when the lesson source is ready.', 'info');
+      }
+    }
+
+    function completeLessonSetup() {
+      if (!updateLessonSetupControls()) {
+        renderStatus(lessonSetupStatus, 'Add at least one lesson file or type a lesson topic, summary, or focus instructions before continuing.', 'error');
+        return;
+      }
+      lessonSetupComplete = true;
+      renderStatus(lessonSetupStatus, 'Lesson source ready. Connect to NTW’s API to generate the game board.', 'success');
+      applySetupStepStage('api');
+      apiSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function getAttendanceEntriesFromChecklist() {
@@ -1754,7 +1807,7 @@
         return selection;
       }
 
-      if (keepLessonOpen && lessonSetupSection && !lessonSetupSection.hidden) {
+      if (keepLessonOpen && !lessonSetupToggle?.disabled) {
         if (shouldClearGeneratedGame) {
           resetCurrentGameAfterPlayerChange();
           renderStatus(groupSetupStatus, 'Players changed, so the current game board was cleared. Generate a new board after confirming the players.', 'info');
@@ -1824,8 +1877,11 @@
       }
       selectedPlayerNames = selection.playerNames;
       contestants = createContestants(selectedPlayerNames);
+      lessonSetupComplete = false;
       renderStatus(groupSetupStatus, selection.message, 'success');
+      if (lessonSetupStatus) lessonSetupStatus.textContent = '';
       applySetupStepStage('lesson');
+      updateLessonSetupControls();
       renderSelectedPlayersSummary();
       lessonSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -1912,6 +1968,7 @@
     function setSelectedFiles(files) {
       selectedFiles = Array.from(files || []);
       updateFileStatus();
+      markLessonSetupChanged();
     }
 
     function renderScoreboard() {
@@ -2251,6 +2308,9 @@
     apiSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('api');
     });
+    continueToApiSetupButton?.addEventListener('click', () => {
+      completeLessonSetup();
+    });
     saveGroupMembersButton?.addEventListener('click', () => {
       saveGroupMembersFromEditor();
     });
@@ -2288,6 +2348,9 @@
     });
 
     fileInput?.addEventListener('change', () => setSelectedFiles(fileInput.files));
+    lessonTopicInput?.addEventListener('input', () => {
+      markLessonSetupChanged();
+    });
 
     dropZone?.addEventListener('dragover', (event) => {
       event.preventDefault();
@@ -2312,6 +2375,11 @@
         selectedPlayerNames = selection.playerNames;
         contestants = createContestants(selectedPlayerNames);
         renderSelectedPlayersSummary();
+        if (!lessonSetupComplete) {
+          applySetupStepStage('lesson');
+          renderStatus(lessonSetupStatus, 'Complete lesson setup before connecting to NTW’s API.', 'error');
+          throw new Error('Complete lesson setup before connecting to NTW’s API.');
+        }
         renderStatus(setupStatus, 'Preparing lesson material in your browser…', 'info');
         if (generateButton) generateButton.disabled = true;
         const lessonContent = await buildLessonSourceContent({
@@ -2382,9 +2450,11 @@
       if (!window.confirm('Start over and clear the current game board?')) return;
       contestants = [];
       gameData = null;
+      lessonSetupComplete = false;
       closeActiveClue();
       if (gameArea) gameArea.hidden = true;
       applySetupStepStage('lesson');
+      updateLessonSetupControls();
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
     });
     exportButton?.addEventListener('click', () => {
@@ -2455,6 +2525,7 @@
     callOpenAiCompatibleApi,
     callAnswerJudgmentApi,
     extractLessonTextFromFiles,
+    hasLessonSourceInput,
     buildLessonSourceContent,
     shouldSubmitResponseFromKeydown,
     initializeSmallGroupGame,

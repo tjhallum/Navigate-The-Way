@@ -1814,6 +1814,10 @@ footer {
   opacity: 0.82;
 }
 
+.setup-step--locked {
+  opacity: 0.58;
+}
+
 .setup-step-toggle {
   display: flex;
   justify-content: space-between;
@@ -1823,6 +1827,15 @@ footer {
   padding: 0.75rem 0.85rem !important;
   text-align: left;
   background: rgba(122, 168, 255, 0.09) !important;
+}
+
+.setup-step-toggle:disabled {
+  cursor: not-allowed;
+  background: rgba(122, 168, 255, 0.045) !important;
+}
+
+.setup-step-toggle:disabled .setup-step-chevron {
+  opacity: 0.42;
 }
 
 .setup-step-title {
