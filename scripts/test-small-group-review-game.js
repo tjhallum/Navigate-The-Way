@@ -308,7 +308,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-context-art" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-mobile-labels" \/>/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-svg-art"><\/script>/);
 });
 
@@ -333,6 +333,8 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.difficulty-option__svg'), /width:\s*100%/);
   assert.match(cssRule(css, '.difficulty-option__svg--storybook'), /overflow:\s*visible/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
+  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4\.35rem, 4\.7rem\)/);
+  assert.match(css, /@media \(max-width: 390px\)[\s\S]*\.difficulty-option__name,\s*\.difficulty-option__grade\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere;/);
 });
 
 test('defensively clears required validation from optional contestant inputs at startup', () => {
