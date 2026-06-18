@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260617-difficulty-art-centered" />
+  <link rel="stylesheet" href="styles.css?v=20260618-lesson-file-controls" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -211,6 +211,7 @@
           </label>
           <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
           <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
+          <ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden></ul>
           <label for="lesson-topic-text">Or type the lesson topic, summary, or focus instructions
             <textarea id="lesson-topic-text" rows="5" maxlength="12000" placeholder="Example: This lesson is about Romans 8 and adoption in Christ. Or with an uploaded file: From my attached lesson I want to focus more attention on assurance and less on historical background."></textarea>
           </label>
@@ -508,6 +509,6 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260617-difficulty-svg-art"></script>
+<script src="small-group-review-game.js?v=20260618-lesson-file-controls"></script>
 </body>
 </html>
