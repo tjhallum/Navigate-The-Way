@@ -36,6 +36,55 @@ test('supports common lesson upload file types used by small groups', () => {
   assert.equal(game.isSupportedLessonFile({ name: 'image.png', type: 'image/png' }), false);
 });
 
+test('detects file drags so the browser does not open lesson files accidentally', () => {
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain', 'Files'] } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: { contains: (type) => type === 'Files' } } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: [], files: [{ name: 'lesson.pdf' }] } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain'], files: [] } }), false);
+});
+
+test('keeps lesson file drags associated with the drop zone when coordinates are still inside it', () => {
+  const dropZone = {
+    getBoundingClientRect: () => ({ left: 100, top: 200, right: 400, bottom: 320 }),
+  };
+
+  assert.equal(game.dragEventIsInsideElement({ clientX: 250, clientY: 260 }, dropZone), true);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 100, clientY: 200 }, dropZone), true);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 450, clientY: 260 }, dropZone), false);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 250, clientY: 0 }, dropZone), false);
+  assert.equal(game.dragEventIsInsideElement({ clientX: undefined, clientY: 260 }, dropZone), false);
+});
+
+test('removes selected lesson files by index without mutating the original list', () => {
+  const files = [
+    { name: 'lesson-one.pdf' },
+    { name: 'wrong-lesson.docx' },
+    { name: 'lesson-slides.pptx' },
+  ];
+
+  assert.deepEqual(
+    game.removeLessonFileAtIndex(files, 1).map((file) => file.name),
+    ['lesson-one.pdf', 'lesson-slides.pptx']
+  );
+  assert.deepEqual(files.map((file) => file.name), ['lesson-one.pdf', 'wrong-lesson.docx', 'lesson-slides.pptx']);
+  assert.deepEqual(game.removeLessonFileAtIndex(files, -1), files);
+  assert.deepEqual(game.removeLessonFileAtIndex(files, 4), files);
+});
+
+test('renders removable lesson file controls and sticky drag-drop protection', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+
+  assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
+  assert.match(cssRule(css, '.lesson-drop-zone > *'), /pointer-events:\s*none/);
+  assert.match(css, /\.lesson-file-list\s*{/);
+  assert.match(js, /document\.addEventListener\('dragover', handleDocumentLessonFileDragover\)/);
+  assert.match(js, /document\.addEventListener\('drop', handleDocumentLessonFileDrop\)/);
+  assert.match(js, /dragEventIsInsideElement\(event, dropZone\)/);
+  assert.match(js, /data-remove-lesson-file-index/);
+});
+
 test('builds scorekeeping contestants from one to four selected player names', () => {
   const contestants = game.createContestants(['Ada', 'Boaz', '', 'Daniel']);
   assert.deepEqual(contestants, [
@@ -308,8 +357,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260617-difficulty-art-centered" \/>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260617-difficulty-svg-art"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-lesson-file-controls" \/>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-lesson-drop-resilience"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {

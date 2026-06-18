@@ -149,6 +149,35 @@
       SUPPORTED_BINARY_EXTENSIONS.has(extension);
   }
 
+  function fileDragEventHasFiles(event) {
+    const dataTransfer = event?.dataTransfer;
+    if (!dataTransfer) return false;
+    const { types, files } = dataTransfer;
+    if (types) {
+      if (typeof types.includes === 'function' && types.includes('Files')) return true;
+      if (typeof types.contains === 'function' && types.contains('Files')) return true;
+      if (Array.from(types).includes('Files')) return true;
+    }
+    return Boolean(files && files.length > 0);
+  }
+
+  function dragEventIsInsideElement(event, element) {
+    const x = Number(event?.clientX);
+    const y = Number(event?.clientY);
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  function removeLessonFileAtIndex(files, index) {
+    const list = Array.from(files || []);
+    const normalizedIndex = Number(index);
+    if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0 || normalizedIndex >= list.length) {
+      return list;
+    }
+    return list.filter((_, fileIndex) => fileIndex !== normalizedIndex);
+  }
+
   function normalizeContestantName(name, index) {
     const normalized = String(name || '').replace(/\s+/g, ' ').trim();
     if (!normalized) {
@@ -1592,6 +1621,7 @@
     const fileInput = app.querySelector('#lesson-files');
     const dropZone = app.querySelector('#lesson-drop-zone');
     const fileStatus = app.querySelector('#lesson-file-status');
+    const fileList = app.querySelector('#lesson-file-list');
     const lessonTopicInput = app.querySelector('#lesson-topic-text');
     const setupStatus = app.querySelector('#game-setup-status');
     const generateButton = app.querySelector('#generate-game-button');
@@ -2094,17 +2124,39 @@
       showGroupEditor([]);
     }
 
-    function updateFileStatus() {
-      if (!fileStatus) return;
+    function renderSelectedLessonFileList() {
+      if (!fileList) return;
+      fileList.hidden = selectedFiles.length === 0;
       if (selectedFiles.length === 0) {
-        fileStatus.textContent = 'No lesson files selected yet.';
+        fileList.innerHTML = '';
         return;
       }
-      const names = selectedFiles.map((file) => {
+      fileList.innerHTML = selectedFiles.map((file, index) => {
         const supported = isSupportedLessonFile(file);
-        return `${supported ? '✅' : '⚠️'} ${file.name}`;
-      });
-      fileStatus.textContent = names.join(' · ');
+        const badge = supported ? 'Ready' : 'Unsupported';
+        return `
+          <li class="lesson-file-list__item">
+            <span class="lesson-file-list__name">${escapeHtml(file.name || `Lesson file ${index + 1}`)}</span>
+            <span class="lesson-file-list__badge">${badge}</span>
+            <button type="button" class="lesson-file-list__remove" data-remove-lesson-file-index="${index}" aria-label="Remove ${escapeHtml(file.name || `lesson file ${index + 1}`)}">Remove</button>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function updateFileStatus() {
+      if (fileStatus) {
+        if (selectedFiles.length === 0) {
+          fileStatus.textContent = 'No lesson files selected yet.';
+        } else {
+          const unsupported = selectedFiles.filter((file) => !isSupportedLessonFile(file));
+          const fileCount = `${selectedFiles.length} ${selectedFiles.length === 1 ? 'lesson file' : 'lesson files'} selected.`;
+          fileStatus.textContent = unsupported.length > 0
+            ? `${fileCount} Unsupported: ${unsupported.map((file) => file.name).join(', ')}.`
+            : `${fileCount} Remove any file you added by accident before continuing.`;
+        }
+      }
+      renderSelectedLessonFileList();
     }
 
     function resetActiveClueFit() {
@@ -2169,8 +2221,63 @@
 
     function setSelectedFiles(files) {
       selectedFiles = Array.from(files || []);
+      if (fileInput) fileInput.value = '';
       updateFileStatus();
       markLessonSetupChanged();
+    }
+
+    function removeSelectedLessonFile(index) {
+      selectedFiles = removeLessonFileAtIndex(selectedFiles, index);
+      if (fileInput) fileInput.value = '';
+      updateFileStatus();
+      markLessonSetupChanged();
+    }
+
+    function preventBrowserFileOpenDuringLessonDrag(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    }
+
+    function setDropZoneDragging(isDragging) {
+      dropZone?.classList.toggle('is-dragging', Boolean(isDragging));
+    }
+
+    function dropEventBelongsToLessonDropZone(event) {
+      return Boolean(dropZone && (
+        event?.target === dropZone ||
+        dropZone.contains?.(event?.target) ||
+        dragEventIsInsideElement(event, dropZone)
+      ));
+    }
+
+    function handleDocumentLessonFileDragover(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      setDropZoneDragging(dropZone && dragEventIsInsideElement(event, dropZone));
+    }
+
+    function handleDocumentLessonFileDrop(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      if (dropEventBelongsToLessonDropZone(event)) {
+        setSelectedFiles(event.dataTransfer?.files || []);
+      }
+      setDropZoneDragging(false);
+    }
+
+    function handleLessonDropZoneDrop(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      event.stopPropagation?.();
+      setDropZoneDragging(false);
+      setSelectedFiles(event.dataTransfer?.files || []);
+    }
+
+    function shouldIgnoreDropZoneDragleave(event) {
+      return Boolean(event.currentTarget?.contains(event.relatedTarget)) || dragEventIsInsideElement(event, dropZone);
     }
 
     function renderScoreboard() {
@@ -2556,6 +2663,12 @@
     });
 
     fileInput?.addEventListener('change', () => setSelectedFiles(fileInput.files));
+    fileList?.addEventListener('click', (event) => {
+      const removeButton = event.target?.closest?.('[data-remove-lesson-file-index]');
+      if (!removeButton) return;
+      event.preventDefault();
+      removeSelectedLessonFile(removeButton.dataset.removeLessonFileIndex);
+    });
     lessonTopicInput?.addEventListener('input', () => {
       markLessonSetupChanged();
     });
@@ -2565,18 +2678,24 @@
       });
     });
 
+    document.addEventListener('dragover', handleDocumentLessonFileDragover);
+    document.addEventListener('drop', handleDocumentLessonFileDrop);
+
+    dropZone?.addEventListener('dragenter', (event) => {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      setDropZoneDragging(true);
+    });
     dropZone?.addEventListener('dragover', (event) => {
-      event.preventDefault();
-      dropZone.classList.add('is-dragging');
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      setDropZoneDragging(true);
     });
-    dropZone?.addEventListener('dragleave', () => {
-      dropZone.classList.remove('is-dragging');
+    dropZone?.addEventListener('dragleave', (event) => {
+      if (shouldIgnoreDropZoneDragleave(event)) return;
+      setDropZoneDragging(false);
     });
-    dropZone?.addEventListener('drop', (event) => {
-      event.preventDefault();
-      dropZone.classList.remove('is-dragging');
-      setSelectedFiles(event.dataTransfer?.files || []);
-    });
+    dropZone?.addEventListener('drop', handleLessonDropZoneDrop);
 
     setupForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -2711,6 +2830,9 @@
     DEFAULT_DIFFICULTY_LEVEL,
     DIFFICULTY_LEVELS,
     isSupportedLessonFile,
+    fileDragEventHasFiles,
+    dragEventIsInsideElement,
+    removeLessonFileAtIndex,
     configureContestantNameInputs,
     getResponseEntryControlState,
     canHandleNoBuzz,
