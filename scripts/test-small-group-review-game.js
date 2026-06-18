@@ -43,6 +43,18 @@ test('detects file drags so the browser does not open lesson files accidentally'
   assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain'], files: [] } }), false);
 });
 
+test('keeps lesson file drags associated with the drop zone when coordinates are still inside it', () => {
+  const dropZone = {
+    getBoundingClientRect: () => ({ left: 100, top: 200, right: 400, bottom: 320 }),
+  };
+
+  assert.equal(game.dragEventIsInsideElement({ clientX: 250, clientY: 260 }, dropZone), true);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 100, clientY: 200 }, dropZone), true);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 450, clientY: 260 }, dropZone), false);
+  assert.equal(game.dragEventIsInsideElement({ clientX: 250, clientY: 0 }, dropZone), false);
+  assert.equal(game.dragEventIsInsideElement({ clientX: undefined, clientY: 260 }, dropZone), false);
+});
+
 test('removes selected lesson files by index without mutating the original list', () => {
   const files = [
     { name: 'lesson-one.pdf' },
@@ -67,8 +79,9 @@ test('renders removable lesson file controls and sticky drag-drop protection', (
   assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
   assert.match(cssRule(css, '.lesson-drop-zone > *'), /pointer-events:\s*none/);
   assert.match(css, /\.lesson-file-list\s*{/);
-  assert.match(js, /document\.addEventListener\('dragover', preventBrowserFileOpenDuringLessonDrag\)/);
-  assert.match(js, /document\.addEventListener\('drop', preventBrowserFileOpenDuringLessonDrag\)/);
+  assert.match(js, /document\.addEventListener\('dragover', handleDocumentLessonFileDragover\)/);
+  assert.match(js, /document\.addEventListener\('drop', handleDocumentLessonFileDrop\)/);
+  assert.match(js, /dragEventIsInsideElement\(event, dropZone\)/);
   assert.match(js, /data-remove-lesson-file-index/);
 });
 
@@ -345,7 +358,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-lesson-file-controls" \/>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-lesson-file-controls"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-lesson-drop-resilience"><\/script>/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {

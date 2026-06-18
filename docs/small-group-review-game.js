@@ -161,6 +161,14 @@
     return Boolean(files && files.length > 0);
   }
 
+  function dragEventIsInsideElement(event, element) {
+    const x = Number(event?.clientX);
+    const y = Number(event?.clientY);
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
   function removeLessonFileAtIndex(files, index) {
     const list = Array.from(files || []);
     const normalizedIndex = Number(index);
@@ -2237,6 +2245,41 @@
       dropZone?.classList.toggle('is-dragging', Boolean(isDragging));
     }
 
+    function dropEventBelongsToLessonDropZone(event) {
+      return Boolean(dropZone && (
+        event?.target === dropZone ||
+        dropZone.contains?.(event?.target) ||
+        dragEventIsInsideElement(event, dropZone)
+      ));
+    }
+
+    function handleDocumentLessonFileDragover(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      setDropZoneDragging(dropZone && dragEventIsInsideElement(event, dropZone));
+    }
+
+    function handleDocumentLessonFileDrop(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      if (dropEventBelongsToLessonDropZone(event)) {
+        setSelectedFiles(event.dataTransfer?.files || []);
+      }
+      setDropZoneDragging(false);
+    }
+
+    function handleLessonDropZoneDrop(event) {
+      if (!fileDragEventHasFiles(event)) return;
+      preventBrowserFileOpenDuringLessonDrag(event);
+      event.stopPropagation?.();
+      setDropZoneDragging(false);
+      setSelectedFiles(event.dataTransfer?.files || []);
+    }
+
+    function shouldIgnoreDropZoneDragleave(event) {
+      return Boolean(event.currentTarget?.contains(event.relatedTarget)) || dragEventIsInsideElement(event, dropZone);
+    }
+
     function renderScoreboard() {
       if (!scoreboard) return;
       scoreboard.innerHTML = contestants.map((contestant) => `
@@ -2635,8 +2678,8 @@
       });
     });
 
-    document.addEventListener('dragover', preventBrowserFileOpenDuringLessonDrag);
-    document.addEventListener('drop', preventBrowserFileOpenDuringLessonDrag);
+    document.addEventListener('dragover', handleDocumentLessonFileDragover);
+    document.addEventListener('drop', handleDocumentLessonFileDrop);
 
     dropZone?.addEventListener('dragenter', (event) => {
       if (!fileDragEventHasFiles(event)) return;
@@ -2649,15 +2692,10 @@
       setDropZoneDragging(true);
     });
     dropZone?.addEventListener('dragleave', (event) => {
-      if (event.currentTarget?.contains(event.relatedTarget)) return;
+      if (shouldIgnoreDropZoneDragleave(event)) return;
       setDropZoneDragging(false);
     });
-    dropZone?.addEventListener('drop', (event) => {
-      if (!fileDragEventHasFiles(event)) return;
-      event.preventDefault();
-      setDropZoneDragging(false);
-      setSelectedFiles(event.dataTransfer?.files || []);
-    });
+    dropZone?.addEventListener('drop', handleLessonDropZoneDrop);
 
     setupForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -2793,6 +2831,7 @@
     DIFFICULTY_LEVELS,
     isSupportedLessonFile,
     fileDragEventHasFiles,
+    dragEventIsInsideElement,
     removeLessonFileAtIndex,
     configureContestantNameInputs,
     getResponseEntryControlState,
