@@ -558,6 +558,7 @@ test('uses game board wording consistently in small group game copy', () => {
   ].join('\n');
 
   assert.doesNotMatch(copy, /\breview[- ]board\b/i);
+  assert.doesNotMatch(copy, new RegExp(`\\b${['jeop', 'ardy'].join('')}\\b`, 'i'));
   assert.match(copy, /\bgame board\b/i);
 });
 
@@ -776,6 +777,7 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[0].content, /do not treat focus instructions as new lesson facts/i);
   assert.match(messages[0].content, /theological complexity and wording readability/i);
   assert.match(messages[0].content, /Flesch-Kincaid grade range/i);
+  assert.match(messages[1].content, /Berean Board lesson game board/i);
   assert.match(messages[1].content, /exactly 5 categories/i);
   assert.match(messages[1].content, /Ada, Boaz, Chloe, Daniel/);
   assert.match(messages[1].content, /Difficulty level: Child/);

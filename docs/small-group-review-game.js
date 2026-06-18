@@ -985,7 +985,7 @@
       {
         role: 'user',
         content: [
-          'Build a Jeopardy-style lesson game board for a Christian small group leader.',
+          'Build a Berean Board lesson game board for a Christian small group leader.',
           `Contestants: ${names.join(', ')}`,
           buildDifficultyGenerationInstructions(difficulty.value),
           'Requirements:',
