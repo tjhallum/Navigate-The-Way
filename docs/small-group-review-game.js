@@ -49,6 +49,27 @@
       guidance: 'Use advanced theological vocabulary, confessional and doctrinal distinctions where supported by the lesson, and seminary-level reasoning while remaining playable.',
     },
   ]);
+  const DEFAULT_BUZZER_MODE = 'in-person';
+  const BUZZER_MODES = Object.freeze([
+    {
+      value: 'in-person',
+      label: 'In-person',
+      name: 'Physical buzzers',
+      guidance: 'Players are together and buzz in with physical buzzers. Firebase is not initialized.',
+    },
+    {
+      value: 'virtual',
+      label: 'Virtual',
+      name: 'Virtual buzzers',
+      guidance: 'Remote players buzz in from phones using a short-lived Firebase session.',
+    },
+  ]);
+  const BUZZER_COLORS = Object.freeze([
+    { number: 1, name: 'Blue', value: '#3b82f6' },
+    { number: 2, name: 'Purple', value: '#a855f7' },
+    { number: 3, name: 'Green', value: '#22c55e' },
+    { number: 4, name: 'Orange', value: '#f97316' },
+  ]);
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
@@ -452,6 +473,14 @@
     return !playerNameListsMatch(currentPlayerNames || [], nextPlayerNames || []);
   }
 
+  function shouldResetVirtualBuzzersForPlayerSelectionChange({ currentPlayerNames, nextPlayerNames, hasVirtualSession, selectedBuzzerMode, buzzerSetupComplete }) {
+    const hasVirtualBuzzerState = Boolean(hasVirtualSession || (buzzerSetupComplete && selectedBuzzerMode === 'virtual'));
+    if (!hasVirtualBuzzerState) {
+      return false;
+    }
+    return !playerNameListsMatch(currentPlayerNames || [], nextPlayerNames || []);
+  }
+
   function normalizeDifficultyKey(value) {
     return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
   }
@@ -479,6 +508,64 @@
     return `${difficulty.level} — ${difficulty.name} (${difficulty.gradeRange})`;
   }
 
+  function normalizeBuzzerModeKey(value) {
+    return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+  }
+
+  function getBuzzerModeConfig(value) {
+    const key = normalizeBuzzerModeKey(value);
+    if (!key) return null;
+    return BUZZER_MODES.find((mode) => (
+      mode.value === key ||
+      normalizeBuzzerModeKey(mode.label) === key ||
+      normalizeBuzzerModeKey(mode.name) === key
+    )) || null;
+  }
+
+  function requireBuzzerMode(value) {
+    const mode = getBuzzerModeConfig(value);
+    if (!mode) {
+      throw new Error('Choose an in-person or virtual buzzer mode before continuing.');
+    }
+    return mode;
+  }
+
+  function getBuzzerColorForPlayerIndex(playerIndex) {
+    const index = Number(playerIndex);
+    if (!Number.isInteger(index)) return BUZZER_COLORS[0];
+    return BUZZER_COLORS[Math.max(0, Math.min(BUZZER_COLORS.length - 1, index))];
+  }
+
+  function getBuzzerColorForContestantId(contestantId) {
+    const match = String(contestantId || '').match(/contestant-(\d+)/);
+    const index = match ? Number(match[1]) - 1 : 0;
+    return getBuzzerColorForPlayerIndex(index);
+  }
+
+  function getContestantIdForPlayerIndex(playerIndex) {
+    const index = Number(playerIndex);
+    return Number.isInteger(index) && index >= 0 ? `contestant-${index + 1}` : '';
+  }
+
+  function getPlayerIndexForContestantId(contestantId) {
+    const match = String(contestantId || '').match(/contestant-(\d+)/);
+    if (!match) return -1;
+    const index = Number(match[1]) - 1;
+    return Number.isInteger(index) && index >= 0 && index < 4 ? index : -1;
+  }
+
+  function isVirtualBuzzerPlayerRoute(locationRef) {
+    const search = String(locationRef?.search || '');
+    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+    return params.get('mode') === 'buzz' && Boolean(params.get('session'));
+  }
+
+  function getVirtualBuzzerSessionIdFromLocation(locationRef) {
+    const search = String(locationRef?.search || '');
+    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+    return String(params.get('session') || '').trim();
+  }
+
   function buildDifficultyGenerationInstructions(value) {
     const difficulty = getDifficultyLevelConfig(value) || getDifficultyLevelConfig(DEFAULT_DIFFICULTY_LEVEL);
     return [
@@ -491,12 +578,26 @@
 
   function getSetupStepExpansionState(stage) {
     switch (stage) {
+      case 'buzzer':
+        return {
+          groupExpanded: false,
+          buzzerExpanded: true,
+          lessonExpanded: false,
+          difficultyExpanded: false,
+          apiExpanded: false,
+          buzzerAvailable: true,
+          lessonAvailable: false,
+          difficultyAvailable: false,
+          apiAvailable: false,
+        };
       case 'lesson':
         return {
           groupExpanded: false,
+          buzzerExpanded: false,
           lessonExpanded: true,
           difficultyExpanded: false,
           apiExpanded: false,
+          buzzerAvailable: true,
           lessonAvailable: true,
           difficultyAvailable: false,
           apiAvailable: false,
@@ -504,9 +605,11 @@
       case 'difficulty':
         return {
           groupExpanded: false,
+          buzzerExpanded: false,
           lessonExpanded: false,
           difficultyExpanded: true,
           apiExpanded: false,
+          buzzerAvailable: true,
           lessonAvailable: true,
           difficultyAvailable: true,
           apiAvailable: false,
@@ -514,9 +617,11 @@
       case 'api':
         return {
           groupExpanded: false,
+          buzzerExpanded: false,
           lessonExpanded: false,
           difficultyExpanded: false,
           apiExpanded: true,
+          buzzerAvailable: true,
           lessonAvailable: true,
           difficultyAvailable: true,
           apiAvailable: true,
@@ -524,9 +629,11 @@
       case 'game':
         return {
           groupExpanded: false,
+          buzzerExpanded: false,
           lessonExpanded: false,
           difficultyExpanded: false,
           apiExpanded: false,
+          buzzerAvailable: true,
           lessonAvailable: true,
           difficultyAvailable: true,
           apiAvailable: true,
@@ -535,9 +642,11 @@
       default:
         return {
           groupExpanded: true,
+          buzzerExpanded: false,
           lessonExpanded: false,
           difficultyExpanded: false,
           apiExpanded: false,
+          buzzerAvailable: false,
           lessonAvailable: false,
           difficultyAvailable: false,
           apiAvailable: false,
@@ -1616,6 +1725,7 @@
   function initializeSmallGroupGame() {
     const app = document.querySelector('[data-small-group-review-game]');
     if (!app) return;
+    const virtualBuzzerService = ROOT.NTWVirtualBuzzerService;
 
     const setupForm = app.querySelector('#game-setup-form');
     const fileInput = app.querySelector('#lesson-files');
@@ -1683,6 +1793,29 @@
     const apiSetupContent = app.querySelector('#api-setup-content');
     const selectedPlayersSummary = app.querySelector('#selected-players-summary');
 
+    const buzzerSetupSection = app.querySelector('#buzzer-setup-section');
+    const buzzerSetupToggle = app.querySelector('#buzzer-setup-toggle');
+    const buzzerSetupContent = app.querySelector('#buzzer-setup-content');
+    const buzzerSetupStatus = app.querySelector('#buzzer-setup-status');
+    const buzzerModeInputs = Array.from(app.querySelectorAll('input[name="buzzer-mode"]'));
+    const continueToLessonSetupButton = app.querySelector('#continue-to-lesson-setup-button');
+    const virtualBuzzerHostPanel = app.querySelector('#virtual-buzzer-host-panel');
+    const virtualBuzzerQr = app.querySelector('#virtual-buzzer-qr');
+    const virtualBuzzerJoinCopy = app.querySelector('#virtual-buzzer-join-copy');
+    const virtualBuzzerJoinLink = app.querySelector('#virtual-buzzer-join-link');
+    const virtualBuzzerPlayerList = app.querySelector('#virtual-buzzer-player-list');
+    const virtualBuzzerGamePanel = app.querySelector('#virtual-buzzer-game-panel');
+    const virtualBuzzerGameStatus = app.querySelector('#virtual-buzzer-game-status');
+    const virtualBuzzerFirst = app.querySelector('#virtual-buzzer-first');
+    const virtualBuzzerPlayerScreen = app.querySelector('#virtual-buzzer-player-screen');
+    const virtualBuzzerPlayerStatus = app.querySelector('#virtual-buzzer-player-status');
+    const virtualBuzzerNameOptions = app.querySelector('#virtual-buzzer-name-options');
+    const virtualBuzzerClaimButton = app.querySelector('#virtual-buzzer-claim-button');
+    const virtualBuzzerClaimedPanel = app.querySelector('#virtual-buzzer-claimed-panel');
+    const virtualBuzzerClaimedName = app.querySelector('#virtual-buzzer-claimed-name');
+    const virtualBuzzerButton = app.querySelector('#virtual-buzzer-button');
+    const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
+
     let selectedFiles = [];
     let groupMemberNames = readSavedGroupMembersCookie(document.cookie);
     let chosenPlayerNames = [];
@@ -1690,6 +1823,19 @@
     let lessonSetupComplete = false;
     let difficultySetupComplete = false;
     let selectedDifficultyLevel = '';
+    let selectedBuzzerMode = DEFAULT_BUZZER_MODE;
+    let buzzerSetupComplete = false;
+    let virtualBuzzerContext = null;
+    let virtualBuzzerSessionId = '';
+    let virtualBuzzerJoinUrl = '';
+    let virtualBuzzerSession = null;
+    let virtualBuzzerUnsubscribe = null;
+    let virtualBuzzerFirstHandledKey = '';
+    let virtualBuzzerPlayerClaim = null;
+    let virtualBuzzerPlayerSessionId = '';
+    let virtualBuzzerPlayerContext = null;
+    let virtualBuzzerPlayerSession = null;
+    let virtualBuzzerPlayerUnsubscribe = null;
     let contestants = [];
     let gameData = null;
     let activeClue = null;
@@ -1722,6 +1868,9 @@
     function applySetupStepStage(stage) {
       const state = getSetupStepExpansionState(stage);
       const groupStatus = state.groupExpanded ? 'Current' : 'Done';
+      const buzzerStatus = state.buzzerAvailable
+        ? (state.buzzerExpanded ? 'Current' : ((stage === 'lesson' || stage === 'difficulty' || stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
+        : 'Locked';
       const lessonStatus = state.lessonAvailable
         ? (state.lessonExpanded ? 'Current' : ((stage === 'difficulty' || stage === 'api' || stage === 'game') ? 'Done' : 'Ready'))
         : 'Locked';
@@ -1738,6 +1887,14 @@
         expanded: state.groupExpanded,
         statusText: groupStatus,
         available: true,
+      });
+      setSetupStepExpanded({
+        stepElement: buzzerSetupSection,
+        toggleButton: buzzerSetupToggle,
+        contentElement: buzzerSetupContent,
+        expanded: state.buzzerExpanded,
+        statusText: buzzerStatus,
+        available: state.buzzerAvailable,
       });
       setSetupStepExpanded({
         stepElement: lessonSetupSection,
@@ -1767,6 +1924,11 @@
 
     function toggleSetupStep(stepName) {
       const setupSteps = {
+        buzzer: {
+          stepElement: buzzerSetupSection,
+          toggleButton: buzzerSetupToggle,
+          contentElement: buzzerSetupContent,
+        },
         lesson: {
           stepElement: lessonSetupSection,
           toggleButton: lessonSetupToggle,
@@ -1791,7 +1953,7 @@
           toggleButton: groupSetupToggle,
           contentElement: groupSetupContent,
           expanded: shouldExpandGroup,
-          statusText: shouldExpandGroup ? 'Current' : (lessonSetupToggle?.disabled ? 'Current' : 'Done'),
+          statusText: shouldExpandGroup ? 'Current' : (buzzerSetupToggle?.disabled ? 'Current' : 'Done'),
           available: true,
         });
         if (shouldExpandGroup) {
@@ -1847,13 +2009,20 @@
     }
 
     function hideLessonSetup() {
+      closeVirtualSession();
       selectedPlayerNames = [];
+      buzzerSetupComplete = false;
+      selectedBuzzerMode = DEFAULT_BUZZER_MODE;
+      buzzerModeInputs.forEach((input) => { input.checked = input.value === DEFAULT_BUZZER_MODE; });
       lessonSetupComplete = false;
       difficultySetupComplete = false;
       selectedDifficultyLevel = '';
       if (selectedPlayersSummary) selectedPlayersSummary.textContent = '';
+      if (buzzerSetupStatus) buzzerSetupStatus.textContent = '';
       if (lessonSetupStatus) lessonSetupStatus.textContent = '';
       if (difficultySetupStatus) difficultySetupStatus.textContent = '';
+      if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+      if (virtualBuzzerGamePanel) virtualBuzzerGamePanel.hidden = true;
       updateDifficultySetupControls();
       applySetupStepStage('group');
     }
@@ -1890,6 +2059,391 @@
         continueToApiSetupButton.disabled = !difficultySelected;
       }
       return difficultySelected;
+    }
+
+    function currentBuzzerMode() {
+      const checkedInput = buzzerModeInputs.find((input) => input.checked);
+      return checkedInput?.value || DEFAULT_BUZZER_MODE;
+    }
+
+    function isVirtualBuzzerMode() {
+      return selectedBuzzerMode === 'virtual';
+    }
+
+    function renderVirtualBuzzerStatus(message, type = 'info') {
+      renderStatus(buzzerSetupStatus, message, type);
+    }
+
+    function renderVirtualBuzzerQr(joinUrl) {
+      if (!virtualBuzzerQr) return;
+      virtualBuzzerQr.innerHTML = '';
+      try {
+        if (typeof ROOT.qrcode === 'function') {
+          const qr = ROOT.qrcode(0, 'M');
+          qr.addData(joinUrl);
+          qr.make();
+          virtualBuzzerQr.innerHTML = qr.createSvgTag(6, 2);
+          return;
+        }
+      } catch (_error) {
+        virtualBuzzerQr.innerHTML = '';
+      }
+      const fallback = document.createElement('p');
+      fallback.className = 'privacy-note';
+      fallback.textContent = 'QR code library unavailable. Use the fallback link.';
+      virtualBuzzerQr.append(fallback);
+    }
+
+    function updateVirtualBuzzerPlayerList() {
+      if (!virtualBuzzerPlayerList) return;
+      const session = virtualBuzzerSession || { playerNames: selectedPlayerNames, claims: [] };
+      const names = session.playerNames?.length ? session.playerNames : selectedPlayerNames;
+      virtualBuzzerPlayerList.innerHTML = names.map((name, index) => {
+        const claim = session.claims?.[index] || null;
+        const color = getBuzzerColorForPlayerIndex(index);
+        return `<li class="${claim ? 'is-claimed' : ''}" style="--virtual-buzzer-player-color: ${color.value}"><span aria-hidden="true">●</span><span>${escapeHtml(name)}</span><small>${claim ? `Buzzer #${index + 1} connected` : 'Waiting to connect'}</small></li>`;
+      }).join('');
+      const connectedCount = (session.claims || []).filter(Boolean).length;
+      if (virtualBuzzerJoinCopy && names.length > 0) {
+        virtualBuzzerJoinCopy.textContent = `${connectedCount} of ${names.length} players connected. Ask players to scan the QR code and choose their own name.`;
+      }
+      if (connectedCount === names.length && names.length > 0 && isVirtualBuzzerMode()) {
+        renderVirtualBuzzerStatus('All virtual buzzers are connected. Continue with lesson setup when ready.', 'success');
+      }
+    }
+
+    function getVirtualBuzzerConnectedCount() {
+      return (virtualBuzzerSession?.claims || []).filter(Boolean).length;
+    }
+
+    function allVirtualPlayersConnected() {
+      const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
+      return expectedCount > 0 && getVirtualBuzzerConnectedCount() >= expectedCount;
+    }
+
+    function updateVirtualBuzzerGamePanel() {
+      if (!virtualBuzzerGamePanel) return;
+      virtualBuzzerGamePanel.hidden = !isVirtualBuzzerMode() || !virtualBuzzerSessionId;
+      if (!isVirtualBuzzerMode() || !virtualBuzzerSessionId) return;
+      const first = virtualBuzzerSession?.buzz?.first || null;
+      if (virtualBuzzerGameStatus) {
+        if (first) {
+          virtualBuzzerGameStatus.textContent = 'Buzzers are locked after the first buzz.';
+        } else if (!allVirtualPlayersConnected()) {
+          const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
+          virtualBuzzerGameStatus.textContent = `Waiting for virtual buzzers: ${getVirtualBuzzerConnectedCount()} of ${expectedCount} players connected.`;
+        } else if (virtualBuzzerSession?.buzz?.open) {
+          virtualBuzzerGameStatus.textContent = 'Buzzers are open!';
+        } else {
+          virtualBuzzerGameStatus.textContent = 'Buzzers are disabled until a clue opens.';
+        }
+      }
+      if (virtualBuzzerFirst) {
+        if (first) {
+          const color = getBuzzerColorForPlayerIndex(Number(first.playerIndex));
+          virtualBuzzerFirst.style.setProperty('--virtual-buzzer-player-color', color.value);
+          virtualBuzzerFirst.innerHTML = `<strong>${escapeHtml(first.playerName)}</strong> buzzed first`;
+          virtualBuzzerFirst.hidden = false;
+        } else {
+          virtualBuzzerFirst.textContent = '';
+          virtualBuzzerFirst.hidden = true;
+        }
+      }
+    }
+
+    function mergeVirtualBuzzerSession(partial) {
+      const existingNames = virtualBuzzerSession?.playerNames?.length ? virtualBuzzerSession.playerNames : selectedPlayerNames;
+      const rawNames = existingNames.reduce((accumulator, name, index) => {
+        accumulator[index] = name;
+        return accumulator;
+      }, {});
+      const rawClaims = (virtualBuzzerSession?.claims || []).reduce((accumulator, claim, index) => {
+        if (claim) accumulator[index] = claim;
+        return accumulator;
+      }, {});
+      const rawSession = {
+        hostUid: virtualBuzzerSession?.hostUid || virtualBuzzerContext?.uid || '',
+        expiresAt: virtualBuzzerSession?.expiresAt || 0,
+        status: virtualBuzzerSession?.status || 'setup',
+        buzzRound: virtualBuzzerSession?.buzzRound || 0,
+        playerNames: rawNames,
+        playerClaims: rawClaims,
+        buzz: virtualBuzzerSession?.buzz || { open: false, first: null, lockedOutPlayerIndexes: [] },
+        ...partial,
+      };
+      virtualBuzzerSession = virtualBuzzerService?.normalizeVirtualBuzzerSession
+        ? virtualBuzzerService.normalizeVirtualBuzzerSession(rawSession)
+        : rawSession;
+      updateVirtualBuzzerPlayerList();
+      updateVirtualBuzzerGamePanel();
+    }
+
+    function handleVirtualFirstBuzz(firstBuzz) {
+      if (!firstBuzz || !activeClue) return;
+      const key = `${activeClue.id}:${firstBuzz.round}:${firstBuzz.uid}`;
+      if (virtualBuzzerFirstHandledKey === key) return;
+      virtualBuzzerFirstHandledKey = key;
+      const contestantId = getContestantIdForPlayerIndex(Number(firstBuzz.playerIndex));
+      if (contestantChoices && contestantId) {
+        const input = contestantChoices.querySelector(`input[name="active-contestant"][value="${contestantId}"]`);
+        if (input && !input.disabled) {
+          input.checked = true;
+          updateResponseEntryState();
+        }
+      }
+      const color = getBuzzerColorForPlayerIndex(Number(firstBuzz.playerIndex));
+      if (clueFeedback) {
+        clueFeedback.innerHTML = `<strong style="color: ${color.value}">${escapeHtml(firstBuzz.playerName)}</strong> buzzed first. Type that player's response below.`;
+      }
+      updateVirtualBuzzerGamePanel();
+      disableVirtualBuzzersForHost();
+    }
+
+    function handleVirtualBuzzerBuzzUpdate(rawBuzz) {
+      mergeVirtualBuzzerSession({ buzz: rawBuzz || { open: false, first: null, lockedOutPlayerIndexes: [] } });
+      if (rawBuzz?.first) {
+        handleVirtualFirstBuzz(rawBuzz.first);
+      }
+    }
+
+    function setVirtualBuzzerJoinLink(joinUrl) {
+      virtualBuzzerJoinUrl = joinUrl || '';
+      if (virtualBuzzerJoinLink) {
+        virtualBuzzerJoinLink.href = virtualBuzzerJoinUrl || '#';
+        virtualBuzzerJoinLink.hidden = !virtualBuzzerJoinUrl;
+        virtualBuzzerJoinLink.textContent = virtualBuzzerJoinUrl ? 'Open player buzzer link' : '';
+      }
+      if (virtualBuzzerJoinCopy && virtualBuzzerJoinUrl) {
+        virtualBuzzerJoinCopy.textContent = `Fallback link: ${virtualBuzzerJoinUrl}`;
+      }
+      if (virtualBuzzerJoinUrl) renderVirtualBuzzerQr(virtualBuzzerJoinUrl);
+    }
+
+    async function closeVirtualSession() {
+      const context = virtualBuzzerContext;
+      const sessionId = virtualBuzzerSessionId;
+      virtualBuzzerUnsubscribe?.();
+      virtualBuzzerUnsubscribe = null;
+      virtualBuzzerSessionId = '';
+      virtualBuzzerJoinUrl = '';
+      virtualBuzzerSession = null;
+      virtualBuzzerFirstHandledKey = '';
+      if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+      if (virtualBuzzerQr) virtualBuzzerQr.innerHTML = '';
+      if (virtualBuzzerPlayerList) virtualBuzzerPlayerList.innerHTML = '';
+      updateVirtualBuzzerGamePanel();
+      if (context && sessionId && virtualBuzzerService?.closeVirtualBuzzerSession) {
+        try {
+          await virtualBuzzerService.closeVirtualBuzzerSession({ context, sessionId });
+        } catch (_error) {
+          // Best-effort cleanup. Expiration still closes abandoned sessions.
+        }
+      }
+      if (context && virtualBuzzerService?.disposeFirebaseContext) {
+        await virtualBuzzerService.disposeFirebaseContext(context);
+      }
+      if (context === virtualBuzzerContext) {
+        virtualBuzzerContext = null;
+      }
+    }
+
+    async function createVirtualBuzzerHostSession() {
+      if (!virtualBuzzerService) {
+        throw new Error('Virtual buzzers are not available because the buzzer service did not load.');
+      }
+      const names = selectedPlayerNames.length ? selectedPlayerNames : currentPlayerSelection().playerNames;
+      if (!names.length) {
+        throw new Error('Confirm one to four players before creating virtual buzzers.');
+      }
+      if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = false;
+      renderVirtualBuzzerStatus('Creating virtual buzzer session…', 'info');
+      if (!virtualBuzzerContext) {
+        virtualBuzzerContext = await virtualBuzzerService.initializeFirebaseContext();
+      }
+      if (!virtualBuzzerSessionId) {
+        const created = await virtualBuzzerService.createVirtualBuzzerSession({
+          context: virtualBuzzerContext,
+          playerNames: names,
+        });
+        virtualBuzzerSessionId = created.sessionId;
+        mergeVirtualBuzzerSession(created.record);
+        await virtualBuzzerService.setHostStatus?.(virtualBuzzerContext, virtualBuzzerSessionId, 'ready');
+        mergeVirtualBuzzerSession({ status: 'ready' });
+      }
+      const joinUrl = virtualBuzzerService.buildVirtualBuzzerJoinUrl({
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        sessionId: virtualBuzzerSessionId,
+      });
+      setVirtualBuzzerJoinLink(joinUrl);
+      if (!virtualBuzzerUnsubscribe && virtualBuzzerService.subscribeToSessionPaths) {
+        virtualBuzzerUnsubscribe = virtualBuzzerService.subscribeToSessionPaths(virtualBuzzerContext, virtualBuzzerSessionId, {
+          onClaims: (claims) => mergeVirtualBuzzerSession({ playerClaims: claims || {} }),
+          onBuzz: (buzz) => handleVirtualBuzzerBuzzUpdate(buzz || {}),
+          onStatus: (status) => mergeVirtualBuzzerSession({ status }),
+        });
+      }
+      renderVirtualBuzzerStatus('Virtual buzzers ready. Ask players to scan the QR code.', 'success');
+      updateVirtualBuzzerPlayerList();
+      updateVirtualBuzzerGamePanel();
+    }
+
+    async function handleBuzzerModeChanged() {
+      selectedBuzzerMode = requireBuzzerMode(currentBuzzerMode()).value;
+      buzzerSetupComplete = false;
+      if (selectedBuzzerMode === 'in-person') {
+        await closeVirtualSession();
+        renderVirtualBuzzerStatus('In-person play selected. Physical buzzers or hand-raising will work as before.', 'success');
+        return;
+      }
+      try {
+        await createVirtualBuzzerHostSession();
+      } catch (error) {
+        if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+        renderVirtualBuzzerStatus(error.message || 'Could not create virtual buzzers.', 'error');
+      }
+    }
+
+    async function completeBuzzerSetup() {
+      try {
+        selectedBuzzerMode = requireBuzzerMode(currentBuzzerMode()).value;
+        if (selectedBuzzerMode === 'virtual') {
+          await createVirtualBuzzerHostSession();
+        } else {
+          await closeVirtualSession();
+          renderVirtualBuzzerStatus('In-person play selected. Continue to lesson setup.', 'success');
+        }
+        buzzerSetupComplete = true;
+        applySetupStepStage('lesson');
+        lessonSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (error) {
+        if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+        renderVirtualBuzzerStatus(error.message || 'Choose a buzzer mode before continuing.', 'error');
+      }
+    }
+
+    function getAttemptedPlayerIndexesForActiveClue() {
+      const attempted = Array.isArray(activeClue?.attemptedContestantIds) ? activeClue.attemptedContestantIds : [];
+      return attempted.map(getPlayerIndexForContestantId).filter((index) => index >= 0);
+    }
+
+    async function resetVirtualBuzzersForNextAttempt() {
+      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
+      try {
+        const result = await virtualBuzzerService.resetBuzzersForHost({
+          context: virtualBuzzerContext,
+          sessionId: virtualBuzzerSessionId,
+          open: true,
+          lockedOutPlayerIndexes: getAttemptedPlayerIndexesForActiveClue(),
+        });
+        const snapshotValue = result?.snapshot?.val?.();
+        if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
+      } catch (_error) {
+        // Keep the leader-facing in-person controls usable even if Firebase fails mid-round.
+      }
+    }
+
+    async function openVirtualBuzzersForActiveClue() {
+      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
+      virtualBuzzerFirstHandledKey = '';
+      if (virtualBuzzerFirst) virtualBuzzerFirst.hidden = true;
+      if (virtualBuzzerGameStatus) virtualBuzzerGameStatus.textContent = 'Opening buzzers…';
+      await resetVirtualBuzzersForNextAttempt();
+    }
+
+    async function disableVirtualBuzzersForHost() {
+      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId) return;
+      try {
+        await virtualBuzzerService.disableBuzzersForHost({ context: virtualBuzzerContext, sessionId: virtualBuzzerSessionId });
+        mergeVirtualBuzzerSession({ status: 'locked', buzz: { ...(virtualBuzzerSession?.buzz || {}), open: false } });
+      } catch (_error) {
+        // Best-effort only; the next reset/open transaction will recover.
+      }
+    }
+
+    function maybeCloseVirtualSessionWhenGameComplete() {
+      if (!gameData) return;
+      const allComplete = gameData.categories.every((category) => category.clues.every((clue) => clue.completed));
+      if (allComplete) closeVirtualSession();
+    }
+
+    function renderPlayerPhoneSession() {
+      if (!virtualBuzzerPlayerScreen || !virtualBuzzerService) return;
+      const session = virtualBuzzerPlayerSession;
+      const uid = virtualBuzzerPlayerContext?.uid || '';
+      const sessionClosed = virtualBuzzerService.isVirtualBuzzerSessionClosed?.(session || {}) || false;
+      const claimOptions = virtualBuzzerService.getPlayerClaimOptions(session || {}, uid);
+      if (virtualBuzzerNameOptions && !virtualBuzzerPlayerClaim) {
+        virtualBuzzerNameOptions.innerHTML = claimOptions.map((option) => {
+          const inputId = `virtual-player-name-${option.playerIndex}`;
+          const disabled = Boolean(option.disabled);
+          const note = option.unavailableReason === 'closed'
+            ? 'session closed'
+            : (option.unavailableReason === 'claimed' ? 'claimed' : `Buzzer #${option.buzzerNumber}`);
+          return `<label for="${inputId}" class="${disabled ? 'is-claimed' : ''}"><input id="${inputId}" type="radio" name="virtual-buzzer-player-name" value="${option.playerIndex}" ${disabled ? 'disabled' : ''} ${option.claimedByCurrentUser ? 'checked' : ''} /><span>${escapeHtml(option.playerName)}</span><small>${note}</small></label>`;
+        }).join('');
+      }
+      if (virtualBuzzerClaimButton) {
+        virtualBuzzerClaimButton.disabled = sessionClosed || Boolean(virtualBuzzerPlayerClaim) || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
+      }
+      if (virtualBuzzerPlayerClaim) {
+        const color = getBuzzerColorForPlayerIndex(virtualBuzzerPlayerClaim.playerIndex);
+        if (virtualBuzzerClaimedPanel) virtualBuzzerClaimedPanel.hidden = false;
+        if (virtualBuzzerClaimedName) {
+          virtualBuzzerClaimedName.textContent = `${virtualBuzzerPlayerClaim.playerName} — Buzzer #${virtualBuzzerPlayerClaim.buzzerNumber}`;
+          virtualBuzzerClaimedName.style.setProperty('--virtual-buzzer-player-color', color.value);
+        }
+        if (virtualBuzzerButton) {
+          virtualBuzzerButton.style.setProperty('--virtual-buzzer-player-color', color.value);
+          virtualBuzzerButton.disabled = !virtualBuzzerService.canSubmitVirtualBuzz({ session, claim: virtualBuzzerPlayerClaim, uid });
+        }
+      }
+      if (virtualBuzzerPhoneStatus && session) {
+        const first = session.buzz?.first || null;
+        if (first?.uid === uid) {
+          virtualBuzzerPhoneStatus.textContent = 'You buzzed first!';
+        } else if (first) {
+          virtualBuzzerPhoneStatus.textContent = `${first.playerName} buzzed first.`;
+        } else if (session.status === 'open' && session.buzz?.open) {
+          virtualBuzzerPhoneStatus.textContent = 'Buzzers are open!';
+        } else if (session.status === 'closed' || (session.expiresAt && session.expiresAt < Date.now())) {
+          virtualBuzzerPhoneStatus.textContent = 'This virtual buzzer session is closed.';
+          if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+        } else {
+          virtualBuzzerPhoneStatus.textContent = 'Waiting for the host…';
+        }
+      }
+    }
+
+    async function initializeVirtualBuzzerPlayerScreen() {
+      if (!isVirtualBuzzerPlayerRoute(window.location)) return false;
+      virtualBuzzerPlayerSessionId = getVirtualBuzzerSessionIdFromLocation(window.location);
+      if (setupForm) setupForm.hidden = true;
+      if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;
+      if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+      if (!virtualBuzzerService) {
+        if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.disabled = true;
+        if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+        renderStatus(virtualBuzzerPlayerStatus, 'Virtual buzzers are unavailable on this page load.', 'error');
+        return true;
+      }
+      try {
+        virtualBuzzerPlayerContext = await virtualBuzzerService.initializeFirebaseContext();
+        renderStatus(virtualBuzzerPlayerStatus, 'Choose your player name.', 'info');
+        virtualBuzzerPlayerUnsubscribe = virtualBuzzerService.subscribeToSessionValue(virtualBuzzerPlayerContext, virtualBuzzerPlayerSessionId, (session) => {
+          virtualBuzzerPlayerSession = session;
+          if (virtualBuzzerPlayerClaim) {
+            virtualBuzzerPlayerClaim = session.claims?.[virtualBuzzerPlayerClaim.playerIndex] || virtualBuzzerPlayerClaim;
+          } else {
+            virtualBuzzerPlayerClaim = session.claims?.find((claim) => claim?.uid === virtualBuzzerPlayerContext?.uid) || null;
+          }
+          renderPlayerPhoneSession();
+        });
+      } catch (error) {
+        renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not join the virtual buzzer session.', 'error');
+      }
+      return true;
+
     }
 
     function markDifficultySetupChanged() {
@@ -2004,10 +2558,18 @@
         chosenPlayerNames = [];
       }
       const selection = resolvePlayerSelection({ attendingNames, chosenPlayerNames });
+      const nextPlayerNames = selection.canContinue ? selection.playerNames : [];
       const shouldClearGeneratedGame = shouldResetGeneratedGameForPlayerSelectionChange({
         currentPlayerNames: selectedPlayerNames,
-        nextPlayerNames: selection.canContinue ? selection.playerNames : [],
+        nextPlayerNames,
         hasGeneratedGame: Boolean(gameData),
+      });
+      const shouldClearVirtualBuzzers = shouldResetVirtualBuzzersForPlayerSelectionChange({
+        currentPlayerNames: selectedPlayerNames,
+        nextPlayerNames,
+        hasVirtualSession: Boolean(virtualBuzzerSessionId || virtualBuzzerContext),
+        selectedBuzzerMode,
+        buzzerSetupComplete,
       });
 
       if (playerPickerPanel) {
@@ -2039,6 +2601,21 @@
         if (shouldClearGeneratedGame) {
           resetCurrentGameAfterPlayerChange();
           renderStatus(groupSetupStatus, 'Players changed, so the current game board was cleared. Generate a new board after confirming the players.', 'info');
+        }
+        if (shouldClearVirtualBuzzers) {
+          void closeVirtualSession();
+          buzzerSetupComplete = false;
+          selectedBuzzerMode = DEFAULT_BUZZER_MODE;
+          buzzerModeInputs.forEach((input) => { input.checked = input.value === DEFAULT_BUZZER_MODE; });
+          lessonSetupComplete = false;
+          difficultySetupComplete = false;
+          selectedDifficultyLevel = '';
+          if (lessonSetupStatus) lessonSetupStatus.textContent = '';
+          if (difficultySetupStatus) difficultySetupStatus.textContent = '';
+          updateDifficultySetupControls();
+          applySetupStepStage('buzzer');
+          renderStatus(groupSetupStatus, 'Players changed, so virtual buzzers were reset. Choose In-person or Virtual again before continuing.', 'info');
+          renderStatus(buzzerSetupStatus, 'Players changed. Choose in-person or virtual again to create the correct buzzer setup.', 'info');
         }
         selectedPlayerNames = selection.playerNames;
         contestants = createContestants(selectedPlayerNames);
@@ -2103,19 +2680,81 @@
         hideLessonSetup();
         return;
       }
+      if (virtualBuzzerSessionId) closeVirtualSession();
       selectedPlayerNames = selection.playerNames;
       contestants = createContestants(selectedPlayerNames);
+      buzzerSetupComplete = false;
+      selectedBuzzerMode = requireBuzzerMode(currentBuzzerMode()).value;
       lessonSetupComplete = false;
       difficultySetupComplete = false;
       selectedDifficultyLevel = '';
       renderStatus(groupSetupStatus, selection.message, 'success');
+      renderStatus(buzzerSetupStatus, 'Choose whether this game is in-person or remote.', 'info');
       if (lessonSetupStatus) lessonSetupStatus.textContent = '';
       if (difficultySetupStatus) difficultySetupStatus.textContent = '';
       updateDifficultySetupControls();
-      applySetupStepStage('lesson');
+      applySetupStepStage('buzzer');
       updateLessonSetupControls();
       renderSelectedPlayersSummary();
-      lessonSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      updateVirtualBuzzerPlayerList();
+      buzzerSetupSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    virtualBuzzerNameOptions?.addEventListener('change', () => {
+      renderPlayerPhoneSession();
+    });
+    virtualBuzzerClaimButton?.addEventListener('click', async () => {
+      if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession) return;
+      if (virtualBuzzerService.isVirtualBuzzerSessionClosed?.(virtualBuzzerPlayerSession)) {
+        renderStatus(virtualBuzzerPlayerStatus, 'This virtual buzzer session is closed.', 'error');
+        renderPlayerPhoneSession();
+        return;
+      }
+      const selected = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
+      if (!selected) return;
+      try {
+        const playerIndex = Number(selected.value);
+        const result = await virtualBuzzerService.claimPlayerSlot({
+          context: virtualBuzzerPlayerContext,
+          sessionId: virtualBuzzerPlayerSessionId,
+          playerIndex,
+          playerNames: virtualBuzzerPlayerSession.playerNames,
+        });
+        if (!result.committed) {
+          renderStatus(virtualBuzzerPlayerStatus, 'That name was just claimed by another device. Choose another available name.', 'error');
+          return;
+        }
+        virtualBuzzerPlayerClaim = { ...result.claim, playerIndex };
+        renderStatus(virtualBuzzerPlayerStatus, 'Name claimed. Keep this screen open for the next question.', 'success');
+        renderPlayerPhoneSession();
+      } catch (error) {
+        renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not claim that player name.', 'error');
+      }
+    });
+    virtualBuzzerButton?.addEventListener('click', async () => {
+      if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession || !virtualBuzzerPlayerClaim) return;
+      if (!virtualBuzzerService.canSubmitVirtualBuzz({ session: virtualBuzzerPlayerSession, claim: virtualBuzzerPlayerClaim, uid: virtualBuzzerPlayerContext.uid })) return;
+      try {
+        if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+        const result = await virtualBuzzerService.submitFirstBuzz({
+          context: virtualBuzzerPlayerContext,
+          sessionId: virtualBuzzerPlayerSessionId,
+          playerIndex: virtualBuzzerPlayerClaim.playerIndex,
+          playerNames: virtualBuzzerPlayerSession.playerNames,
+          round: virtualBuzzerPlayerSession.buzzRound,
+        });
+        if (virtualBuzzerPhoneStatus) {
+          virtualBuzzerPhoneStatus.textContent = result.committed ? 'You buzzed first!' : 'Another player buzzed first.';
+        }
+      } catch (error) {
+        if (virtualBuzzerPhoneStatus) virtualBuzzerPhoneStatus.textContent = error.message || 'Could not send your buzz.';
+        renderPlayerPhoneSession();
+      }
+    });
+
+    if (isVirtualBuzzerPlayerRoute(window.location)) {
+      initializeVirtualBuzzerPlayerScreen();
+      return;
     }
 
     if (groupMemberNames.length > 0) {
@@ -2319,6 +2958,7 @@
 
     function closeActiveClue() {
       responseCheckInFlight = false;
+      disableVirtualBuzzersForHost();
       resetActiveClueFit();
       if (cluePanel) cluePanel.hidden = true;
       document.body?.classList.remove('has-active-clue-modal');
@@ -2450,7 +3090,11 @@
       if (contestantPromptSection) contestantPromptSection.hidden = Boolean(activeClue.completed);
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = Boolean(activeClue.completed);
-      if (clueFeedback) clueFeedback.textContent = 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+      if (clueFeedback) {
+        clueFeedback.textContent = isVirtualBuzzerMode()
+          ? 'Virtual buzzers are opening. The first player to buzz will be selected automatically. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.'
+          : 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+      }
       clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
       renderContestantChoices();
       cluePanel.hidden = false;
@@ -2459,6 +3103,7 @@
       window.requestAnimationFrame(() => {
         cluePanel?.focus();
       });
+      openVirtualBuzzersForActiveClue();
     }
 
     function replaceActiveClue(updatedClue) {
@@ -2467,6 +3112,7 @@
       renderScoreboard();
       renderBoard();
       renderContestantChoices();
+      maybeCloseVirtualSessionWhenGameComplete();
     }
 
     function handleNoBuzz() {
@@ -2484,6 +3130,7 @@
       if (clueFeedback) {
         clueFeedback.textContent = 'No points changed. The correct answer is shown below.';
       }
+      disableVirtualBuzzersForHost();
     }
 
     async function handleResponseCheck() {
@@ -2551,6 +3198,7 @@
           if (clueFeedback) {
             clueFeedback.textContent = 'The correct answer is shown below.';
           }
+          disableVirtualBuzzersForHost();
           return;
         }
 
@@ -2562,6 +3210,7 @@
           if (clueFeedback) {
             clueFeedback.textContent = 'All contestants have attempted this clue. The correct answer is shown below.';
           }
+          disableVirtualBuzzersForHost();
           return;
         }
 
@@ -2582,6 +3231,7 @@
             clueFeedback.textContent = `${contestant.name}'s response was not accepted, so ${formatScore(Math.abs(result.awardedPoints))} was subtracted. Call on another buzzer and select the next contestant.`;
           }
         }
+        await resetVirtualBuzzersForNextAttempt();
         updateResponseEntryState();
       } catch (error) {
         if (!activeClue || activeClue.id !== clueIdAtRequestStart) {
@@ -2605,11 +3255,15 @@
       if (gameTitle) gameTitle.textContent = gameData?.title || 'Berean Board Lesson Review';
       renderScoreboard();
       renderBoard();
+      updateVirtualBuzzerGamePanel();
       gameArea?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     groupSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('group');
+    });
+    buzzerSetupToggle?.addEventListener('click', () => {
+      toggleSetupStep('buzzer');
     });
     lessonSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('lesson');
@@ -2619,6 +3273,14 @@
     });
     apiSetupToggle?.addEventListener('click', () => {
       toggleSetupStep('api');
+    });
+    continueToLessonSetupButton?.addEventListener('click', () => {
+      completeBuzzerSetup();
+    });
+    buzzerModeInputs.forEach((input) => {
+      input.addEventListener('change', () => {
+        handleBuzzerModeChanged();
+      });
     });
     continueToDifficultySetupButton?.addEventListener('click', () => {
       completeLessonSetup();
@@ -2642,6 +3304,7 @@
       clearSavedGroupMembersCookie();
       groupMemberNames = [];
       chosenPlayerNames = [];
+      closeVirtualSession();
       hideLessonSetup();
       showGroupEditor([]);
       renderStatus(groupSetupStatus, 'Saved group cleared from this browser.', 'info');
@@ -2707,6 +3370,11 @@
         selectedPlayerNames = selection.playerNames;
         contestants = createContestants(selectedPlayerNames);
         renderSelectedPlayersSummary();
+        if (!buzzerSetupComplete) {
+          applySetupStepStage('buzzer');
+          renderStatus(buzzerSetupStatus, 'Choose In-person or Virtual before lesson setup.', 'error');
+          throw new Error('Choose In-person or Virtual before lesson setup.');
+        }
         if (!lessonSetupComplete) {
           applySetupStepStage('lesson');
           renderStatus(lessonSetupStatus, 'Complete lesson setup before choosing a difficulty level.', 'error');
@@ -2754,6 +3422,14 @@
     board?.addEventListener('click', (event) => {
       const button = event.target.closest('[data-clue-id]');
       if (!button || button.disabled) return;
+      if (isVirtualBuzzerMode() && !allVirtualPlayersConnected()) {
+        updateVirtualBuzzerGamePanel();
+        if (virtualBuzzerGameStatus) {
+          const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
+          virtualBuzzerGameStatus.textContent = `Wait for every player to connect before opening a clue (${getVirtualBuzzerConnectedCount()} of ${expectedCount} connected).`;
+        }
+        return;
+      }
       openClue(button.dataset.clueId);
     });
 
@@ -2788,6 +3464,10 @@
       if (!window.confirm('Start over and clear the current game board?')) return;
       contestants = [];
       gameData = null;
+      buzzerSetupComplete = false;
+      selectedBuzzerMode = DEFAULT_BUZZER_MODE;
+      buzzerModeInputs.forEach((input) => { input.checked = input.value === DEFAULT_BUZZER_MODE; });
+      closeVirtualSession();
       lessonSetupComplete = false;
       difficultySetupComplete = false;
       selectedDifficultyLevel = '';
@@ -2829,6 +3509,9 @@
     DEFAULT_BIBLE,
     DEFAULT_DIFFICULTY_LEVEL,
     DIFFICULTY_LEVELS,
+    DEFAULT_BUZZER_MODE,
+    BUZZER_MODES,
+    BUZZER_COLORS,
     isSupportedLessonFile,
     fileDragEventHasFiles,
     dragEventIsInsideElement,
@@ -2848,10 +3531,16 @@
     resolvePlayerSelection,
     selectRandomPlayers,
     shouldResetGeneratedGameForPlayerSelectionChange,
+    shouldResetVirtualBuzzersForPlayerSelectionChange,
     getDifficultyLevelConfig,
     requireDifficultyLevel,
     getDifficultyLevelSummary,
     buildDifficultyGenerationInstructions,
+    getBuzzerModeConfig,
+    requireBuzzerMode,
+    getBuzzerColorForPlayerIndex,
+    getBuzzerColorForContestantId,
+    isVirtualBuzzerPlayerRoute,
     getSetupStepExpansionState,
     buildSavedGroupMembersCookie,
     buildClearGroupMembersCookie,

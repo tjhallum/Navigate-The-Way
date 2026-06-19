@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260618-lesson-file-controls" />
+  <link rel="stylesheet" href="styles.css?v=20260618-virtual-buzzers" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -142,13 +142,26 @@
           <li>Select a difficulty level—Little Lamb, Bible Explorer, Disciple, Berean, or Theologian—so generated clues adjust both theological complexity and wording readability to the intended Flesch-Kincaid grade range.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
-          <li>Players buzz in with physical buzzers. The leader selects the contestant, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
+          <li>Choose in-person play for physical buzzers, or Virtual buzzers for remote players using phones. The leader selects or receives the first buzzer, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
           <li>Points are assigned automatically. Wrong answers subtract that clue’s value, biblically sound but not-by-the-book answers can each receive equal limited partial credit, correct answers receive the remaining clue value, and at least 40% of the clue value is preserved for a final fully correct answer.</li>
         </ol>
         <p><strong>Important:</strong> this static GitHub Pages app cannot hide a server-side secret. Do not hardcode an API key into this repository. For a public/shared deployment, use a small server-side proxy with the key stored as a secret. This page only accepts the key at runtime in the leader’s browser.</p>
         <p>The default API configuration uses <a href="https://apologistproject.org/documentation/apologist-fusion/chat-completion">Apologist Fusion Chat Completions</a> at <code>https://navtheway.apologist.ai/api/v1/chat/completions</code>, language <code>en</code>, and premium model <code>openai/gpt/5.4</code>.</p>
       </div>
     </details>
+
+    <section id="virtual-buzzer-player-screen" class="virtual-buzzer-player-screen" hidden>
+      <p class="eyebrow">Berean Board</p>
+      <h2>Virtual buzzer</h2>
+      <p id="virtual-buzzer-player-status" class="game-status" aria-live="polite">Loading virtual buzzer session…</p>
+      <div id="virtual-buzzer-name-options" class="virtual-buzzer-name-options" role="radiogroup" aria-label="Choose your player name"></div>
+      <button id="virtual-buzzer-claim-button" type="button" class="primary-action" disabled>Use This Name</button>
+      <div id="virtual-buzzer-claimed-panel" class="virtual-buzzer-claimed-panel" hidden>
+        <p id="virtual-buzzer-claimed-name" class="virtual-buzzer-claimed-name"></p>
+        <button id="virtual-buzzer-button" type="button" class="virtual-buzzer-button" disabled>BUZZ</button>
+        <p id="virtual-buzzer-phone-status" class="virtual-buzzer-phone-status" aria-live="polite">Waiting for the host…</p>
+      </div>
+    </section>
 
     <form id="game-setup-form" class="card review-game-setup" autocomplete="off">
       <section id="group-setup-step" class="group-setup-step setup-step setup-step--expanded" data-setup-step="group" aria-labelledby="group-setup-title">
@@ -193,13 +206,101 @@
           </section>
 
           <p id="group-setup-status" class="game-status" aria-live="polite"></p>
-          <button id="confirm-players-button" type="button" class="primary-action" hidden>Continue to Lesson Setup</button>
+          <button id="confirm-players-button" type="button" class="primary-action" hidden>Continue to In-person or Remote</button>
+        </div>
+      </section>
+
+      <section id="buzzer-setup-section" class="buzzer-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="buzzer" aria-labelledby="buzzer-setup-title">
+        <button id="buzzer-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="buzzer-setup-content" aria-disabled="true" disabled>
+          <span id="buzzer-setup-title" class="setup-step-title">2. In-person or Remote</span>
+          <span class="setup-step-status" data-setup-step-status>Locked</span>
+          <span class="setup-step-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div id="buzzer-setup-content" class="setup-step-content" hidden>
+          <p id="buzzer-setup-description" class="privacy-note">Choose how players will buzz in for this game. In-person keeps the existing physical-buzzer flow. Virtual buzzers creates a short-lived phone buzzer session for remote play.</p>
+          <fieldset class="buzzer-mode-options" aria-describedby="buzzer-setup-description">
+            <legend class="difficulty-options__legend">Buzzer mode</legend>
+            <label class="buzzer-mode-option difficulty-option">
+              <input type="radio" name="buzzer-mode" value="in-person" checked />
+              <span class="difficulty-option__level">In-person</span>
+              <span class="difficulty-option__name">Physical buzzers</span>
+              <span class="difficulty-option__grade">Same room</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="buzzer-mode-option__svg difficulty-option__svg" viewBox="6 8 108 108" focusable="false">
+                  <defs>
+                    <linearGradient id="buzzer-storybook-in-person-people" x1="22" x2="96" y1="20" y2="104" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#fff8e4" />
+                      <stop offset="1" stop-color="#7dcfff" />
+                    </linearGradient>
+                    <linearGradient id="buzzer-storybook-in-person-table" x1="25" x2="95" y1="72" y2="106" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#f7c75b" />
+                      <stop offset="1" stop-color="#d79345" />
+                    </linearGradient>
+                  </defs>
+                  <ellipse cx="60" cy="108" rx="40" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M28 74c10-12 54-12 64 0v24H28Z" fill="url(#buzzer-storybook-in-person-table)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <circle cx="39" cy="48" r="15" fill="#ffd8a8" stroke="#5b2b1a" stroke-width="4.2" />
+                  <circle cx="80" cy="48" r="15" fill="#ffd8a8" stroke="#5b2b1a" stroke-width="4.2" />
+                  <path d="M22 87c4-19 30-22 38-4" fill="url(#buzzer-storybook-in-person-people)" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <path d="M61 83c8-17 34-15 38 4" fill="#dceaff" stroke="#5b2b1a" stroke-width="4.2" stroke-linejoin="round" />
+                  <circle cx="39" cy="49" r="3.7" fill="#4b2418" />
+                  <circle cx="80" cy="49" r="3.7" fill="#4b2418" />
+                  <path d="M33 58c5 4 10 4 15 0M74 58c5 4 10 4 15 0" fill="none" stroke="#5b2b1a" stroke-width="2.8" stroke-linecap="round" />
+                  <circle cx="60" cy="76" r="8" fill="#ef4444" stroke="#5b2b1a" stroke-width="3.4" />
+                </svg>
+              </span>
+            </label>
+            <label class="buzzer-mode-option difficulty-option">
+              <input type="radio" name="buzzer-mode" value="virtual" />
+              <span class="difficulty-option__level">Virtual</span>
+              <span class="difficulty-option__name">Virtual buzzers</span>
+              <span class="difficulty-option__grade">Phones</span>
+              <span class="difficulty-option__art" aria-hidden="true">
+                <svg class="buzzer-mode-option__svg difficulty-option__svg" viewBox="6 8 108 108" focusable="false">
+                  <defs>
+                    <linearGradient id="buzzer-storybook-virtual-devices" x1="28" x2="92" y1="19" y2="105" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#2d4f91" />
+                      <stop offset="1" stop-color="#101b35" />
+                    </linearGradient>
+                    <linearGradient id="buzzer-storybook-virtual-signal" x1="22" x2="98" y1="30" y2="90" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#bfefff" />
+                      <stop offset="1" stop-color="#f7c75b" />
+                    </linearGradient>
+                  </defs>
+                  <ellipse cx="60" cy="108" rx="38" ry="6" fill="#091326" opacity="0.24" />
+                  <path d="M24 38h28c4 0 7 3 7 7v46c0 4-3 7-7 7H24c-4 0-7-3-7-7V45c0-4 3-7 7-7Z" fill="url(#buzzer-storybook-virtual-devices)" stroke="#5b2b1a" stroke-width="4.2" />
+                  <path d="M68 24h28c4 0 7 3 7 7v56c0 4-3 7-7 7H68c-4 0-7-3-7-7V31c0-4 3-7 7-7Z" fill="url(#buzzer-storybook-virtual-devices)" stroke="#5b2b1a" stroke-width="4.2" />
+                  <circle cx="38" cy="70" r="11" fill="#3b82f6" stroke="#f7c75b" stroke-width="3.4" />
+                  <circle cx="82" cy="59" r="11" fill="#a855f7" stroke="#f7c75b" stroke-width="3.4" />
+                  <path d="M49 48c8-8 16-8 24 0M54 38c5-6 17-7 23 0M47 87c15 8 31 6 45-7" fill="none" stroke="url(#buzzer-storybook-virtual-signal)" stroke-width="4" stroke-linecap="round" />
+                </svg>
+              </span>
+            </label>
+          </fieldset>
+
+          <div id="virtual-buzzer-host-panel" class="virtual-buzzer-host-panel" hidden>
+            <div>
+              <h3>Virtual buzzers</h3>
+              <p class="privacy-note">Ask players to scan this QR code, choose their own name, and keep the buzzer screen open.</p>
+            </div>
+            <div class="virtual-buzzer-join-grid">
+              <div id="virtual-buzzer-qr" class="virtual-buzzer-qr" aria-label="Virtual buzzer QR code"></div>
+              <div>
+                <p id="virtual-buzzer-join-copy" class="virtual-buzzer-join-copy">Creating virtual buzzer session…</p>
+                <a id="virtual-buzzer-join-link" class="virtual-buzzer-join-link" href="#" target="_blank" rel="noopener" hidden>Open player buzzer link</a>
+                <ul id="virtual-buzzer-player-list" class="virtual-buzzer-player-list" aria-label="Virtual buzzer player connection status"></ul>
+              </div>
+            </div>
+          </div>
+
+          <button id="continue-to-lesson-setup-button" type="button" class="primary-action">Continue to Lesson Setup</button>
+          <p id="buzzer-setup-status" class="game-status" aria-live="polite"></p>
         </div>
       </section>
 
       <section id="lesson-setup-section" class="lesson-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="lesson" aria-labelledby="lesson-setup-title">
         <button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content" aria-disabled="true" disabled>
-          <span id="lesson-setup-title" class="setup-step-title">2. Add lesson files, topic, or instructions</span>
+          <span id="lesson-setup-title" class="setup-step-title">3. Add lesson files, topic, or instructions</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
         </button>
@@ -223,7 +324,7 @@
 
       <section id="difficulty-setup-section" class="difficulty-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="difficulty" aria-labelledby="difficulty-setup-title">
         <button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>
-          <span id="difficulty-setup-title" class="setup-step-title">3. Choose the game difficulty</span>
+          <span id="difficulty-setup-title" class="setup-step-title">4. Choose the game difficulty</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
         </button>
@@ -427,7 +528,7 @@
 
       <section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">
         <button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>
-          <span id="api-setup-title" class="setup-step-title">4. Connect to NTW’s API</span>
+          <span id="api-setup-title" class="setup-step-title">5. Connect to NTW’s API</span>
           <span class="setup-step-status" data-setup-step-status>Locked</span>
           <span class="setup-step-chevron" aria-hidden="true">▾</span>
         </button>
@@ -464,6 +565,13 @@
       </div>
 
       <section aria-label="Scores" id="scoreboard" class="scoreboard"></section>
+      <section id="virtual-buzzer-game-panel" class="virtual-buzzer-game-panel" hidden>
+        <div>
+          <p class="eyebrow">Virtual buzzers</p>
+          <p id="virtual-buzzer-game-status" class="virtual-buzzer-game-status">Buzzers are disabled until a clue opens.</p>
+        </div>
+        <p id="virtual-buzzer-first" class="virtual-buzzer-first" aria-live="polite" hidden></p>
+      </section>
       <section aria-label="Review game board" id="game-board" class="game-board"></section>
 
       <section id="active-clue-panel" class="active-clue-panel" role="dialog" aria-modal="true" aria-labelledby="active-clue-heading" tabindex="-1" hidden>
@@ -509,6 +617,9 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
-<script src="small-group-review-game.js?v=20260618-lesson-drop-resilience"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
+<script src="firebase-config.js?v=20260618-virtual-buzzers"></script>
+<script src="virtual-buzzer-service.js?v=20260618-virtual-buzzers"></script>
+<script src="small-group-review-game.js?v=20260618-virtual-buzzers"></script>
 </body>
 </html>
