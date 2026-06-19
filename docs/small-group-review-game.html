@@ -138,7 +138,7 @@
         <ol>
           <li>Save your group members once, then check the people who are present each time you play.</li>
           <li>If more than four people are present, pick four players yourself or let Berean Board choose four at random.</li>
-          <li>Drag in the week’s lesson files, type a brief lesson topic/summary, add focus instructions for uploaded files, or use both. TXT, Markdown, HTML, PDF, DOCX, and PPTX files are supported in the browser.</li>
+          <li>Drag in the week’s lesson files, type a brief lesson topic/summary, add focus instructions for uploaded files, or use both. Text, PDF, Word, OpenDocument, iWork, slide deck, spreadsheet, CSV, XML, YAML, and TeX files are supported in the browser.</li>
           <li>Select a difficulty level—Little Lamb, Bible Explorer, Disciple, Berean, or Theologian—so generated clues adjust both theological complexity and wording readability to the intended Flesch-Kincaid grade range.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
@@ -393,9 +393,9 @@
           <p id="selected-players-summary" class="selected-players-summary" aria-live="polite"></p>
           <label id="lesson-drop-zone" class="lesson-drop-zone" for="lesson-files">
             <span>Drop lesson files here, or click to choose files.</span>
-            <small>Supported: .txt, .md, .html, .json, .rtf, .pdf, .docx, .pptx</small>
+            <small>Supported: .txt, .md, .html, .json, .rtf, .pdf, .doc, .docx, .odt, .pages, .ppt, .pptx, .odp, .key, .xlsx, .xls, .ods, .csv, .xml, .yaml, .yml, .tex</small>
           </label>
-          <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.docx,.pptx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+          <input id="lesson-files" type="file" multiple accept=".txt,.md,.markdown,.html,.htm,.json,.rtf,.pdf,.doc,.docx,.odt,.pages,.ppt,.pptx,.odp,.key,.xlsx,.xls,.ods,.csv,.xml,.yaml,.yml,.tex,text/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/vnd.apple.pages,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation,application/vnd.apple.keynote,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,application/xml,application/yaml,application/x-yaml,application/x-tex" />
           <p id="lesson-file-status" class="file-status" aria-live="polite">No lesson files selected yet.</p>
           <ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden></ul>
           <label for="lesson-topic-text">Or type the lesson topic, summary, or focus instructions
@@ -703,9 +703,10 @@
 </script>
 <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260619-app-check"></script>
-<script src="small-group-review-game.js?v=20260619-partial-awards"></script>
+<script src="small-group-review-game.js?v=20260619-lesson-files"></script>
 </body>
 </html>

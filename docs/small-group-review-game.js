@@ -84,22 +84,58 @@
   const GROUP_MEMBERS_COOKIE_NAME = 'ntwBereanBoardGroupMembers';
   const GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS = 31536000;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
-    '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'
+    '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf', '.xml', '.yaml', '.yml', '.tex'
   ]);
-  const SUPPORTED_BINARY_EXTENSIONS = new Set(['.pdf', '.docx', '.pptx']);
+  const SUPPORTED_BINARY_EXTENSIONS = new Set([
+    '.pdf', '.doc', '.docx', '.odt', '.pages', '.ppt', '.pptx', '.odp', '.key', '.xlsx', '.xls', '.ods'
+  ]);
   const TEXT_MIME_PREFIXES = ['text/'];
   const TEXT_MIME_TYPES = new Set([
     'application/json',
     'application/xml',
     'application/xhtml+xml',
     'application/rtf',
-    'application/x-rtf'
+    'application/x-rtf',
+    'application/yaml',
+    'application/x-yaml',
+    'application/x-tex',
+    'text/x-tex'
   ]);
   const DOCX_MIME_TYPES = new Set([
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ]);
+  const LEGACY_WORD_MIME_TYPES = new Set([
+    'application/msword',
+    'application/vnd.ms-word',
+    'application/x-msword'
+  ]);
+  const OPEN_DOCUMENT_TEXT_MIME_TYPES = new Set([
+    'application/vnd.oasis.opendocument.text'
+  ]);
+  const IWORK_PAGES_MIME_TYPES = new Set([
+    'application/vnd.apple.pages',
+    'application/x-iwork-pages-sffpages'
+  ]);
   const PPTX_MIME_TYPES = new Set([
     'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ]);
+  const LEGACY_POWERPOINT_MIME_TYPES = new Set([
+    'application/vnd.ms-powerpoint',
+    'application/mspowerpoint',
+    'application/powerpoint',
+    'application/x-mspowerpoint'
+  ]);
+  const OPEN_DOCUMENT_PRESENTATION_MIME_TYPES = new Set([
+    'application/vnd.oasis.opendocument.presentation'
+  ]);
+  const IWORK_KEYNOTE_MIME_TYPES = new Set([
+    'application/vnd.apple.keynote',
+    'application/x-iwork-keynote-sffkey'
+  ]);
+  const SPREADSHEET_MIME_TYPES = new Set([
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'application/vnd.oasis.opendocument.spreadsheet'
   ]);
   const PDF_MIME_TYPES = new Set(['application/pdf']);
   const GAME_RESPONSE_JSON_SCHEMA = {
@@ -390,8 +426,22 @@
     return isTextLikeFile(file) ||
       PDF_MIME_TYPES.has(type) || extension === '.pdf' ||
       DOCX_MIME_TYPES.has(type) || extension === '.docx' ||
+      LEGACY_WORD_MIME_TYPES.has(type) || extension === '.doc' ||
+      OPEN_DOCUMENT_TEXT_MIME_TYPES.has(type) || extension === '.odt' ||
+      IWORK_PAGES_MIME_TYPES.has(type) || extension === '.pages' ||
       PPTX_MIME_TYPES.has(type) || extension === '.pptx' ||
+      LEGACY_POWERPOINT_MIME_TYPES.has(type) || extension === '.ppt' ||
+      OPEN_DOCUMENT_PRESENTATION_MIME_TYPES.has(type) || extension === '.odp' ||
+      IWORK_KEYNOTE_MIME_TYPES.has(type) || extension === '.key' ||
+      SPREADSHEET_MIME_TYPES.has(type) || ['.xlsx', '.xls', '.ods'].includes(extension) ||
       SUPPORTED_BINARY_EXTENSIONS.has(extension);
+  }
+
+  function addLessonFilesToSelection(currentFiles, additionalFiles) {
+    return [
+      ...Array.from(currentFiles || []),
+      ...Array.from(additionalFiles || []),
+    ];
   }
 
   function fileDragEventHasFiles(event) {
@@ -1914,18 +1964,88 @@
     return result.value || '';
   }
 
-  function xmlTextToPlainText(xmlText) {
-    return String(xmlText || '')
-      .replace(/<a:t[^>]*>/g, ' ')
-      .replace(/<\/a:t>/g, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&amp;/g, '&')
+  function decodeBasicXmlEntities(text) {
+    return String(text || '')
+      .replace(/&#x([0-9a-f]+);/gi, (_match, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_match, decimal) => String.fromCodePoint(parseInt(decimal, 10)))
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&apos;/g, "'")
+      .replace(/&quot;/g, '"')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, ' ')
+      .replace(/&amp;/g, '&');
+  }
+
+  function xmlTextToPlainText(xmlText) {
+    return decodeBasicXmlEntities(
+      String(xmlText || '')
+        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, ' $1 ')
+        .replace(/<text:s\b[^>]*text:c="(\d+)"[^>]*\/>/gi, (_match, count) => ' '.repeat(Math.max(1, Number(count) || 1)))
+        .replace(/<text:tab\b[^>]*\/>/gi, ' ')
+        .replace(/<text:line-break\b[^>]*\/>/gi, '\n')
+        .replace(/<\/?(?:text:p|text:h|a:p|w:p|sf:p)\b[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+    )
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
+  }
+
+  async function extractZipXmlText(file, { label, preferredPathPattern, fallbackPathPattern = /\.(xml|plist|txt|rtf)$/i } = {}) {
+    if (!ROOT.JSZip) {
+      throw new Error(`${label || 'Package'} support did not load. Check the JSZip CDN connection or export the file to TXT, PDF, DOCX, or PPTX.`);
+    }
+    const zip = await ROOT.JSZip.loadAsync(await file.arrayBuffer());
+    const entries = Object.keys(zip.files || {})
+      .filter((path) => {
+        const entry = zip.files[path];
+        if (!entry || entry.dir || /(^|\/)__MACOSX\//i.test(path)) return false;
+        if (preferredPathPattern?.test(path)) return true;
+        return fallbackPathPattern.test(path);
+      })
+      .sort((a, b) => {
+        const aPreferred = preferredPathPattern?.test(a) ? 0 : 1;
+        const bPreferred = preferredPathPattern?.test(b) ? 0 : 1;
+        return aPreferred - bPreferred || a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+    const sections = [];
+    for (const path of entries) {
+      const raw = await zip.files[path].async('string');
+      const text = /\.(xml|plist)$/i.test(path) ? xmlTextToPlainText(raw) : normalizeLongFormText(raw);
+      if (text) {
+        sections.push(text);
+      }
+    }
+    const uniqueSections = [...new Set(sections)];
+    if (uniqueSections.length === 0) {
+      throw new Error(`${file?.name || 'This package'} did not contain readable text. Export it to TXT, PDF, DOCX, or PPTX and try again.`);
+    }
+    return uniqueSections.join('\n\n');
+  }
+
+  async function extractOpenDocumentText(file) {
+    return await extractZipXmlText(file, {
+      label: 'OpenDocument',
+      preferredPathPattern: /(^|\/)content\.xml$/i,
+      fallbackPathPattern: /\.(xml|txt|rtf)$/i,
+    });
+  }
+
+  async function extractIWorkPackageText(file) {
+    try {
+      return await extractZipXmlText(file, {
+        label: 'iWork',
+        preferredPathPattern: /(^|\/)(index|document|metadata)\.xml$/i,
+        fallbackPathPattern: /\.(xml|plist|txt|rtf)$/i,
+      });
+    } catch (zipError) {
+      const fallbackText = await extractLegacyOfficeBinaryText(file, { allowEmpty: true });
+      if (fallbackText) return fallbackText;
+      throw zipError;
+    }
   }
 
   async function extractPptxText(file) {
@@ -1947,24 +2067,109 @@
     return slides.join('\n\n');
   }
 
+  async function extractSpreadsheetText(file) {
+    if (!ROOT.XLSX) {
+      if (getFileExtension(file?.name) === '.ods') {
+        return await extractOpenDocumentText(file);
+      }
+      throw new Error('Spreadsheet support did not load. Check the SheetJS CDN connection or export the spreadsheet to CSV.');
+    }
+    const workbook = ROOT.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheetNames = Array.isArray(workbook?.SheetNames) ? workbook.SheetNames : [];
+    const sections = sheetNames.map((sheetName) => {
+      const sheet = workbook.Sheets?.[sheetName];
+      if (!sheet) return '';
+      const csv = ROOT.XLSX.utils?.sheet_to_csv?.(sheet, { blankrows: false }) || '';
+      const text = normalizeLongFormText(csv);
+      return text ? `SHEET: ${sheetName}\n${text}` : '';
+    }).filter(Boolean);
+    if (sections.length === 0) {
+      throw new Error(`${file?.name || 'This spreadsheet'} did not contain readable cells.`);
+    }
+    return sections.join('\n\n---\n\n');
+  }
+
+  function decodeArrayBuffer(buffer, encoding) {
+    try {
+      if (typeof TextDecoder === 'function') {
+        return new TextDecoder(encoding, { fatal: false }).decode(buffer);
+      }
+    } catch (_error) {
+      // Fall through to the byte-wise fallback below.
+    }
+    return Array.from(new Uint8Array(buffer || []), (byte) => String.fromCharCode(byte)).join('');
+  }
+
+  function extractReadableBinaryStrings(text) {
+    const normalized = String(text || '')
+      .replace(/\u0000/g, ' ')
+      .replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]+/g, '\n');
+    const fragments = normalized
+      .split(/\n+/)
+      .map((line) => normalizeLongFormText(line))
+      .filter((line) => line.length >= 4 && /[A-Za-z0-9]/.test(line));
+    return fragments;
+  }
+
+  async function extractLegacyOfficeBinaryText(file, { allowEmpty = false } = {}) {
+    const buffer = await file.arrayBuffer();
+    const candidates = [
+      decodeArrayBuffer(buffer, 'utf-8'),
+      decodeArrayBuffer(buffer, 'windows-1252'),
+      decodeArrayBuffer(buffer, 'utf-16le'),
+    ];
+    const fragments = [];
+    candidates.forEach((candidate) => {
+      extractReadableBinaryStrings(candidate).forEach((fragment) => fragments.push(fragment));
+    });
+    const uniqueFragments = [...new Set(fragments)];
+    const text = uniqueFragments.join('\n').trim();
+    if (!text && !allowEmpty) {
+      throw new Error(`${file?.name || 'This legacy Office file'} did not contain readable text. Export it to DOCX, PDF, TXT, or CSV and try again.`);
+    }
+    return text;
+  }
+
   async function extractLessonTextFromFile(file) {
     if (!isSupportedLessonFile(file)) {
       throw new Error(`${file?.name || 'This file'} is not a supported lesson file type.`);
     }
     const extension = getFileExtension(file?.name);
+    const type = String(file?.type || '').toLowerCase();
     if (isTextLikeFile(file)) {
       return await file.text();
     }
-    if (extension === '.pdf' || PDF_MIME_TYPES.has(String(file.type || '').toLowerCase())) {
+    if (extension === '.pdf' || PDF_MIME_TYPES.has(type)) {
       return await extractPdfText(file);
     }
-    if (extension === '.docx' || DOCX_MIME_TYPES.has(String(file.type || '').toLowerCase())) {
+    if (extension === '.docx' || DOCX_MIME_TYPES.has(type)) {
       return await extractDocxText(file);
     }
-    if (extension === '.pptx' || PPTX_MIME_TYPES.has(String(file.type || '').toLowerCase())) {
+    if (extension === '.doc' || LEGACY_WORD_MIME_TYPES.has(type)) {
+      return await extractLegacyOfficeBinaryText(file);
+    }
+    if (extension === '.odt' || OPEN_DOCUMENT_TEXT_MIME_TYPES.has(type)) {
+      return await extractOpenDocumentText(file);
+    }
+    if (extension === '.pages' || IWORK_PAGES_MIME_TYPES.has(type)) {
+      return await extractIWorkPackageText(file);
+    }
+    if (extension === '.pptx' || PPTX_MIME_TYPES.has(type)) {
       return await extractPptxText(file);
     }
-    throw new Error(`${file?.name || 'This file'} could not be read. Convert it to TXT, PDF, DOCX, or PPTX.`);
+    if (extension === '.ppt' || LEGACY_POWERPOINT_MIME_TYPES.has(type)) {
+      return await extractLegacyOfficeBinaryText(file);
+    }
+    if (extension === '.odp' || OPEN_DOCUMENT_PRESENTATION_MIME_TYPES.has(type)) {
+      return await extractOpenDocumentText(file);
+    }
+    if (extension === '.key' || IWORK_KEYNOTE_MIME_TYPES.has(type)) {
+      return await extractIWorkPackageText(file);
+    }
+    if (['.xlsx', '.xls', '.ods'].includes(extension) || SPREADSHEET_MIME_TYPES.has(type)) {
+      return await extractSpreadsheetText(file);
+    }
+    throw new Error(`${file?.name || 'This file'} could not be read. Convert it to TXT, PDF, DOCX, PPTX, CSV, or another supported browser-readable format.`);
   }
 
   async function extractLessonTextFromFiles(files) {
@@ -3250,8 +3455,8 @@
       clueFitFrame = window.requestAnimationFrame(fitActiveClueCard);
     }
 
-    function setSelectedFiles(files) {
-      selectedFiles = Array.from(files || []);
+    function addSelectedFiles(files) {
+      selectedFiles = addLessonFilesToSelection(selectedFiles, files);
       if (fileInput) fileInput.value = '';
       updateFileStatus();
       markLessonSetupChanged();
@@ -3294,7 +3499,7 @@
       if (!fileDragEventHasFiles(event)) return;
       preventBrowserFileOpenDuringLessonDrag(event);
       if (dropEventBelongsToLessonDropZone(event)) {
-        setSelectedFiles(event.dataTransfer?.files || []);
+        addSelectedFiles(event.dataTransfer?.files || []);
       }
       setDropZoneDragging(false);
     }
@@ -3304,7 +3509,7 @@
       preventBrowserFileOpenDuringLessonDrag(event);
       event.stopPropagation?.();
       setDropZoneDragging(false);
-      setSelectedFiles(event.dataTransfer?.files || []);
+      addSelectedFiles(event.dataTransfer?.files || []);
     }
 
     function shouldIgnoreDropZoneDragleave(event) {
@@ -3757,7 +3962,7 @@
       confirmPlayerSelection();
     });
 
-    fileInput?.addEventListener('change', () => setSelectedFiles(fileInput.files));
+    fileInput?.addEventListener('change', () => addSelectedFiles(fileInput.files));
     fileList?.addEventListener('click', (event) => {
       const removeButton = event.target?.closest?.('[data-remove-lesson-file-index]');
       if (!removeButton) return;
@@ -3954,6 +4159,7 @@
     scheduleHostBuzzerSound,
     createHostBuzzerAudioController,
     isSupportedLessonFile,
+    addLessonFilesToSelection,
     fileDragEventHasFiles,
     dragEventIsInsideElement,
     removeLessonFileAtIndex,
