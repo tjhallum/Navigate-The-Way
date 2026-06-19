@@ -2527,8 +2527,14 @@ button.primary-action {
 }
 
 .game-board__clue.is-complete {
-  cursor: default;
+  cursor: pointer;
   border-color: currentColor;
+}
+
+.game-board__clue.is-complete:hover,
+.game-board__clue.is-complete:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 10px 20px rgba(0, 0, 0, 0.18);
 }
 
 .review-game-play .game-board__clue.is-complete:disabled {
@@ -2609,6 +2615,15 @@ body.has-active-clue-modal {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.045);
   line-height: 1.32;
+}
+
+.clue-review {
+  border-color: rgba(255, 206, 72, 0.34);
+  background: rgba(255, 206, 72, 0.07);
+}
+
+.clue-review[hidden] {
+  display: none;
 }
 
 .clue-verdict {

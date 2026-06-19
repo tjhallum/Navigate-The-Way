@@ -1092,14 +1092,15 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
+  assert.match(html, /<div id="active-clue-review" class="answer-box clue-review" hidden><\/div>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-result-markers" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-completed-review" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-result-markers"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-completed-review"><\/script>/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
@@ -1377,8 +1378,8 @@ test('classifies completed board clue markers by answer outcome', () => {
   }), {
     text: '✓',
     className: 'game-board__clue is-complete is-correct',
-    disabled: true,
-    ariaLabel: '$100 clue answered correctly',
+    disabled: false,
+    ariaLabel: '$100 clue answered correctly. Review result',
   });
 
   assert.deepEqual(game.getClueBoardDisplayState({
@@ -1394,8 +1395,8 @@ test('classifies completed board clue markers by answer outcome', () => {
   }), {
     text: '⚠',
     className: 'game-board__clue is-complete is-partial',
-    disabled: true,
-    ariaLabel: '$100 clue partially answered',
+    disabled: false,
+    ariaLabel: '$100 clue partially answered. Review result',
   });
 
   assert.deepEqual(game.getClueBoardDisplayState({
@@ -1409,8 +1410,8 @@ test('classifies completed board clue markers by answer outcome', () => {
   }), {
     text: '✕',
     className: 'game-board__clue is-complete is-incorrect',
-    disabled: true,
-    ariaLabel: '$100 clue missed or unanswered',
+    disabled: false,
+    ariaLabel: '$100 clue missed or unanswered. Review result',
   });
 
   assert.deepEqual(game.getClueBoardDisplayState({
@@ -1424,9 +1425,72 @@ test('classifies completed board clue markers by answer outcome', () => {
   }), {
     text: '✕',
     className: 'game-board__clue is-complete is-incorrect',
-    disabled: true,
-    ariaLabel: '$100 clue missed or unanswered',
+    disabled: false,
+    ariaLabel: '$100 clue missed or unanswered. Review result',
   });
+});
+
+test('builds completed clue review summaries for credit and no-credit outcomes', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const firstPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const correct = game.applyAnswerJudgment({
+    contestants: firstPartial.contestants,
+    clue: firstPartial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'correct' },
+  });
+
+  const correctReview = game.buildCompletedClueReviewPresentation({
+    clue: correct.clue,
+    contestants: correct.contestants,
+  });
+  assert.equal(correctReview.label, 'Correct');
+  assert.equal(correctReview.className, 'clue-verdict clue-verdict--correct');
+  assert.match(correctReview.message, /Correct answer accepted/i);
+  assert.match(correctReview.creditSummary, /Boaz received \$80 for the accepted answer\./);
+  assert.match(correctReview.creditSummary, /Ada received \$20 partial credit\./);
+  assert.doesNotMatch(correctReview.creditSummary, /No credit was awarded/);
+
+  const partialOnlyContestants = game.createContestants(['Ada', 'Boaz']);
+  const partialOnlyClue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const partialOnlyFirst = game.applyAnswerJudgment({
+    contestants: partialOnlyContestants,
+    clue: partialOnlyClue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const partialOnlyComplete = game.applyAnswerJudgment({
+    contestants: partialOnlyFirst.contestants,
+    clue: partialOnlyFirst.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'incorrect' },
+  });
+  const partialOnlyReview = game.buildCompletedClueReviewPresentation({
+    clue: partialOnlyComplete.clue,
+    contestants: partialOnlyComplete.contestants,
+  });
+  assert.equal(partialOnlyReview.label, 'Partial Credit');
+  assert.equal(partialOnlyReview.className, 'clue-verdict clue-verdict--partial');
+  assert.match(partialOnlyReview.message, /Partial credit only/i);
+  assert.match(partialOnlyReview.creditSummary, /Ada received \$20 partial credit\./);
+  assert.match(partialOnlyReview.creditSummary, /No contestant supplied the full expected answer\./);
+  assert.match(partialOnlyReview.creditSummary, /Boaz attempted without receiving credit\./);
+
+  const noBuzz = game.applyNoBuzzForClue({ contestants, clue });
+  const noBuzzReview = game.buildCompletedClueReviewPresentation({
+    clue: noBuzz.clue,
+    contestants: noBuzz.contestants,
+  });
+  assert.equal(noBuzzReview.label, 'No Credit');
+  assert.equal(noBuzzReview.className, 'clue-verdict clue-verdict--incorrect');
+  assert.match(noBuzzReview.message, /No credit awarded/i);
+  assert.match(noBuzzReview.creditSummary, /No one buzzed in\. No credit was awarded\./);
 });
 
 test('includes distinct board tile styles for correct partial and missed outcomes', () => {
@@ -1439,7 +1503,9 @@ test('includes distinct board tile styles for correct partial and missed outcome
   assert.match(cssRule(css, '.game-board__clue.is-correct'), /#9df0b1/i);
   assert.match(cssRule(css, '.game-board__clue.is-partial'), /#ffdf72/i);
   assert.match(cssRule(css, '.game-board__clue.is-incorrect'), /#ff9d9d/i);
+  assert.match(cssRule(css, '.game-board__clue.is-complete'), /cursor:\s*pointer/i);
   assert.match(cssRule(css, '.review-game-play .game-board__clue.is-complete:disabled'), /opacity:\s*1/i);
+  assert.match(cssRule(css, '.clue-review'), /rgba\(255, 206, 72, 0\.07\)/i);
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
