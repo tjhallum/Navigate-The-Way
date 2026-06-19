@@ -531,10 +531,17 @@ test('Firebase config keeps legacy App Check site-key overrides on reCAPTCHA v3'
 });
 
 test('Firebase config treats an old in-file legacy App Check site key assignment as reCAPTCHA v3', () => {
-  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8');
-  const legacyFallbackLine = "window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY = window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey || '';";
-  const configuredLegacyLine = "window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY = window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || 'legacy-configured-site-key';";
-  const configuredScript = firebaseConfigScript.replace(legacyFallbackLine, configuredLegacyLine);
+  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8')
+    .split(String.fromCharCode(13)).join('');
+  const legacySeedBlock = `window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY =
+  window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ||
+  (window.BEREAN_BOARD_FIREBASE_APP_CHECK && window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey) ||
+  '';`;
+  const configuredLegacyBlock = `window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY =
+  window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ||
+  (window.BEREAN_BOARD_FIREBASE_APP_CHECK && window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey) ||
+  'legacy-configured-site-key';`;
+  const configuredScript = firebaseConfigScript.replace(legacySeedBlock, configuredLegacyBlock);
   const sandbox = { window: {} };
 
   assert.notEqual(configuredScript, firebaseConfigScript);
@@ -558,6 +565,39 @@ test('Firebase config keeps explicit App Check objects ahead of legacy aliases',
   };
 
   vm.runInNewContext(firebaseConfigScript, sandbox);
+
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-enterprise');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr');
+});
+
+test('Firebase config preserves in-file explicit App Check objects over stale legacy aliases', () => {
+  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8')
+    .split(String.fromCharCode(13)).join('');
+  const defaultObject = `window.BEREAN_BOARD_FIREBASE_APP_CHECK = window.BEREAN_BOARD_FIREBASE_APP_CHECK || {
+  provider: window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ? 'recaptcha-v3' : 'recaptcha-enterprise',
+  siteKey: window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
+};`;
+  const explicitObject = `window.BEREAN_BOARD_FIREBASE_APP_CHECK = window.BEREAN_BOARD_FIREBASE_APP_CHECK || {
+  provider: 'recaptcha-enterprise',
+  siteKey: '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
+};`;
+  const legacySeedBlock = `window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY =
+  window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ||
+  (window.BEREAN_BOARD_FIREBASE_APP_CHECK && window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey) ||
+  '';`;
+  const staleLegacyBlock = `window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY =
+  window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ||
+  (window.BEREAN_BOARD_FIREBASE_APP_CHECK && window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey) ||
+  'legacy-leftover-site-key';`;
+  const configuredScript = firebaseConfigScript
+    .replace(defaultObject, explicitObject)
+    .replace(legacySeedBlock, staleLegacyBlock);
+  const sandbox = { window: {} };
+
+  assert.notEqual(configuredScript, firebaseConfigScript);
+  assert.ok(configuredScript.includes(explicitObject));
+  assert.ok(configuredScript.includes(staleLegacyBlock));
+  vm.runInNewContext(configuredScript, sandbox);
 
   assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-enterprise');
   assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr');
