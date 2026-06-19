@@ -498,6 +498,130 @@ test('waits for Firebase Auth state before deciding to sign in anonymously', asy
   assert.equal(unsubscribeCalled, true);
 });
 
+
+test('normalizes App Check config for enterprise and legacy v3 site keys', () => {
+  assert.deepEqual(virtualBuzzers.getAppCheckConfig({
+    BEREAN_BOARD_FIREBASE_APP_CHECK: { provider: 'enterprise', siteKey: 'enterprise-site-key' },
+  }), { provider: 'recaptcha-enterprise', siteKey: 'enterprise-site-key' });
+
+  assert.deepEqual(virtualBuzzers.getAppCheckConfig({
+    BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-v3-site-key',
+  }), { provider: 'recaptcha-v3', siteKey: 'legacy-v3-site-key' });
+});
+
+test('initializes Firebase App Check with reCAPTCHA Enterprise before Firebase services', async () => {
+  const calls = [];
+  const appInstance = { name: 'berean-board-virtual-buzzers' };
+  const appModule = {
+    getApps() {
+      return [];
+    },
+    initializeApp(config, appName) {
+      calls.push(['initializeApp', appName, config.projectId]);
+      return appInstance;
+    },
+  };
+  const authObject = {
+    currentUser: null,
+    async authStateReady() {
+      calls.push(['authStateReady']);
+    },
+  };
+  const authModule = {
+    getAuth(app) {
+      calls.push(['getAuth', app.name]);
+      return authObject;
+    },
+    async signInAnonymously(auth) {
+      calls.push(['signInAnonymously', auth === authObject]);
+      return { user: { uid: 'host-uid' } };
+    },
+  };
+  const databaseModule = {
+    getDatabase(app) {
+      calls.push(['getDatabase', app.name]);
+      return { appName: app.name };
+    },
+  };
+  class ReCaptchaEnterpriseProvider {
+    constructor(siteKey) {
+      this.providerKind = 'enterprise';
+      this.siteKey = siteKey;
+    }
+  }
+  class ReCaptchaV3Provider {
+    constructor(siteKey) {
+      this.providerKind = 'v3';
+      this.siteKey = siteKey;
+    }
+  }
+  const appCheckModule = {
+    ReCaptchaEnterpriseProvider,
+    ReCaptchaV3Provider,
+    initializeAppCheck(app, options) {
+      calls.push([
+        'initializeAppCheck',
+        app.name,
+        options.provider.providerKind,
+        options.provider.siteKey,
+        options.isTokenAutoRefreshEnabled,
+      ]);
+      return { app, options };
+    },
+  };
+  async function importer(specifier) {
+    if (specifier.includes('firebase-app-check.js')) return appCheckModule;
+    if (specifier.includes('firebase-auth.js')) return authModule;
+    if (specifier.includes('firebase-database.js')) return databaseModule;
+    if (specifier.includes('firebase-app.js')) return appModule;
+    throw new Error(`unexpected import ${specifier}`);
+  }
+
+  const context = await virtualBuzzers.initializeFirebaseContext({
+    config: {
+      apiKey: 'AIzaSyExampleKey',
+      authDomain: 'example.firebaseapp.com',
+      databaseURL: 'https://example-default-rtdb.firebaseio.com',
+      projectId: 'example-project',
+      appId: '1:example:web:example',
+    },
+    appCheckSiteKey: 'enterprise-site-key',
+    appCheckProvider: 'recaptcha-enterprise',
+    importer,
+  });
+
+  assert.equal(context.uid, 'host-uid');
+  assert.equal(context.appCheck.options.provider.providerKind, 'enterprise');
+  assert.deepEqual(calls.slice(0, 5), [
+    ['initializeApp', 'berean-board-virtual-buzzers', 'example-project'],
+    ['initializeAppCheck', 'berean-board-virtual-buzzers', 'enterprise', 'enterprise-site-key', true],
+    ['getAuth', 'berean-board-virtual-buzzers'],
+    ['authStateReady'],
+    ['signInAnonymously', true],
+  ]);
+  assert.deepEqual(calls[5], ['getDatabase', 'berean-board-virtual-buzzers']);
+
+  calls.length = 0;
+  const legacyContext = await virtualBuzzers.initializeFirebaseContext({
+    config: {
+      apiKey: 'AIzaSyExampleKey',
+      authDomain: 'example.firebaseapp.com',
+      databaseURL: 'https://example-default-rtdb.firebaseio.com',
+      projectId: 'example-project',
+      appId: '1:example:web:example',
+    },
+    appCheckSiteKey: 'legacy-v3-site-key',
+    appCheckProvider: 'recaptcha-v3',
+    importer,
+  });
+
+  assert.equal(legacyContext.appCheck.options.provider.providerKind, 'v3');
+  assert.deepEqual(calls.slice(0, 2), [
+    ['initializeApp', 'berean-board-virtual-buzzers', 'example-project'],
+    ['initializeAppCheck', 'berean-board-virtual-buzzers', 'v3', 'legacy-v3-site-key', true],
+  ]);
+});
+
 test('host buzzer resets use scoped writes so existing player claims are not revalidated as host data', async () => {
   const writes = [];
   const context = {
@@ -645,8 +769,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-virtual-buzzers" \/>/);
-  assert.match(html, /<script src="firebase-config\.js\?v=20260619-firebase-config"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-player-name-selection"><\/script>/);
+  assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-player-name-selection"><\/script>/);
 });
@@ -662,6 +786,8 @@ test('documents developer-only Firebase setup and database rules for virtual buz
   assert.match(guide, /Anonymous Authentication/);
   assert.match(guide, /Realtime Database/);
   assert.match(guide, /App Check/);
+  assert.match(guide, /reCAPTCHA Enterprise/);
+  assert.match(guide, /Do not commit reCAPTCHA Enterprise secret keys/);
   assert.match(guide, /Firebase config is public project identification/i);
   assert.match(rules, /"\.read": false/);
   assert.match(rules, /auth\.uid === data\.parent\(\)\.child\('hostUid'\)\.val\(\)/);

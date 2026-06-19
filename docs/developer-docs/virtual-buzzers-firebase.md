@@ -20,9 +20,31 @@ Small group leaders should never see this setup.
 3. Enable **Anonymous Authentication**.
 4. Add a Firebase Web App and copy its public web config into `docs/firebase-config.js`.
 5. Publish the Realtime Database Security Rules from `docs/developer-docs/virtual-buzzers-rtdb-rules.json`.
-6. Configure **App Check** for the deployed web origins, then set `window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY` in `docs/firebase-config.js`.
+6. Configure **App Check** for the deployed web origins, preferably with reCAPTCHA Enterprise for new web integrations, then set `window.BEREAN_BOARD_FIREBASE_APP_CHECK` in `docs/firebase-config.js`.
 7. Test locally from `docs/` with a simple static server.
 8. Deploy to GitHub Pages.
+
+## App Check setup
+
+Use App Check after Auth + Realtime Database rules have been verified. Firebase currently recommends **reCAPTCHA Enterprise** for new web integrations; reCAPTCHA v3 remains supported for existing/simple integrations.
+
+Recommended sequence:
+
+1. In Google Cloud Console, open **Security → reCAPTCHA Enterprise** for the Firebase project.
+2. Create a **Website** key with challenges disabled and allow the deployed Berean Board origins, including `www.navtheway.com` and `navtheway.com`. In the current Google Cloud UI, this means turning **Will you use challenges?** off so the summary shows **Challenge: No**; do not choose **Checkbox challenge** or **Policy-based challenge** for App Check.
+3. In Firebase Console, open **Security → App Check → Apps**, register the Berean Board Web app with the reCAPTCHA Enterprise provider, and paste the public site key from Google Cloud.
+4. In `docs/firebase-config.js`, set:
+
+```js
+window.BEREAN_BOARD_FIREBASE_APP_CHECK = {
+  provider: 'recaptcha-enterprise',
+  siteKey: 'YOUR_PUBLIC_SITE_KEY'
+};
+```
+
+5. Deploy and smoke-test Virtual buzzers before enabling enforcement. Once the browser is sending valid App Check tokens, enable enforcement for **Realtime Database** in Firebase App Check.
+
+Do not commit reCAPTCHA Enterprise secret keys, debug tokens, service account JSON, or private credentials. The public site key is expected in the frontend; debug tokens are private and should stay out of the repo.
 
 ## Important security notes
 
@@ -42,6 +64,8 @@ python -m http.server 4173 --bind 127.0.0.1
 ```
 
 Open `http://127.0.0.1:4173/small-group-review-game.html`, choose Virtual, and verify the QR/link opens `?mode=buzz&session=...` in a second browser/device.
+
+If a production reCAPTCHA Enterprise site key is configured only for `navtheway.com` / `www.navtheway.com`, local Firebase Auth + Realtime Database smoke tests can still run while App Check enforcement is off, but a forced App Check token fetch from `127.0.0.1` can fail with a reCAPTCHA domain error. Fully verify App Check tokens from the deployed registered origin before enabling Realtime Database enforcement.
 
 ## How leaders use it
 
