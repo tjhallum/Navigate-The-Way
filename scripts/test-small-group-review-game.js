@@ -412,14 +412,42 @@ test('normalizes virtual buzzer state and only enables eligible claimed players'
   assert.deepEqual(normalized.playerNames, ['Ada', 'Boaz', 'Chloe']);
   assert.deepEqual(normalized.claims.map((claim) => claim?.uid || ''), ['ada-uid', '', 'chloe-uid']);
   assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(normalized), [
-    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed' },
-    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: false, unavailableReason: '' },
-    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed' },
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed', selected: false },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: false, unavailableReason: '', selected: false },
+    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed', selected: false },
   ]);
 
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[0], uid: 'ada-uid' }), true);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[2], uid: 'chloe-uid' }), false);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: { ...normalized, buzz: { ...normalized.buzz, first: { uid: 'ada-uid' } } }, claim: normalized.claims[0], uid: 'ada-uid' }), false);
+});
+
+test('player phone name list does not auto-select a player before the phone user chooses one', () => {
+  const session = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'setup',
+    expiresAt: Date.now() + 60_000,
+    playerNames: { 0: 'Ada', 1: 'Boaz' },
+    playerClaims: {},
+    buzz: { open: false, first: null, lockedOutPlayerIndexes: {} },
+  });
+
+  assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(session, 'new-phone').map((option) => option.selected), [false, false]);
+});
+
+test('player phone name list preserves a newly selected unclaimed player through re-render', () => {
+  const session = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'setup',
+    expiresAt: Date.now() + 60_000,
+    playerNames: { 0: 'Ada', 1: 'Boaz', 2: 'Chloe' },
+    playerClaims: { 0: { uid: 'ada-uid', playerName: 'Ada', buzzerNumber: 1, claimedAt: 1 } },
+    buzz: { open: false, first: null, lockedOutPlayerIndexes: {} },
+  });
+
+  assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(session, 'boaz-phone', 1), [
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed', selected: false },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: false, unavailableReason: '', selected: true },
+    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: false, claimedByCurrentUser: false, disabled: false, unavailableReason: '', selected: false },
+  ]);
 });
 
 test('closed virtual buzzer sessions disable player name claiming before the TTL expires', () => {
@@ -433,9 +461,21 @@ test('closed virtual buzzer sessions disable player name claiming before the TTL
 
   assert.equal(virtualBuzzers.isVirtualBuzzerSessionClosed(closed), true);
   assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(closed, 'new-phone'), [
-    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed' },
-    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed' },
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed', selected: false },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed', selected: false },
   ]);
+});
+
+test('closed virtual buzzer sessions do not keep claimed names selected', () => {
+  const closed = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'closed',
+    expiresAt: Date.now() + 60_000,
+    playerNames: { 0: 'Ada', 1: 'Boaz' },
+    playerClaims: { 1: { uid: 'boaz-phone', playerName: 'Boaz', buzzerNumber: 2, claimedAt: 1 } },
+    buzz: { open: false, first: null, lockedOutPlayerIndexes: {} },
+  });
+
+  assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(closed, 'boaz-phone', 1).map((option) => option.selected), [false, false]);
 });
 
 test('waits for Firebase Auth state before deciding to sign in anonymously', async () => {
@@ -606,9 +646,9 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-virtual-buzzers" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260618-virtual-buzzers"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260618-virtual-buzzers"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-player-name-selection"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-virtual-buzzers"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-player-name-selection"><\/script>/);
 });
 
 
