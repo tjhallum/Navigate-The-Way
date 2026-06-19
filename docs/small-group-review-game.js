@@ -578,29 +578,48 @@
     return lookup;
   }
 
+  function normalizePartialCreditAwards(clue) {
+    const explicitAwards = Array.isArray(clue?.partialCreditAwards)
+      ? clue.partialCreditAwards
+      : [];
+    if (explicitAwards.length > 0) {
+      const awardsByContestantId = new Map();
+      explicitAwards.forEach((award) => {
+        const contestantId = coerceText(award?.contestantId ?? award?.contestant_id ?? award?.id);
+        const points = Math.max(0, Number(award?.points ?? award?.awardedPoints ?? award?.awarded_points ?? 0));
+        if (!contestantId || points <= 0) return;
+        awardsByContestantId.set(contestantId, (awardsByContestantId.get(contestantId) || 0) + points);
+      });
+      return Array.from(awardsByContestantId, ([contestantId, points]) => ({ contestantId, points }));
+    }
+
+    const partialCreditIds = Array.isArray(clue?.partialCreditContestantIds)
+      ? [...new Set(clue.partialCreditContestantIds.map(String).filter(Boolean))]
+      : [];
+    const partialCreditAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
+    if (partialCreditIds.length === 0 || partialCreditAwarded <= 0) return [];
+    const fallbackPoints = partialCreditAwarded / partialCreditIds.length;
+    return partialCreditIds.map((contestantId) => ({ contestantId, points: fallbackPoints }));
+  }
+
   function buildCompletedClueReviewPresentation({ clue, contestants } = {}) {
     const outcome = getClueBoardCompletionOutcome(clue);
     const nameLookup = buildContestantNameLookup(contestants);
     const nameForId = (id) => nameLookup.get(String(id || '')) || 'Unknown contestant';
     const winningContestantId = String(clue?.winningContestantId || '').trim();
-    const partialCreditIds = Array.isArray(clue?.partialCreditContestantIds)
-      ? [...new Set(clue.partialCreditContestantIds.map(String).filter(Boolean))]
-      : [];
     const attemptedIds = Array.isArray(clue?.attemptedContestantIds)
       ? [...new Set(clue.attemptedContestantIds.map(String).filter(Boolean))]
       : [];
-    const partialCreditAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
-    const partialCreditPerContestant = partialCreditIds.length > 0
-      ? partialCreditAwarded / partialCreditIds.length
-      : 0;
+    const partialCreditAwards = normalizePartialCreditAwards(clue);
+    const partialCreditIds = partialCreditAwards.map((award) => award.contestantId);
     const creditLines = [];
 
     if (winningContestantId) {
       creditLines.push(`${nameForId(winningContestantId)} received ${formatScore(getFullCreditAward(clue))} for the accepted answer.`);
     }
 
-    partialCreditIds.forEach((contestantId) => {
-      creditLines.push(`${nameForId(contestantId)} received ${formatScore(partialCreditPerContestant)} partial credit.`);
+    partialCreditAwards.forEach((award) => {
+      creditLines.push(`${nameForId(award.contestantId)} received ${formatScore(award.points)} partial credit.`);
     });
 
     const noCreditAttemptIds = attemptedIds.filter((contestantId) => contestantId !== winningContestantId && !partialCreditIds.includes(contestantId));
@@ -1124,6 +1143,7 @@
             partialCreditContestantIds: Array.isArray(rawClue?.partialCreditContestantIds)
               ? [...new Set(rawClue.partialCreditContestantIds.map(String))]
               : [],
+            partialCreditAwards: normalizePartialCreditAwards(rawClue),
           };
         }),
       };
@@ -1294,6 +1314,7 @@
       partialCreditContestantIds: Array.isArray(clue.partialCreditContestantIds)
         ? [...clue.partialCreditContestantIds.map(String)]
         : [],
+      partialCreditAwards: normalizePartialCreditAwards(clue),
     };
     let awardedPoints = 0;
 
@@ -1308,6 +1329,7 @@
         nextContestants[contestantIndex].score += awardedPoints;
         nextClue.partialCreditAwarded += awardedPoints;
         nextClue.partialCreditContestantIds.push(contestantIdText);
+        nextClue.partialCreditAwards.push({ contestantId: contestantIdText, points: awardedPoints });
       }
       nextClue.completed = false;
       if (!nextClue.attemptedContestantIds.includes(contestantIdText)) {
@@ -1360,6 +1382,7 @@
       partialCreditContestantIds: Array.isArray(clue.partialCreditContestantIds)
         ? [...clue.partialCreditContestantIds.map(String)]
         : [],
+      partialCreditAwards: normalizePartialCreditAwards(clue),
     };
     return {
       contestants: cloneContestants(contestants),

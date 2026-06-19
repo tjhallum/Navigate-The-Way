@@ -1100,7 +1100,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-completed-review"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-partial-awards"><\/script>/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
@@ -1491,6 +1491,41 @@ test('builds completed clue review summaries for credit and no-credit outcomes',
   assert.equal(noBuzzReview.className, 'clue-verdict clue-verdict--incorrect');
   assert.match(noBuzzReview.message, /No credit awarded/i);
   assert.match(noBuzzReview.creditSummary, /No one buzzed in\. No credit was awarded\./);
+});
+
+test('reviews uneven partial-credit awards with each contestant’s actual points', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const smallPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial', partialCreditFraction: 0.1 },
+  });
+  const defaultPartial = game.applyAnswerJudgment({
+    contestants: smallPartial.contestants,
+    clue: smallPartial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const completed = game.applyAnswerJudgment({
+    contestants: defaultPartial.contestants,
+    clue: defaultPartial.clue,
+    contestantId: 'contestant-3',
+    judgment: { verdict: 'incorrect' },
+  });
+
+  assert.equal(completed.clue.partialCreditAwarded, 30);
+  const review = game.buildCompletedClueReviewPresentation({
+    clue: completed.clue,
+    contestants: completed.contestants,
+  });
+
+  assert.match(review.creditSummary, /Ada received \$10 partial credit\./);
+  assert.match(review.creditSummary, /Boaz received \$20 partial credit\./);
+  assert.doesNotMatch(review.creditSummary, /Ada received \$15 partial credit\./);
+  assert.doesNotMatch(review.creditSummary, /Boaz received \$15 partial credit\./);
+  assert.match(review.creditSummary, /Chloe attempted without receiving credit\./);
 });
 
 test('includes distinct board tile styles for correct partial and missed outcomes', () => {
