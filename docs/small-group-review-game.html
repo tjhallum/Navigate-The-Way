@@ -228,9 +228,17 @@
               <span class="difficulty-option__art" aria-hidden="true">
                 <svg class="buzzer-mode-option__svg difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
                   <defs>
-                    <linearGradient id="buzzer-modern-in-person-skin" x1="26" x2="94" y1="30" y2="76" gradientUnits="userSpaceOnUse">
+                    <linearGradient id="buzzer-modern-in-person-skin-deep" x1="22" x2="48" y1="35" y2="68" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#d99a6a" />
+                      <stop offset="1" stop-color="#a76542" />
+                    </linearGradient>
+                    <linearGradient id="buzzer-modern-in-person-skin-light" x1="43" x2="78" y1="24" y2="66" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#ffe8c7" />
-                      <stop offset="1" stop-color="#f0b879" />
+                      <stop offset="1" stop-color="#f1b87b" />
+                    </linearGradient>
+                    <linearGradient id="buzzer-modern-in-person-skin-medium" x1="72" x2="99" y1="36" y2="69" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#f2c18d" />
+                      <stop offset="1" stop-color="#c98254" />
                     </linearGradient>
                     <linearGradient id="buzzer-modern-in-person-shirt" x1="20" x2="100" y1="64" y2="99" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#315ca8" />
@@ -242,25 +250,39 @@
                     </linearGradient>
                   </defs>
                   <ellipse cx="60" cy="109" rx="42" ry="7" fill="#091326" opacity="0.24" />
-                  <g id="buzzer-modern-in-person-group" aria-hidden="true">
-                    <path d="M14 83c3-17 16-28 31-28 14 0 26 10 30 28v12H14Z" fill="#dceaff" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
-                    <path d="M45 83c4-18 16-28 31-28s27 11 30 28v12H45Z" fill="#fff4d0" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
-                    <circle cx="36" cy="50" r="16" fill="url(#buzzer-modern-in-person-skin)" stroke="#5b2b1a" stroke-width="3.7" />
-                    <path id="buzzer-modern-in-person-left-hair" d="M19 47c2-14 13-22 27-19 10 2 17 10 18 21-9 0-17-4-23-12-5 7-12 10-22 10Z" fill="#3d241d" />
-                    <circle cx="31" cy="52" r="2.2" fill="#4b2418" />
-                    <circle cx="42" cy="52" r="2.2" fill="#4b2418" />
-                    <path d="M32 59c3 2.3 7 2.3 10 0" fill="none" stroke="#5b2b1a" stroke-width="2.2" stroke-linecap="round" />
-                    <circle cx="84" cy="50" r="16" fill="url(#buzzer-modern-in-person-skin)" stroke="#5b2b1a" stroke-width="3.7" />
-                    <path id="buzzer-modern-in-person-right-hair" d="M66 48c2-14 13-22 27-20 11 2 18 10 19 22-10-1-18-5-24-13-5 7-12 10-22 11Z" fill="#5b3428" />
-                    <circle cx="79" cy="52" r="2.2" fill="#4b2418" />
-                    <circle cx="90" cy="52" r="2.2" fill="#4b2418" />
-                    <path d="M80 59c3 2.3 7 2.3 10 0" fill="none" stroke="#5b2b1a" stroke-width="2.2" stroke-linecap="round" />
+                  <g id="buzzer-modern-in-person-diverse-group" aria-hidden="true">
+                    <path d="M14 83c3-17 15-28 30-28 14 0 26 10 30 28v12H14Z" fill="#dceaff" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
+                    <path d="M46 83c4-18 16-28 31-28s27 11 30 28v12H46Z" fill="#fff4d0" stroke="#5b2b1a" stroke-width="3.7" stroke-linejoin="round" />
                     <path d="M26 83c4-19 17-31 34-31s30 12 34 31v17H26Z" fill="url(#buzzer-modern-in-person-shirt)" stroke="#5b2b1a" stroke-width="4" stroke-linejoin="round" />
-                    <circle cx="60" cy="43" r="20" fill="url(#buzzer-modern-in-person-skin)" stroke="#5b2b1a" stroke-width="4" />
-                    <path id="buzzer-modern-in-person-center-hair" d="M38 40c2-16 15-26 31-23 14 2 23 13 23 28-13 1-23-5-31-17-5 8-13 12-23 12Z" fill="#3d241d" />
+
+                    <circle cx="35" cy="51" r="15.5" fill="url(#buzzer-modern-in-person-skin-deep)" stroke="#5b2b1a" stroke-width="3.7" />
+                    <g id="buzzer-modern-in-person-brown-haired-boy">
+                      <path d="M18 48c1-13 11-21 24-20 11 1 19 9 20 20-8-1-15-4-20-10-5 6-12 9-24 10Z" fill="#3d241d" />
+                      <circle cx="25" cy="37" r="4.4" fill="#3d241d" />
+                      <circle cx="34" cy="33" r="4.8" fill="#3d241d" />
+                      <circle cx="43" cy="36" r="4.5" fill="#3d241d" />
+                    </g>
+                    <circle cx="30" cy="53" r="2.2" fill="#4b2418" />
+                    <circle cx="41" cy="53" r="2.2" fill="#4b2418" />
+                    <path d="M31 60c3 2.3 7 2.3 10 0" fill="none" stroke="#5b2b1a" stroke-width="2.2" stroke-linecap="round" />
+
+                    <path id="buzzer-modern-in-person-center-blonde-girl-hair" d="M39 50c-2-17 9-30 25-30 15 0 25 12 24 29-4 12-9 18-16 21 2-10-1-16-12-25-9 10-16 18-21 25-3-8-3-14 0-20Z" fill="#f7c75b" stroke="#5b2b1a" stroke-width="3.2" stroke-linejoin="round" />
+                    <circle cx="60" cy="43" r="20" fill="url(#buzzer-modern-in-person-skin-light)" stroke="#5b2b1a" stroke-width="4" />
+                    <path d="M40 42c6-17 19-23 32-16 7 4 13 12 12 22-12 1-20-5-26-16-5 7-11 10-18 10Z" fill="#f7c75b" />
+                    <path d="M48 30c6 8 16 12 30 12" fill="none" stroke="#fff3c4" stroke-width="3" stroke-linecap="round" opacity="0.75" />
                     <circle cx="52" cy="46" r="2.8" fill="#4b2418" />
                     <circle cx="68" cy="46" r="2.8" fill="#4b2418" />
                     <path d="M54 55c3.7 3 8.5 3 12.2 0" fill="none" stroke="#5b2b1a" stroke-width="2.7" stroke-linecap="round" />
+
+                    <circle cx="85" cy="51" r="15.5" fill="url(#buzzer-modern-in-person-skin-medium)" stroke="#5b2b1a" stroke-width="3.7" />
+                    <g id="buzzer-modern-in-person-brown-haired-girl">
+                      <path d="M68 48c1-14 12-22 26-20 11 2 17 10 18 21-10-1-18-5-24-13-5 7-11 10-20 12Z" fill="#6d3d24" />
+                      <path d="M96 45c9 3 13 10 8 18-5 7-16 5-17-4 8-2 10-8 9-14Z" fill="#6d3d24" stroke="#5b2b1a" stroke-width="2.8" stroke-linejoin="round" />
+                    </g>
+                    <circle cx="80" cy="53" r="2.2" fill="#4b2418" />
+                    <circle cx="91" cy="53" r="2.2" fill="#4b2418" />
+                    <path d="M81 60c3 2.3 7 2.3 10 0" fill="none" stroke="#5b2b1a" stroke-width="2.2" stroke-linecap="round" />
+
                     <g id="buzzer-modern-in-person-physical-buzzer">
                       <path d="M39 91c4-11 38-11 42 0v7H39Z" fill="#6d2b25" stroke="#5b2b1a" stroke-width="3.2" stroke-linejoin="round" />
                       <ellipse cx="60" cy="89" rx="16" ry="9" fill="url(#buzzer-modern-in-person-button)" stroke="#5b2b1a" stroke-width="3.3" />
@@ -278,21 +300,17 @@
               <span class="difficulty-option__art" aria-hidden="true">
                 <svg class="buzzer-mode-option__svg difficulty-option__svg" viewBox="0 0 120 120" focusable="false">
                   <defs>
-                    <linearGradient id="buzzer-modern-virtual-device" x1="17" x2="104" y1="24" y2="100" gradientUnits="userSpaceOnUse">
+                    <linearGradient id="buzzer-modern-virtual-device" x1="13" x2="107" y1="21" y2="101" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#2f5fae" />
                       <stop offset="1" stop-color="#101b35" />
                     </linearGradient>
-                    <linearGradient id="buzzer-modern-virtual-screen" x1="23" x2="97" y1="31" y2="82" gradientUnits="userSpaceOnUse">
+                    <linearGradient id="buzzer-modern-virtual-screen" x1="19" x2="101" y1="32" y2="80" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#f7fbff" />
                       <stop offset="1" stop-color="#dceaff" />
                     </linearGradient>
                     <linearGradient id="buzzer-modern-virtual-skin" x1="30" x2="91" y1="42" y2="74" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#ffe8c7" />
                       <stop offset="1" stop-color="#f0b879" />
-                    </linearGradient>
-                    <linearGradient id="buzzer-modern-virtual-link" x1="35" x2="85" y1="17" y2="83" gradientUnits="userSpaceOnUse">
-                      <stop offset="0" stop-color="#bfefff" />
-                      <stop offset="1" stop-color="#f7c75b" />
                     </linearGradient>
                     <linearGradient id="buzzer-modern-virtual-button" x1="53" x2="67" y1="71" y2="84" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stop-color="#ff756f" />
@@ -301,42 +319,41 @@
                   </defs>
                   <ellipse cx="60" cy="109" rx="42" ry="7" fill="#091326" opacity="0.24" />
                   <g id="buzzer-modern-virtual-call" aria-hidden="true">
-                    <path id="buzzer-modern-virtual-connection" d="M37 25c11-10 35-10 46 0M45 17c8-8 22-8 30 0" fill="none" stroke="url(#buzzer-modern-virtual-link)" stroke-width="4" stroke-linecap="round" />
-                    <path d="M20 28h80c5 0 9 4 9 9v50c0 5-4 9-9 9H20c-5 0-9-4-9-9V37c0-5 4-9 9-9Z" fill="url(#buzzer-modern-virtual-device)" stroke="#5b2b1a" stroke-width="4" />
-                    <path d="M22 38h76v39H22Z" fill="url(#buzzer-modern-virtual-screen)" stroke="#5b2b1a" stroke-width="3.2" stroke-linejoin="round" />
-                    <path d="M48 38v39M22 58h76" stroke="#a8b7df" stroke-width="2.2" opacity="0.82" />
+                    <path id="buzzer-modern-virtual-display" d="M16 24h88c5 0 9 4 9 9v55c0 5-4 9-9 9H16c-5 0-9-4-9-9V33c0-5 4-9 9-9Z" fill="url(#buzzer-modern-virtual-device)" stroke="#5b2b1a" stroke-width="4" />
+                    <path d="M19 34h82v46H19Z" fill="url(#buzzer-modern-virtual-screen)" stroke="#5b2b1a" stroke-width="3.2" stroke-linejoin="round" />
+                    <path d="M50 34v46M19 58h82" stroke="#a8b7df" stroke-width="2.2" opacity="0.82" />
                     <g id="buzzer-modern-virtual-people-on-screen">
-                      <g transform="translate(24 41)">
-                        <rect width="22" height="15" rx="4" fill="#e7f0ff" />
-                        <circle cx="11" cy="7.4" r="5.2" fill="url(#buzzer-modern-virtual-skin)" />
-                        <path id="buzzer-modern-virtual-top-left-hair" d="M5 7c1-5 5-8 10-7 4 1 7 4 7 8-5 0-8-2-11-5-2 3-4 4-6 4Z" fill="#3d241d" />
-                        <path d="M4 15c2-5 12-5 14 0" fill="#315ca8" />
+                      <g transform="translate(24 39)">
+                        <rect width="24" height="17" rx="4" fill="#e7f0ff" />
+                        <circle cx="12" cy="8.4" r="5.6" fill="url(#buzzer-modern-virtual-skin)" />
+                        <path id="buzzer-modern-virtual-top-left-hair" d="M6 8c1-5 5-8 11-7 4 1 7 4 7 8-5 0-9-2-12-5-2 3-4 4-6 4Z" fill="#3d241d" />
+                        <path d="M4 17c2-5 14-5 16 0" fill="#315ca8" />
                       </g>
-                      <g transform="translate(52 41)">
-                        <rect width="22" height="15" rx="4" fill="#fff4d0" />
-                        <circle cx="11" cy="7.4" r="5.2" fill="url(#buzzer-modern-virtual-skin)" />
-                        <path id="buzzer-modern-virtual-top-right-hair" d="M4 7c1-5 5-8 11-7 5 1 8 5 7 9-4-1-8-3-11-6-2 3-4 4-7 4Z" fill="#5b3428" />
-                        <path d="M4 15c2-5 12-5 14 0" fill="#7dcfff" />
+                      <g transform="translate(53 39)">
+                        <rect width="24" height="17" rx="4" fill="#fff4d0" />
+                        <circle cx="12" cy="8.4" r="5.6" fill="url(#buzzer-modern-virtual-skin)" />
+                        <path id="buzzer-modern-virtual-top-right-hair" d="M5 8c1-5 5-8 12-7 5 1 8 5 7 9-4-1-8-3-12-6-2 3-4 4-7 4Z" fill="#5b3428" />
+                        <path d="M4 17c2-5 14-5 16 0" fill="#7dcfff" />
                       </g>
                       <g transform="translate(24 61)">
-                        <rect width="22" height="13" rx="4" fill="#fff4d0" />
-                        <circle cx="11" cy="6.7" r="4.7" fill="url(#buzzer-modern-virtual-skin)" />
-                        <path id="buzzer-modern-virtual-bottom-left-hair" d="M5 6c1-4 5-7 10-6 4 1 7 4 7 8-5 0-8-2-11-5-2 2-4 3-6 3Z" fill="#2a1c18" />
-                        <path d="M4 13c2-4 12-4 14 0" fill="#a855f7" />
+                        <rect width="24" height="15" rx="4" fill="#fff4d0" />
+                        <circle cx="12" cy="7.5" r="5" fill="url(#buzzer-modern-virtual-skin)" />
+                        <path id="buzzer-modern-virtual-bottom-left-hair" d="M6 7c1-4 5-7 11-6 4 1 7 4 7 8-5 0-9-2-12-5-2 2-4 3-6 3Z" fill="#2a1c18" />
+                        <path d="M4 15c2-4 14-4 16 0" fill="#a855f7" />
                       </g>
-                      <g transform="translate(52 61)">
-                        <rect width="22" height="13" rx="4" fill="#e7f0ff" />
-                        <circle cx="11" cy="6.7" r="4.7" fill="url(#buzzer-modern-virtual-skin)" />
-                        <path id="buzzer-modern-virtual-bottom-right-hair" d="M4 7c1-5 5-8 11-7 5 1 8 5 7 9-4-1-8-3-11-6-2 3-4 4-7 4Z" fill="#6d3d24" />
-                        <path d="M4 13c2-4 12-4 14 0" fill="#22c55e" />
+                      <g transform="translate(53 61)">
+                        <rect width="24" height="15" rx="4" fill="#e7f0ff" />
+                        <circle cx="12" cy="7.5" r="5" fill="url(#buzzer-modern-virtual-skin)" />
+                        <path id="buzzer-modern-virtual-bottom-right-hair" d="M5 8c1-5 5-8 12-7 5 1 8 5 7 9-4-1-8-3-12-6-2 3-4 4-7 4Z" fill="#6d3d24" />
+                        <path d="M4 15c2-4 14-4 16 0" fill="#22c55e" />
                       </g>
                     </g>
                     <g id="buzzer-modern-virtual-on-screen-buzzer">
-                      <rect x="80" y="51" width="13" height="20" rx="6.5" fill="#17264d" stroke="#5b2b1a" stroke-width="2.4" />
-                      <circle cx="86.5" cy="61" r="4.8" fill="url(#buzzer-modern-virtual-button)" stroke="#f7c75b" stroke-width="2" />
+                      <rect x="84" y="53" width="14" height="22" rx="7" fill="#17264d" stroke="#5b2b1a" stroke-width="2.4" />
+                      <circle cx="91" cy="64" r="5.1" fill="url(#buzzer-modern-virtual-button)" stroke="#f7c75b" stroke-width="2" />
                     </g>
-                    <path d="M43 95h34l7 10H36Z" fill="#fff4d0" stroke="#5b2b1a" stroke-width="3.4" stroke-linejoin="round" />
-                    <path d="M50 99h20" stroke="#d3b56f" stroke-width="2.2" stroke-linecap="round" />
+                    <path d="M42 96h36l7 10H35Z" fill="#fff4d0" stroke="#5b2b1a" stroke-width="3.4" stroke-linejoin="round" />
+                    <path d="M50 100h20" stroke="#d3b56f" stroke-width="2.2" stroke-linecap="round" />
                   </g>
                 </svg>
               </span>

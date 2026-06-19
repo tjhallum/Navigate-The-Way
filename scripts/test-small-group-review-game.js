@@ -1024,10 +1024,10 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<section id="buzzer-setup-section" class="buzzer-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="buzzer" aria-labelledby="buzzer-setup-title">/);
   assert.match(html, /<button id="buzzer-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="buzzer-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<span id="buzzer-setup-title" class="setup-step-title">2\. In-person or Remote<\/span>/);
-  assert.match(html, /<input type="radio" name="buzzer-mode" value="in-person" checked \/>[\s\S]*In-person[\s\S]*Physical buzzers[\s\S]*id="buzzer-modern-in-person-group"[\s\S]*id="buzzer-modern-in-person-center-hair"[\s\S]*id="buzzer-modern-in-person-physical-buzzer"/);
-  assert.match(html, /<input type="radio" name="buzzer-mode" value="virtual" \/>[\s\S]*Virtual[\s\S]*Virtual buzzers[\s\S]*id="buzzer-modern-virtual-call"[\s\S]*id="buzzer-modern-virtual-people-on-screen"[\s\S]*id="buzzer-modern-virtual-on-screen-buzzer"/);
-  assert.doesNotMatch(html, /buzzer-storybook-|buzzer-modern-in-person-shared-buzzer|buzzer-modern-virtual-phone-buzzer/);
-  assert.match(html, /buzzer-modern-in-person-(?:left|right|center)-hair/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="in-person" checked \/>[\s\S]*In-person[\s\S]*Physical buzzers[\s\S]*id="buzzer-modern-in-person-diverse-group"[\s\S]*id="buzzer-modern-in-person-brown-haired-boy"[\s\S]*id="buzzer-modern-in-person-center-blonde-girl-hair"[\s\S]*id="buzzer-modern-in-person-brown-haired-girl"[\s\S]*id="buzzer-modern-in-person-physical-buzzer"/);
+  assert.match(html, /buzzer-modern-in-person-skin-(?:deep|light|medium)/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="virtual" \/>[\s\S]*Virtual[\s\S]*Virtual buzzers[\s\S]*id="buzzer-modern-virtual-call"[\s\S]*id="buzzer-modern-virtual-display"[\s\S]*id="buzzer-modern-virtual-people-on-screen"[\s\S]*id="buzzer-modern-virtual-on-screen-buzzer"/);
+  assert.doesNotMatch(html, /buzzer-storybook-|buzzer-modern-in-person-shared-buzzer|buzzer-modern-virtual-phone-buzzer|buzzer-modern-virtual-connection|buzzer-modern-virtual-link/);
   assert.match(html, /buzzer-modern-virtual-(?:top|bottom)-(?:left|right)-hair/);
   assert.match(html, /<div id="virtual-buzzer-host-panel" class="virtual-buzzer-host-panel" hidden>/);
   assert.match(html, /<div id="virtual-buzzer-qr" class="virtual-buzzer-qr" aria-label="Virtual buzzer QR code"><\/div>/);
