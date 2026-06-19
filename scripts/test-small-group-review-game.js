@@ -1095,11 +1095,11 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-virtual-buzzers" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-result-markers" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-louder-host-buzzer"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-result-markers"><\/script>/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
@@ -1360,6 +1360,86 @@ test('includes visible verdict styles for correct and incorrect answer judgments
   assert.match(css, /\.clue-verdict--correct\s*{/);
   assert.match(css, /\.clue-verdict--incorrect\s*{/);
   assert.match(css, /font-weight:\s*(?:800|900|bold)/);
+});
+
+test('classifies completed board clue markers by answer outcome', () => {
+  const openClue = { value: 100, completed: false };
+  assert.deepEqual(game.getClueBoardDisplayState({ clue: openClue, value: 100 }), {
+    text: '$100',
+    className: 'game-board__clue',
+    disabled: false,
+    ariaLabel: '$100 clue',
+  });
+
+  assert.deepEqual(game.getClueBoardDisplayState({
+    clue: { ...openClue, completed: true, winningContestantId: 'contestant-2' },
+    value: 100,
+  }), {
+    text: '✓',
+    className: 'game-board__clue is-complete is-correct',
+    disabled: true,
+    ariaLabel: '$100 clue answered correctly',
+  });
+
+  assert.deepEqual(game.getClueBoardDisplayState({
+    clue: {
+      ...openClue,
+      completed: true,
+      allContestantsMissed: true,
+      attemptedContestantIds: ['contestant-1', 'contestant-2'],
+      partialCreditAwarded: 20,
+      partialCreditContestantIds: ['contestant-1'],
+    },
+    value: 100,
+  }), {
+    text: '⚠',
+    className: 'game-board__clue is-complete is-partial',
+    disabled: true,
+    ariaLabel: '$100 clue partially answered',
+  });
+
+  assert.deepEqual(game.getClueBoardDisplayState({
+    clue: {
+      ...openClue,
+      completed: true,
+      allContestantsMissed: true,
+      attemptedContestantIds: ['contestant-1', 'contestant-2'],
+    },
+    value: 100,
+  }), {
+    text: '✕',
+    className: 'game-board__clue is-complete is-incorrect',
+    disabled: true,
+    ariaLabel: '$100 clue missed or unanswered',
+  });
+
+  assert.deepEqual(game.getClueBoardDisplayState({
+    clue: {
+      ...openClue,
+      completed: true,
+      allContestantsMissed: true,
+      noContestantsBuzzed: true,
+    },
+    value: 100,
+  }), {
+    text: '✕',
+    className: 'game-board__clue is-complete is-incorrect',
+    disabled: true,
+    ariaLabel: '$100 clue missed or unanswered',
+  });
+});
+
+test('includes distinct board tile styles for correct partial and missed outcomes', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+
+  assert.match(css, /\.game-board__clue\.is-correct\s*{/);
+  assert.match(css, /\.game-board__clue\.is-partial\s*{/);
+  assert.match(css, /\.game-board__clue\.is-incorrect\s*{/);
+  assert.match(css, /\.review-game-play \.game-board__clue\.is-complete:disabled\s*{/);
+  assert.match(cssRule(css, '.game-board__clue.is-correct'), /#9df0b1/i);
+  assert.match(cssRule(css, '.game-board__clue.is-partial'), /#ffdf72/i);
+  assert.match(cssRule(css, '.game-board__clue.is-incorrect'), /#ff9d9d/i);
+  assert.match(cssRule(css, '.review-game-play .game-board__clue.is-complete:disabled'), /opacity:\s*1/i);
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
