@@ -30,6 +30,120 @@ function cssRule(css, selector) {
   return match[1];
 }
 
+function createFakeAudioRoot(log) {
+  let nodeId = 0;
+
+  class FakeAudioParam {
+    constructor(name) {
+      this.name = name;
+      this.value = 0;
+    }
+
+    setValueAtTime(value, time) {
+      this.value = value;
+      log.push(['param.set', this.name, value, time]);
+    }
+
+    linearRampToValueAtTime(value, time) {
+      this.value = value;
+      log.push(['param.linear', this.name, value, time]);
+    }
+
+    exponentialRampToValueAtTime(value, time) {
+      this.value = value;
+      log.push(['param.exponential', this.name, value, time]);
+    }
+  }
+
+  class FakeAudioNode {
+    constructor(kind) {
+      this.kind = `${kind}-${++nodeId}`;
+    }
+
+    connect(destination) {
+      log.push(['connect', this.kind, destination?.kind || 'destination']);
+      return destination;
+    }
+  }
+
+  class FakeGainNode extends FakeAudioNode {
+    constructor() {
+      super('gain');
+      this.gain = new FakeAudioParam(`${this.kind}.gain`);
+    }
+  }
+
+  class FakeOscillatorNode extends FakeAudioNode {
+    constructor() {
+      super('oscillator');
+      this.frequency = new FakeAudioParam(`${this.kind}.frequency`);
+      this.detune = new FakeAudioParam(`${this.kind}.detune`);
+      this.type = 'sine';
+    }
+
+    start(time) {
+      log.push(['oscillator.start', this.type, time]);
+    }
+
+    stop(time) {
+      log.push(['oscillator.stop', this.type, time]);
+    }
+  }
+
+  class FakeFilterNode extends FakeAudioNode {
+    constructor() {
+      super('filter');
+      this.frequency = new FakeAudioParam(`${this.kind}.frequency`);
+      this.Q = new FakeAudioParam(`${this.kind}.Q`);
+      this.type = '';
+    }
+  }
+
+  class FakeCompressorNode extends FakeAudioNode {
+    constructor() {
+      super('compressor');
+      this.threshold = new FakeAudioParam(`${this.kind}.threshold`);
+      this.knee = new FakeAudioParam(`${this.kind}.knee`);
+      this.ratio = new FakeAudioParam(`${this.kind}.ratio`);
+      this.attack = new FakeAudioParam(`${this.kind}.attack`);
+      this.release = new FakeAudioParam(`${this.kind}.release`);
+    }
+  }
+
+  class FakeAudioContext {
+    constructor() {
+      this.currentTime = 12;
+      this.state = 'suspended';
+      this.destination = { kind: 'destination' };
+      log.push(['context.constructor']);
+    }
+
+    resume() {
+      this.state = 'running';
+      log.push(['context.resume']);
+      return Promise.resolve();
+    }
+
+    createGain() {
+      return new FakeGainNode();
+    }
+
+    createOscillator() {
+      return new FakeOscillatorNode();
+    }
+
+    createBiquadFilter() {
+      return new FakeFilterNode();
+    }
+
+    createDynamicsCompressor() {
+      return new FakeCompressorNode();
+    }
+  }
+
+  return { AudioContext: FakeAudioContext };
+}
+
 test('supports common lesson upload file types used by small groups', () => {
   assert.equal(game.isSupportedLessonFile({ name: 'lesson.pdf', type: 'application/pdf' }), true);
   assert.equal(game.isSupportedLessonFile({ name: 'notes.txt', type: 'text/plain' }), true);
@@ -343,6 +457,104 @@ test('defines in-person and virtual buzzer modes with deterministic player color
   ]);
   assert.equal(game.getBuzzerColorForPlayerIndex(2).name, 'Green');
   assert.equal(game.getBuzzerColorForContestantId('contestant-4').value, '#f97316');
+});
+
+test('host buzzer audio controller safely no-ops when Web Audio is unavailable', () => {
+  const controller = game.createHostBuzzerAudioController({ root: {} });
+
+  assert.equal(controller.isSupported(), false);
+  assert.equal(controller.prime(), false);
+  assert.equal(controller.play(), false);
+});
+
+test('host buzzer audio controller primes silently and schedules a polished synthesized buzz', () => {
+  const log = [];
+  const controller = game.createHostBuzzerAudioController({
+    root: createFakeAudioRoot(log),
+    nowMs: () => 1_000,
+  });
+
+  assert.equal(controller.isSupported(), true);
+  assert.deepEqual(log, []);
+  assert.equal(controller.prime(), true);
+  assert.equal(log.filter(([event]) => event === 'context.constructor').length, 1);
+  assert.equal(log.filter(([event]) => event === 'context.resume').length, 1);
+  assert.deepEqual(
+    log.filter(([event, type]) => event === 'oscillator.start' && type === 'sine').map(([, type]) => type),
+    ['sine'],
+    'priming should only play a silent unlock oscillator, not the audible buzzer'
+  );
+
+  log.length = 0;
+  assert.equal(controller.play(), true);
+  const oscillatorStarts = log.filter(([event]) => event === 'oscillator.start');
+  assert.deepEqual(
+    oscillatorStarts.map(([, type]) => type),
+    game.HOST_BUZZER_SOUND_VOICES.map(({ type }) => type)
+  );
+  assert.equal(oscillatorStarts.some(([, type]) => type === 'sine'), false);
+  assert.ok(log.some(([event, name, value]) => event === 'param.exponential' && /frequency$/.test(name) && value <= 180));
+  assert.ok(log.some(([event, source, destination]) => event === 'connect' && /^compressor-/.test(source) && destination === 'destination'));
+  assert.ok(
+    log
+      .filter(([event]) => event === 'oscillator.stop')
+      .every(([, , time]) => time <= 12 + game.HOST_BUZZER_SOUND_DURATION_SECONDS + 0.04)
+  );
+});
+
+test('host buzzer audio controller rate-limits repeats so buzzes are not obnoxious', () => {
+  const log = [];
+  let nowMs = 2_000;
+  const controller = game.createHostBuzzerAudioController({
+    root: createFakeAudioRoot(log),
+    minIntervalMs: 650,
+    nowMs: () => nowMs,
+  });
+
+  assert.equal(controller.play(), true);
+  log.length = 0;
+  nowMs += 300;
+  assert.equal(controller.play(), false);
+  assert.equal(log.filter(([event]) => event === 'oscillator.start').length, 0);
+
+  nowMs += 400;
+  assert.equal(controller.play(), true);
+  assert.deepEqual(
+    log.filter(([event]) => event === 'oscillator.start').map(([, type]) => type),
+    game.HOST_BUZZER_SOUND_VOICES.map(({ type }) => type)
+  );
+});
+
+test('virtual first-buzz host flow primes and plays the synthesized buzzer sound only for remote buzzes', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+
+  assert.match(html, /host screen will play a short buzzer sound when a remote player buzzes in first/);
+  assert.match(js, /const hostBuzzerAudio = createHostBuzzerAudioController\(\)/);
+
+  const firstBuzzStart = js.indexOf('function handleVirtualFirstBuzz(firstBuzz)');
+  const firstBuzzEnd = js.indexOf('function handleVirtualBuzzerBuzzUpdate', firstBuzzStart);
+  const firstBuzzHandler = js.slice(firstBuzzStart, firstBuzzEnd);
+  assert.match(firstBuzzHandler, /if \(virtualBuzzerFirstHandledKey === key\) return;/);
+  assert.ok(
+    firstBuzzHandler.indexOf('virtualBuzzerFirstHandledKey = key;') < firstBuzzHandler.indexOf('hostBuzzerAudio.play();'),
+    'the sound should play only after the first-buzz event is accepted as new'
+  );
+  assert.ok(
+    firstBuzzHandler.indexOf('hostBuzzerAudio.play();') < firstBuzzHandler.indexOf('disableVirtualBuzzersForHost();'),
+    'the host should hear the buzz before the Firebase best-effort lock runs'
+  );
+
+  const modeChangedStart = js.indexOf('async function handleBuzzerModeChanged()');
+  const modeChangedEnd = js.indexOf('async function completeBuzzerSetup()', modeChangedStart);
+  assert.match(js.slice(modeChangedStart, modeChangedEnd), /void hostBuzzerAudio\.prime\(\);/);
+  const completeStart = modeChangedEnd;
+  const completeEnd = js.indexOf('function getAttemptedPlayerIndexesForActiveClue()', completeStart);
+  assert.match(js.slice(completeStart, completeEnd), /void hostBuzzerAudio\.prime\(\);/);
+
+  const manualChoiceStart = js.indexOf("contestantChoices?.addEventListener('change'");
+  const manualChoiceEnd = js.indexOf("checkResponseButton?.addEventListener('click'", manualChoiceStart);
+  assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
 });
 
 test('builds virtual buzzer session records, join URLs, claims, and first-buzz payloads', () => {
