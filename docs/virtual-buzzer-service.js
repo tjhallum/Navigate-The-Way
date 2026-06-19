@@ -269,7 +269,7 @@
     if (config && typeof config === 'object') {
       return {
         provider: normalizeAppCheckProvider(config.provider, APP_CHECK_PROVIDER_ENTERPRISE),
-        siteKey: coerceText(config.siteKey || config.recaptchaSiteKey || legacySiteKey),
+        siteKey: coerceText(legacySiteKey || config.siteKey || config.recaptchaSiteKey),
       };
     }
     return { provider: APP_CHECK_PROVIDER_V3, siteKey: legacySiteKey };

@@ -25,8 +25,9 @@ window.BEREAN_BOARD_FIREBASE_CONFIG = window.BEREAN_BOARD_FIREBASE_CONFIG || {
 
 window.BEREAN_BOARD_FIREBASE_APP_CHECK = window.BEREAN_BOARD_FIREBASE_APP_CHECK || {
   provider: 'recaptcha-enterprise',
-  siteKey: '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
+  siteKey: window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
 };
 
-// Backward-compatible alias for older local overrides. Prefer the object above.
+// Backward-compatible alias for older local overrides. If an override already
+// supplied this value, preserve it instead of replacing it with the default key.
 window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY = window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey || '';
