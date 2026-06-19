@@ -645,7 +645,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-virtual-buzzers" \/>/);
-  assert.match(html, /<script src="firebase-config\.js\?v=20260618-virtual-buzzers"><\/script>/);
+  assert.match(html, /<script src="firebase-config\.js\?v=20260619-firebase-config"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-player-name-selection"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-player-name-selection"><\/script>/);
