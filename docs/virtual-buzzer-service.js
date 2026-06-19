@@ -195,22 +195,32 @@
     return normalized.status === 'closed' || Boolean(normalized.expiresAt && normalized.expiresAt <= Number(nowMs));
   }
 
-  function getPlayerClaimOptions(session, uid = '') {
+  function getPlayerClaimOptions(session, uid = '', selectedPlayerIndex = null) {
     const normalized = session?.playerNames ? session : normalizeVirtualBuzzerSession(session);
     const currentUid = coerceText(uid);
+    const selectedIndex = Number(selectedPlayerIndex);
+    const hasSelectedIndex = selectedPlayerIndex !== null &&
+      selectedPlayerIndex !== undefined &&
+      selectedPlayerIndex !== '' &&
+      Number.isInteger(selectedIndex) &&
+      selectedIndex >= 0 &&
+      selectedIndex < 4;
     const sessionClosed = isVirtualBuzzerSessionClosed(normalized);
+
     return normalized.playerNames.map((playerName, playerIndex) => {
       const claim = normalized.claims[playerIndex] || null;
       const claimedByCurrentUser = Boolean(claim && currentUid && claim.uid === currentUid);
       const claimedByAnotherPlayer = Boolean(claim && !claimedByCurrentUser);
+      const disabled = sessionClosed || claimedByAnotherPlayer;
       return {
         playerIndex,
         playerName,
         buzzerNumber: getBuzzerNumberForPlayerIndex(playerIndex),
         claimed: Boolean(claim),
         claimedByCurrentUser,
-        disabled: sessionClosed || claimedByAnotherPlayer,
+        disabled,
         unavailableReason: sessionClosed ? 'closed' : (claimedByAnotherPlayer ? 'claimed' : ''),
+        selected: !disabled && (claimedByCurrentUser || (hasSelectedIndex && selectedIndex === playerIndex)),
       };
     });
   }

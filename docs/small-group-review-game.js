@@ -2372,7 +2372,8 @@
       const session = virtualBuzzerPlayerSession;
       const uid = virtualBuzzerPlayerContext?.uid || '';
       const sessionClosed = virtualBuzzerService.isVirtualBuzzerSessionClosed?.(session || {}) || false;
-      const claimOptions = virtualBuzzerService.getPlayerClaimOptions(session || {}, uid);
+      const selectedPlayerIndex = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked')?.value ?? null;
+      const claimOptions = virtualBuzzerService.getPlayerClaimOptions(session || {}, uid, selectedPlayerIndex);
       if (virtualBuzzerNameOptions && !virtualBuzzerPlayerClaim) {
         virtualBuzzerNameOptions.innerHTML = claimOptions.map((option) => {
           const inputId = `virtual-player-name-${option.playerIndex}`;
@@ -2380,7 +2381,7 @@
           const note = option.unavailableReason === 'closed'
             ? 'session closed'
             : (option.unavailableReason === 'claimed' ? 'claimed' : `Buzzer #${option.buzzerNumber}`);
-          return `<label for="${inputId}" class="${disabled ? 'is-claimed' : ''}"><input id="${inputId}" type="radio" name="virtual-buzzer-player-name" value="${option.playerIndex}" ${disabled ? 'disabled' : ''} ${option.claimedByCurrentUser ? 'checked' : ''} /><span>${escapeHtml(option.playerName)}</span><small>${note}</small></label>`;
+          return `<label for="${inputId}" class="${disabled ? 'is-claimed' : ''}"><input id="${inputId}" type="radio" name="virtual-buzzer-player-name" value="${option.playerIndex}" ${disabled ? 'disabled' : ''} ${option.selected ? 'checked' : ''} /><span>${escapeHtml(option.playerName)}</span><small>${note}</small></label>`;
         }).join('');
       }
       if (virtualBuzzerClaimButton) {
