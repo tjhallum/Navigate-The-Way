@@ -190,17 +190,27 @@
     };
   }
 
+  function isVirtualBuzzerSessionClosed(session, nowMs = Date.now()) {
+    const normalized = session?.playerNames ? session : normalizeVirtualBuzzerSession(session);
+    return normalized.status === 'closed' || Boolean(normalized.expiresAt && normalized.expiresAt <= Number(nowMs));
+  }
+
   function getPlayerClaimOptions(session, uid = '') {
     const normalized = session?.playerNames ? session : normalizeVirtualBuzzerSession(session);
     const currentUid = coerceText(uid);
+    const sessionClosed = isVirtualBuzzerSessionClosed(normalized);
     return normalized.playerNames.map((playerName, playerIndex) => {
       const claim = normalized.claims[playerIndex] || null;
+      const claimedByCurrentUser = Boolean(claim && currentUid && claim.uid === currentUid);
+      const claimedByAnotherPlayer = Boolean(claim && !claimedByCurrentUser);
       return {
         playerIndex,
         playerName,
         buzzerNumber: getBuzzerNumberForPlayerIndex(playerIndex),
         claimed: Boolean(claim),
-        claimedByCurrentUser: Boolean(claim && currentUid && claim.uid === currentUid),
+        claimedByCurrentUser,
+        disabled: sessionClosed || claimedByAnotherPlayer,
+        unavailableReason: sessionClosed ? 'closed' : (claimedByAnotherPlayer ? 'claimed' : ''),
       };
     });
   }
@@ -209,11 +219,10 @@
     const normalized = session?.playerNames ? session : normalizeVirtualBuzzerSession(session);
     const authUid = coerceText(uid);
     const playerClaim = claim || null;
-    if (!normalized || normalized.status !== 'open') return false;
+    if (!normalized || isVirtualBuzzerSessionClosed(normalized) || normalized.status !== 'open') return false;
     if (!normalized.buzz?.open || normalized.buzz?.first) return false;
     if (!playerClaim || !authUid || playerClaim.uid !== authUid) return false;
     if (normalized.buzz.lockedOutPlayerIndexes.includes(Number(playerClaim.playerIndex))) return false;
-    if (normalized.expiresAt && normalized.expiresAt < Date.now()) return false;
     return true;
   }
 
@@ -457,6 +466,7 @@
     normalizeSessionId,
     normalizePlayerNames,
     normalizeVirtualBuzzerSession,
+    isVirtualBuzzerSessionClosed,
     normalizeLockedOutPlayerIndexes,
     objectFromLockedOutPlayerIndexes,
     getPlayerClaimOptions,

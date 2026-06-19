@@ -2371,16 +2371,20 @@
       if (!virtualBuzzerPlayerScreen || !virtualBuzzerService) return;
       const session = virtualBuzzerPlayerSession;
       const uid = virtualBuzzerPlayerContext?.uid || '';
+      const sessionClosed = virtualBuzzerService.isVirtualBuzzerSessionClosed?.(session || {}) || false;
       const claimOptions = virtualBuzzerService.getPlayerClaimOptions(session || {}, uid);
       if (virtualBuzzerNameOptions && !virtualBuzzerPlayerClaim) {
         virtualBuzzerNameOptions.innerHTML = claimOptions.map((option) => {
           const inputId = `virtual-player-name-${option.playerIndex}`;
-          const disabled = option.claimed && !option.claimedByCurrentUser;
-          return `<label for="${inputId}" class="${disabled ? 'is-claimed' : ''}"><input id="${inputId}" type="radio" name="virtual-buzzer-player-name" value="${option.playerIndex}" ${disabled ? 'disabled' : ''} ${option.claimedByCurrentUser ? 'checked' : ''} /><span>${escapeHtml(option.playerName)}</span><small>${disabled ? 'claimed' : `Buzzer #${option.buzzerNumber}`}</small></label>`;
+          const disabled = Boolean(option.disabled);
+          const note = option.unavailableReason === 'closed'
+            ? 'session closed'
+            : (option.unavailableReason === 'claimed' ? 'claimed' : `Buzzer #${option.buzzerNumber}`);
+          return `<label for="${inputId}" class="${disabled ? 'is-claimed' : ''}"><input id="${inputId}" type="radio" name="virtual-buzzer-player-name" value="${option.playerIndex}" ${disabled ? 'disabled' : ''} ${option.claimedByCurrentUser ? 'checked' : ''} /><span>${escapeHtml(option.playerName)}</span><small>${note}</small></label>`;
         }).join('');
       }
       if (virtualBuzzerClaimButton) {
-        virtualBuzzerClaimButton.disabled = Boolean(virtualBuzzerPlayerClaim) || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
+        virtualBuzzerClaimButton.disabled = sessionClosed || Boolean(virtualBuzzerPlayerClaim) || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       }
       if (virtualBuzzerPlayerClaim) {
         const color = getBuzzerColorForPlayerIndex(virtualBuzzerPlayerClaim.playerIndex);
@@ -2413,14 +2417,16 @@
 
     async function initializeVirtualBuzzerPlayerScreen() {
       if (!isVirtualBuzzerPlayerRoute(window.location)) return false;
-      if (!virtualBuzzerService) {
-        renderStatus(virtualBuzzerPlayerStatus, 'Virtual buzzers are unavailable on this page load.', 'error');
-        return true;
-      }
       virtualBuzzerPlayerSessionId = getVirtualBuzzerSessionIdFromLocation(window.location);
       if (setupForm) setupForm.hidden = true;
       if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;
       if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+      if (!virtualBuzzerService) {
+        if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.disabled = true;
+        if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+        renderStatus(virtualBuzzerPlayerStatus, 'Virtual buzzers are unavailable on this page load.', 'error');
+        return true;
+      }
       try {
         virtualBuzzerPlayerContext = await virtualBuzzerService.initializeFirebaseContext();
         renderStatus(virtualBuzzerPlayerStatus, 'Choose your player name.', 'info');
@@ -2699,6 +2705,11 @@
     });
     virtualBuzzerClaimButton?.addEventListener('click', async () => {
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession) return;
+      if (virtualBuzzerService.isVirtualBuzzerSessionClosed?.(virtualBuzzerPlayerSession)) {
+        renderStatus(virtualBuzzerPlayerStatus, 'This virtual buzzer session is closed.', 'error');
+        renderPlayerPhoneSession();
+        return;
+      }
       const selected = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       if (!selected) return;
       try {

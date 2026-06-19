@@ -412,14 +412,30 @@ test('normalizes virtual buzzer state and only enables eligible claimed players'
   assert.deepEqual(normalized.playerNames, ['Ada', 'Boaz', 'Chloe']);
   assert.deepEqual(normalized.claims.map((claim) => claim?.uid || ''), ['ada-uid', '', 'chloe-uid']);
   assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(normalized), [
-    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false },
-    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false },
-    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: true, claimedByCurrentUser: false },
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed' },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: false, unavailableReason: '' },
+    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: true, claimedByCurrentUser: false, disabled: true, unavailableReason: 'claimed' },
   ]);
 
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[0], uid: 'ada-uid' }), true);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[2], uid: 'chloe-uid' }), false);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: { ...normalized, buzz: { ...normalized.buzz, first: { uid: 'ada-uid' } } }, claim: normalized.claims[0], uid: 'ada-uid' }), false);
+});
+
+test('closed virtual buzzer sessions disable player name claiming before the TTL expires', () => {
+  const closed = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'closed',
+    expiresAt: Date.now() + 60_000,
+    playerNames: { 0: 'Ada', 1: 'Boaz' },
+    playerClaims: {},
+    buzz: { open: false, first: null, lockedOutPlayerIndexes: {} },
+  });
+
+  assert.equal(virtualBuzzers.isVirtualBuzzerSessionClosed(closed), true);
+  assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(closed, 'new-phone'), [
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed' },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false, disabled: true, unavailableReason: 'closed' },
+  ]);
 });
 
 test('waits for Firebase Auth state before deciding to sign in anonymously', async () => {
@@ -617,10 +633,12 @@ test('documents developer-only Firebase setup and database rules for virtual buz
   assert.equal(Object.hasOwn(parsedRules.buzz.lockedOutPlayerIndexes, '$playerIndex'), false);
   ['0', '1', '2', '3'].forEach((playerIndex) => {
     assert.equal(typeof parsedRules.playerNames[playerIndex]['.validate'], 'string');
+    assert.match(parsedRules.playerClaims[playerIndex]['.write'], /child\('status'\)\.val\(\) !== 'closed'/);
     assert.equal(parsedRules.playerClaims[playerIndex].$other['.validate'], false);
     assert.equal(typeof parsedRules.buzz.lockedOutPlayerIndexes[playerIndex]['.validate'], 'string');
   });
   assert.equal(parsedRules.playerClaims.$other['.validate'], false);
+  assert.match(parsedRules.buzz.first['.write'], /child\('status'\)\.val\(\) !== 'closed'/);
   assert.equal(parsedRules.buzz.first.$other['.validate'], false);
 });
 
@@ -649,6 +667,17 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(service, /const FIREBASE_SIGNIN_SCRIPT = \[SDK_BASE, 'firebase-auth\.js'\]\.join\('\/'\);/);
   assert.match(service, /function waitForInitialAuthUser/);
   assert.match(service, /auth\?\.authStateReady/);
+  const playerInitializerStart = js.indexOf('async function initializeVirtualBuzzerPlayerScreen');
+  const playerInitializerEnd = js.indexOf('try {', playerInitializerStart);
+  const playerInitializerSetup = js.slice(playerInitializerStart, playerInitializerEnd);
+  assert.ok(
+    playerInitializerSetup.indexOf('if (setupForm) setupForm.hidden = true;') < playerInitializerSetup.indexOf('if (!virtualBuzzerService)'),
+    'player-route setup form must be hidden before reporting a missing virtual buzzer service'
+  );
+  assert.ok(
+    playerInitializerSetup.indexOf('if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;') < playerInitializerSetup.indexOf('if (!virtualBuzzerService)'),
+    'player-route error status must be visible even when the buzzer service fails to load'
+  );
   assert.ok(
     js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'") < js.indexOf('if (isVirtualBuzzerPlayerRoute(window.location))'),
     'player claim listener must be wired before the player-route early return'

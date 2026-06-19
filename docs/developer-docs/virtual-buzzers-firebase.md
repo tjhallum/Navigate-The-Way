@@ -54,4 +54,4 @@ Open `http://127.0.0.1:4173/small-group-review-game.html`, choose Virtual, and v
 
 ## Cleanup
 
-The host closes the virtual session when a player wins or when the leader clicks Start Over. Security rules reject expired-session writes where practical. If a browser closes before cleanup, the short session lifetime limits stale data. A scheduled backend is intentionally not required for this static GitHub Pages app.
+The host closes the virtual session when a player wins or when the leader clicks Start Over. Security rules reject player claims and first-buzz writes after a session is closed, and reject expired-session writes where practical. If a browser closes before cleanup, the short session lifetime limits stale data. A scheduled backend is intentionally not required for this static GitHub Pages app.
