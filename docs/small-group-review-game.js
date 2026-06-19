@@ -70,6 +70,14 @@
     { number: 3, name: 'Green', value: '#22c55e' },
     { number: 4, name: 'Orange', value: '#f97316' },
   ]);
+  const HOST_BUZZER_SOUND_DURATION_SECONDS = 0.46;
+  const HOST_BUZZER_SOUND_MIN_INTERVAL_MS = 650;
+  const HOST_BUZZER_SOUND_VOLUME = 0.22;
+  const HOST_BUZZER_SOUND_VOICES = Object.freeze([
+    { type: 'sawtooth', gain: 0.34, startFrequency: 740, midFrequency: 415, endFrequency: 180, detune: -5 },
+    { type: 'square', gain: 0.18, startFrequency: 370, midFrequency: 248, endFrequency: 124, detune: 0 },
+    { type: 'triangle', gain: 0.12, startFrequency: 988, midFrequency: 622, endFrequency: 330, detune: 7 },
+  ]);
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
@@ -145,6 +153,220 @@
       },
     },
   };
+
+  function getHostBuzzerAudioContextConstructor(root = ROOT) {
+    if (!root) return null;
+    if (typeof root.AudioContext === 'function') return root.AudioContext;
+    if (typeof root.webkitAudioContext === 'function') return root.webkitAudioContext;
+    return null;
+  }
+
+  function setAudioParamValue(param, value, time) {
+    if (!param) return;
+    if (typeof param.setValueAtTime === 'function') {
+      param.setValueAtTime(value, time);
+    } else if ('value' in param) {
+      param.value = value;
+    }
+  }
+
+  function linearRampAudioParam(param, value, time) {
+    if (!param) return;
+    if (typeof param.linearRampToValueAtTime === 'function') {
+      param.linearRampToValueAtTime(value, time);
+    } else {
+      setAudioParamValue(param, value, time);
+    }
+  }
+
+  function exponentialRampAudioParam(param, value, time) {
+    if (!param) return;
+    const safeValue = Math.max(0.0001, Number(value) || 0.0001);
+    if (typeof param.exponentialRampToValueAtTime === 'function') {
+      param.exponentialRampToValueAtTime(safeValue, time);
+    } else {
+      setAudioParamValue(param, safeValue, time);
+    }
+  }
+
+  function connectAudioNode(source, destination) {
+    if (!source || !destination || typeof source.connect !== 'function') return false;
+    try {
+      source.connect(destination);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function configureHostBuzzerCompressor(compressor, startTime) {
+    if (!compressor) return;
+    setAudioParamValue(compressor.threshold, -18, startTime);
+    setAudioParamValue(compressor.knee, 12, startTime);
+    setAudioParamValue(compressor.ratio, 8, startTime);
+    setAudioParamValue(compressor.attack, 0.003, startTime);
+    setAudioParamValue(compressor.release, 0.18, startTime);
+  }
+
+  function playSilentHostBuzzerUnlock(audioContext) {
+    if (!audioContext || typeof audioContext.createOscillator !== 'function' || typeof audioContext.createGain !== 'function' || !audioContext.destination) {
+      return false;
+    }
+    try {
+      const startTime = Number(audioContext.currentTime) || 0;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = 'sine';
+      setAudioParamValue(oscillator.frequency, 440, startTime);
+      setAudioParamValue(gain.gain, 0.0001, startTime);
+      connectAudioNode(oscillator, gain);
+      connectAudioNode(gain, audioContext.destination);
+      oscillator.start?.(startTime);
+      oscillator.stop?.(startTime + 0.025);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function scheduleHostBuzzerSound(audioContext, { startTime, volume = HOST_BUZZER_SOUND_VOLUME } = {}) {
+    if (!audioContext || typeof audioContext.createOscillator !== 'function' || typeof audioContext.createGain !== 'function' || !audioContext.destination) {
+      return false;
+    }
+    try {
+      const requestedStartTime = Number(startTime);
+      const baseStartTime = Number.isFinite(requestedStartTime)
+        ? requestedStartTime
+        : (Number(audioContext.currentTime) || 0);
+      const duration = HOST_BUZZER_SOUND_DURATION_SECONDS;
+      const safeVolume = Math.max(0.04, Math.min(0.5, Number(volume) || HOST_BUZZER_SOUND_VOLUME));
+      const masterGain = audioContext.createGain();
+      const compressor = typeof audioContext.createDynamicsCompressor === 'function'
+        ? audioContext.createDynamicsCompressor()
+        : null;
+      const filter = typeof audioContext.createBiquadFilter === 'function'
+        ? audioContext.createBiquadFilter()
+        : null;
+
+      setAudioParamValue(masterGain.gain, 0.0001, baseStartTime);
+      linearRampAudioParam(masterGain.gain, safeVolume, baseStartTime + 0.018);
+      exponentialRampAudioParam(masterGain.gain, safeVolume * 0.18, baseStartTime + 0.14);
+      linearRampAudioParam(masterGain.gain, safeVolume * 0.82, baseStartTime + 0.19);
+      exponentialRampAudioParam(masterGain.gain, 0.0001, baseStartTime + duration);
+
+      if (filter) {
+        filter.type = 'lowpass';
+        setAudioParamValue(filter.frequency, 2800, baseStartTime);
+        exponentialRampAudioParam(filter.frequency, 1350, baseStartTime + duration);
+        setAudioParamValue(filter.Q, 0.72, baseStartTime);
+        connectAudioNode(filter, masterGain);
+      }
+
+      if (compressor) {
+        configureHostBuzzerCompressor(compressor, baseStartTime);
+        connectAudioNode(masterGain, compressor);
+        connectAudioNode(compressor, audioContext.destination);
+      } else {
+        connectAudioNode(masterGain, audioContext.destination);
+      }
+
+      HOST_BUZZER_SOUND_VOICES.forEach((voice) => {
+        const oscillator = audioContext.createOscillator();
+        const voiceGain = audioContext.createGain();
+        oscillator.type = voice.type;
+        setAudioParamValue(oscillator.frequency, voice.startFrequency, baseStartTime);
+        exponentialRampAudioParam(oscillator.frequency, voice.midFrequency, baseStartTime + 0.17);
+        exponentialRampAudioParam(oscillator.frequency, voice.endFrequency, baseStartTime + duration - 0.025);
+        setAudioParamValue(oscillator.detune, voice.detune, baseStartTime);
+        setAudioParamValue(voiceGain.gain, Math.max(0.0001, voice.gain), baseStartTime);
+        exponentialRampAudioParam(voiceGain.gain, 0.0001, baseStartTime + duration);
+        connectAudioNode(oscillator, voiceGain);
+        connectAudioNode(voiceGain, filter || masterGain);
+        oscillator.start?.(baseStartTime);
+        oscillator.stop?.(baseStartTime + duration + 0.035);
+      });
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function createHostBuzzerAudioController({
+    root = ROOT,
+    volume = HOST_BUZZER_SOUND_VOLUME,
+    minIntervalMs = HOST_BUZZER_SOUND_MIN_INTERVAL_MS,
+    nowMs = () => Date.now(),
+  } = {}) {
+    const safeMinIntervalMs = Math.max(0, Number(minIntervalMs) || 0);
+    let audioContext = null;
+    let audioPrimed = false;
+    let lastPlayedAtMs = Number.NEGATIVE_INFINITY;
+
+    function getAudioContext() {
+      if (audioContext) return audioContext;
+      const AudioContextConstructor = getHostBuzzerAudioContextConstructor(root);
+      if (!AudioContextConstructor) return null;
+      try {
+        audioContext = new AudioContextConstructor();
+      } catch (_error) {
+        audioContext = null;
+      }
+      return audioContext;
+    }
+
+    function resumeAudioContext(context) {
+      if (!context || typeof context.resume !== 'function') return;
+      if (context.state && context.state !== 'running' && context.state !== 'closed') {
+        try {
+          const resumeResult = context.resume();
+          if (resumeResult && typeof resumeResult.catch === 'function') {
+            resumeResult.catch(() => {});
+          }
+        } catch (_error) {
+          // A later user gesture may be able to resume the context.
+        }
+      }
+    }
+
+    function prime() {
+      try {
+        const context = getAudioContext();
+        if (!context) return false;
+        resumeAudioContext(context);
+        if (!audioPrimed) {
+          playSilentHostBuzzerUnlock(context);
+          audioPrimed = true;
+        }
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function play() {
+      try {
+        const currentMs = Number(nowMs());
+        const playStartedAtMs = Number.isFinite(currentMs) ? currentMs : Date.now();
+        if (playStartedAtMs - lastPlayedAtMs < safeMinIntervalMs) return false;
+        const context = getAudioContext();
+        if (!context) return false;
+        prime();
+        const scheduled = scheduleHostBuzzerSound(context, { volume });
+        if (scheduled) lastPlayedAtMs = playStartedAtMs;
+        return scheduled;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    return {
+      isSupported() {
+        return Boolean(getHostBuzzerAudioContextConstructor(root));
+      },
+      prime,
+      play,
+    };
+  }
 
   function getFileExtension(name) {
     const cleanName = String(name || '').toLowerCase();
@@ -1815,6 +2037,7 @@
     const virtualBuzzerClaimedName = app.querySelector('#virtual-buzzer-claimed-name');
     const virtualBuzzerButton = app.querySelector('#virtual-buzzer-button');
     const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
+    const hostBuzzerAudio = createHostBuzzerAudioController();
 
     let selectedFiles = [];
     let groupMemberNames = readSavedGroupMembersCookie(document.cookie);
@@ -2183,6 +2406,7 @@
       const key = `${activeClue.id}:${firstBuzz.round}:${firstBuzz.uid}`;
       if (virtualBuzzerFirstHandledKey === key) return;
       virtualBuzzerFirstHandledKey = key;
+      hostBuzzerAudio.play();
       const contestantId = getContestantIdForPlayerIndex(Number(firstBuzz.playerIndex));
       if (contestantChoices && contestantId) {
         const input = contestantChoices.querySelector(`input[name="active-contestant"][value="${contestantId}"]`);
@@ -2296,6 +2520,7 @@
         renderVirtualBuzzerStatus('In-person play selected. Physical buzzers or hand-raising will work as before.', 'success');
         return;
       }
+      void hostBuzzerAudio.prime();
       try {
         await createVirtualBuzzerHostSession();
       } catch (error) {
@@ -2308,6 +2533,7 @@
       try {
         selectedBuzzerMode = requireBuzzerMode(currentBuzzerMode()).value;
         if (selectedBuzzerMode === 'virtual') {
+          void hostBuzzerAudio.prime();
           await createVirtualBuzzerHostSession();
         } else {
           await closeVirtualSession();
@@ -3513,6 +3739,12 @@
     DEFAULT_BUZZER_MODE,
     BUZZER_MODES,
     BUZZER_COLORS,
+    HOST_BUZZER_SOUND_DURATION_SECONDS,
+    HOST_BUZZER_SOUND_MIN_INTERVAL_MS,
+    HOST_BUZZER_SOUND_VOLUME,
+    HOST_BUZZER_SOUND_VOICES,
+    scheduleHostBuzzerSound,
+    createHostBuzzerAudioController,
     isSupportedLessonFile,
     fileDragEventHasFiles,
     dragEventIsInsideElement,
