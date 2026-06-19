@@ -70,13 +70,13 @@
     { number: 3, name: 'Green', value: '#22c55e' },
     { number: 4, name: 'Orange', value: '#f97316' },
   ]);
-  const HOST_BUZZER_SOUND_DURATION_SECONDS = 0.46;
+  const HOST_BUZZER_SOUND_DURATION_SECONDS = 0.72;
   const HOST_BUZZER_SOUND_MIN_INTERVAL_MS = 650;
-  const HOST_BUZZER_SOUND_VOLUME = 0.22;
+  const HOST_BUZZER_SOUND_VOLUME = 0.38;
   const HOST_BUZZER_SOUND_VOICES = Object.freeze([
-    { type: 'sawtooth', gain: 0.34, startFrequency: 740, midFrequency: 415, endFrequency: 180, detune: -5 },
-    { type: 'square', gain: 0.18, startFrequency: 370, midFrequency: 248, endFrequency: 124, detune: 0 },
-    { type: 'triangle', gain: 0.12, startFrequency: 988, midFrequency: 622, endFrequency: 330, detune: 7 },
+    { type: 'sawtooth', gain: 0.45, startFrequency: 880, midFrequency: 523, endFrequency: 220, detune: -4 },
+    { type: 'square', gain: 0.30, startFrequency: 554, midFrequency: 392, endFrequency: 196, detune: 0 },
+    { type: 'triangle', gain: 0.18, startFrequency: 1320, midFrequency: 880, endFrequency: 440, detune: 8 },
   ]);
   const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
   const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
@@ -250,15 +250,17 @@
 
       setAudioParamValue(masterGain.gain, 0.0001, baseStartTime);
       linearRampAudioParam(masterGain.gain, safeVolume, baseStartTime + 0.018);
-      exponentialRampAudioParam(masterGain.gain, safeVolume * 0.18, baseStartTime + 0.14);
-      linearRampAudioParam(masterGain.gain, safeVolume * 0.82, baseStartTime + 0.19);
+      exponentialRampAudioParam(masterGain.gain, safeVolume * 0.26, baseStartTime + 0.16);
+      linearRampAudioParam(masterGain.gain, safeVolume * 0.94, baseStartTime + 0.29);
+      exponentialRampAudioParam(masterGain.gain, safeVolume * 0.32, baseStartTime + 0.48);
+      linearRampAudioParam(masterGain.gain, safeVolume * 0.52, baseStartTime + 0.56);
       exponentialRampAudioParam(masterGain.gain, 0.0001, baseStartTime + duration);
 
       if (filter) {
         filter.type = 'lowpass';
-        setAudioParamValue(filter.frequency, 2800, baseStartTime);
-        exponentialRampAudioParam(filter.frequency, 1350, baseStartTime + duration);
-        setAudioParamValue(filter.Q, 0.72, baseStartTime);
+        setAudioParamValue(filter.frequency, 3400, baseStartTime);
+        exponentialRampAudioParam(filter.frequency, 1700, baseStartTime + duration);
+        setAudioParamValue(filter.Q, 0.82, baseStartTime);
         connectAudioNode(filter, masterGain);
       }
 
@@ -275,8 +277,8 @@
         const voiceGain = audioContext.createGain();
         oscillator.type = voice.type;
         setAudioParamValue(oscillator.frequency, voice.startFrequency, baseStartTime);
-        exponentialRampAudioParam(oscillator.frequency, voice.midFrequency, baseStartTime + 0.17);
-        exponentialRampAudioParam(oscillator.frequency, voice.endFrequency, baseStartTime + duration - 0.025);
+        exponentialRampAudioParam(oscillator.frequency, voice.midFrequency, baseStartTime + 0.24);
+        exponentialRampAudioParam(oscillator.frequency, voice.endFrequency, baseStartTime + duration - 0.04);
         setAudioParamValue(oscillator.detune, voice.detune, baseStartTime);
         setAudioParamValue(voiceGain.gain, Math.max(0.0001, voice.gain), baseStartTime);
         exponentialRampAudioParam(voiceGain.gain, 0.0001, baseStartTime + duration);
