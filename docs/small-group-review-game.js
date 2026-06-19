@@ -560,6 +560,90 @@
     };
   }
 
+  function formatContestantNames(names) {
+    const cleanNames = Array.from(names || []).map((name) => coerceText(name)).filter(Boolean);
+    if (cleanNames.length === 0) return '';
+    if (cleanNames.length === 1) return cleanNames[0];
+    if (cleanNames.length === 2) return `${cleanNames[0]} and ${cleanNames[1]}`;
+    return `${cleanNames.slice(0, -1).join(', ')}, and ${cleanNames[cleanNames.length - 1]}`;
+  }
+
+  function buildContestantNameLookup(contestants) {
+    const lookup = new Map();
+    (Array.isArray(contestants) ? contestants : []).forEach((contestant) => {
+      const id = String(contestant?.id || '');
+      if (!id) return;
+      lookup.set(id, coerceText(contestant?.name, id) || id);
+    });
+    return lookup;
+  }
+
+  function buildCompletedClueReviewPresentation({ clue, contestants } = {}) {
+    const outcome = getClueBoardCompletionOutcome(clue);
+    const nameLookup = buildContestantNameLookup(contestants);
+    const nameForId = (id) => nameLookup.get(String(id || '')) || 'Unknown contestant';
+    const winningContestantId = String(clue?.winningContestantId || '').trim();
+    const partialCreditIds = Array.isArray(clue?.partialCreditContestantIds)
+      ? [...new Set(clue.partialCreditContestantIds.map(String).filter(Boolean))]
+      : [];
+    const attemptedIds = Array.isArray(clue?.attemptedContestantIds)
+      ? [...new Set(clue.attemptedContestantIds.map(String).filter(Boolean))]
+      : [];
+    const partialCreditAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
+    const partialCreditPerContestant = partialCreditIds.length > 0
+      ? partialCreditAwarded / partialCreditIds.length
+      : 0;
+    const creditLines = [];
+
+    if (winningContestantId) {
+      creditLines.push(`${nameForId(winningContestantId)} received ${formatScore(getFullCreditAward(clue))} for the accepted answer.`);
+    }
+
+    partialCreditIds.forEach((contestantId) => {
+      creditLines.push(`${nameForId(contestantId)} received ${formatScore(partialCreditPerContestant)} partial credit.`);
+    });
+
+    const noCreditAttemptIds = attemptedIds.filter((contestantId) => contestantId !== winningContestantId && !partialCreditIds.includes(contestantId));
+    if (noCreditAttemptIds.length > 0) {
+      creditLines.push(`${formatContestantNames(noCreditAttemptIds.map(nameForId))} attempted without receiving credit.`);
+    }
+
+    if (outcome === 'partial') {
+      creditLines.push('No contestant supplied the full expected answer.');
+    }
+
+    if (creditLines.length === 0) {
+      creditLines.push(clue?.noContestantsBuzzed
+        ? 'No one buzzed in. No credit was awarded.'
+        : 'No credit was awarded.');
+    }
+
+    if (outcome === 'correct') {
+      return {
+        label: 'Correct',
+        className: 'clue-verdict clue-verdict--correct',
+        message: 'Correct answer accepted. Review the right answer, source, and credit below.',
+        creditSummary: creditLines.join(' '),
+      };
+    }
+
+    if (outcome === 'partial') {
+      return {
+        label: 'Partial Credit',
+        className: 'clue-verdict clue-verdict--partial',
+        message: 'Partial credit only. Review the right answer, source, and credit below.',
+        creditSummary: creditLines.join(' '),
+      };
+    }
+
+    return {
+      label: 'No Credit',
+      className: 'clue-verdict clue-verdict--incorrect',
+      message: 'No credit awarded. Review the right answer, source, and credit below.',
+      creditSummary: creditLines.join(' '),
+    };
+  }
+
   function createContestants(names) {
     if (!Array.isArray(names)) {
       throw new Error('Please supply one to four selected player names.');
@@ -1964,8 +2048,8 @@
       return {
         text: '✓',
         className: 'game-board__clue is-complete is-correct',
-        disabled: true,
-        ariaLabel: `${clueValue} clue answered correctly`,
+        disabled: false,
+        ariaLabel: `${clueValue} clue answered correctly. Review result`,
       };
     }
 
@@ -1973,16 +2057,16 @@
       return {
         text: '⚠',
         className: 'game-board__clue is-complete is-partial',
-        disabled: true,
-        ariaLabel: `${clueValue} clue partially answered`,
+        disabled: false,
+        ariaLabel: `${clueValue} clue partially answered. Review result`,
       };
     }
 
     return {
       text: '✕',
       className: 'game-board__clue is-complete is-incorrect',
-      disabled: true,
-      ariaLabel: `${clueValue} clue missed or unanswered`,
+      disabled: false,
+      ariaLabel: `${clueValue} clue missed or unanswered. Review result`,
     };
   }
 
@@ -2032,6 +2116,7 @@
     const clueAnswer = app.querySelector('#active-clue-answer');
     const clueExplanation = app.querySelector('#active-clue-explanation');
     const clueSource = app.querySelector('#active-clue-source');
+    const activeClueReview = app.querySelector('#active-clue-review');
     const contestantChoices = app.querySelector('#contestant-choices');
     const responseSection = app.querySelector('#contestant-response-section');
     const contestantPromptSection = app.querySelector('#contestant-prompt-section');
@@ -3254,6 +3339,10 @@
         responseInput.disabled = false;
       }
       if (responseSection) responseSection.hidden = true;
+      if (activeClueReview) {
+        activeClueReview.textContent = '';
+        activeClueReview.hidden = true;
+      }
       clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
       if (contestantChoices) contestantChoices.innerHTML = '';
       if (checkResponseButton) checkResponseButton.disabled = false;
@@ -3344,6 +3433,21 @@
       scheduleActiveClueFit();
     }
 
+    function showCompletedClueReview() {
+      if (!activeClue) return;
+      const presentation = buildCompletedClueReviewPresentation({ clue: activeClue, contestants });
+      showClueVerdict(presentation);
+      showAnswer();
+      if (activeClueReview) {
+        activeClueReview.innerHTML = `<strong>Credit:</strong> ${escapeHtml(presentation.creditSummary)}`;
+        activeClueReview.hidden = false;
+      }
+      if (clueFeedback) {
+        clueFeedback.textContent = 'This clue is already complete. Review what happened, then use Back to Board when ready.';
+      }
+      scheduleActiveClueFit();
+    }
+
     function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
@@ -3371,15 +3475,36 @@
         responseInput.disabled = false;
       }
       if (responseSection) responseSection.hidden = true;
-      if (contestantPromptSection) contestantPromptSection.hidden = Boolean(activeClue.completed);
+      if (activeClueReview) {
+        activeClueReview.textContent = '';
+        activeClueReview.hidden = true;
+      }
+      clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
+
+      if (activeClue.completed) {
+        if (contestantPromptSection) contestantPromptSection.hidden = true;
+        if (contestantChoices) contestantChoices.innerHTML = '';
+        if (responseInput) responseInput.disabled = true;
+        if (checkResponseButton) checkResponseButton.disabled = true;
+        if (noBuzzButton) noBuzzButton.disabled = true;
+        showCompletedClueReview();
+        cluePanel.hidden = false;
+        document.body?.classList.add('has-active-clue-modal');
+        scheduleActiveClueFit();
+        window.requestAnimationFrame(() => {
+          cluePanel?.focus();
+        });
+        return;
+      }
+
+      if (contestantPromptSection) contestantPromptSection.hidden = false;
       if (checkResponseButton) checkResponseButton.disabled = false;
-      if (noBuzzButton) noBuzzButton.disabled = Boolean(activeClue.completed);
+      if (noBuzzButton) noBuzzButton.disabled = false;
       if (clueFeedback) {
         clueFeedback.textContent = isVirtualBuzzerMode()
           ? 'Virtual buzzers are opening. The first player to buzz will be selected automatically. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.'
           : 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
       }
-      clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
       renderContestantChoices();
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
@@ -3706,7 +3831,10 @@
     board?.addEventListener('click', (event) => {
       const button = event.target.closest('[data-clue-id]');
       if (!button || button.disabled) return;
-      if (isVirtualBuzzerMode() && !allVirtualPlayersConnected()) {
+      const clueId = button.dataset.clueId;
+      const found = findClue(clueId);
+      if (!found) return;
+      if (!found.clue.completed && isVirtualBuzzerMode() && !allVirtualPlayersConnected()) {
         updateVirtualBuzzerGamePanel();
         if (virtualBuzzerGameStatus) {
           const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
@@ -3714,7 +3842,7 @@
         }
         return;
       }
-      openClue(button.dataset.clueId);
+      openClue(clueId);
     });
 
     contestantChoices?.addEventListener('change', () => {
@@ -3844,6 +3972,7 @@
     applyAnswerJudgment,
     applyNoBuzzForClue,
     getClueBoardDisplayState,
+    buildCompletedClueReviewPresentation,
     shouldAutoCloseAfterAnswerResult,
     truncateLessonContent,
     buildOpenAiMessages,
