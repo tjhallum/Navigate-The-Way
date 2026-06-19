@@ -1931,6 +1931,61 @@
     return number < 0 ? `-$${Math.abs(number)}` : `$${number}`;
   }
 
+  function formatClueBoardValue(value) {
+    return `$${Number(value || 0)}`;
+  }
+
+  function clueHasPartialCredit(clue) {
+    return Math.max(0, Number(clue?.partialCreditAwarded || 0)) > 0 ||
+      (Array.isArray(clue?.partialCreditContestantIds) && clue.partialCreditContestantIds.length > 0);
+  }
+
+  function getClueBoardCompletionOutcome(clue) {
+    if (!clue?.completed) return 'open';
+    if (String(clue.winningContestantId || '').trim()) return 'correct';
+    if (clueHasPartialCredit(clue)) return 'partial';
+    return 'incorrect';
+  }
+
+  function getClueBoardDisplayState({ clue, value }) {
+    const clueValue = formatClueBoardValue(value ?? clue?.value);
+    const outcome = getClueBoardCompletionOutcome(clue);
+
+    if (outcome === 'open') {
+      return {
+        text: clueValue,
+        className: 'game-board__clue',
+        disabled: false,
+        ariaLabel: `${clueValue} clue`,
+      };
+    }
+
+    if (outcome === 'correct') {
+      return {
+        text: '✓',
+        className: 'game-board__clue is-complete is-correct',
+        disabled: true,
+        ariaLabel: `${clueValue} clue answered correctly`,
+      };
+    }
+
+    if (outcome === 'partial') {
+      return {
+        text: '⚠',
+        className: 'game-board__clue is-complete is-partial',
+        disabled: true,
+        ariaLabel: `${clueValue} clue partially answered`,
+      };
+    }
+
+    return {
+      text: '✕',
+      className: 'game-board__clue is-complete is-incorrect',
+      disabled: true,
+      ariaLabel: `${clueValue} clue missed or unanswered`,
+    };
+  }
+
   function shouldSubmitResponseFromKeydown(event) {
     return event?.key === 'Enter' &&
       !event.shiftKey &&
@@ -3165,10 +3220,10 @@
       `).join('');
       const clueRows = BOARD_VALUES.map((value, clueIndex) => gameData.categories.map((category) => {
         const clue = category.clues[clueIndex];
-        const isComplete = Boolean(clue.completed);
+        const displayState = getClueBoardDisplayState({ clue, value });
         return `
-          <button type="button" class="game-board__clue${isComplete ? ' is-complete' : ''}" data-clue-id="${clue.id}" ${isComplete ? 'disabled' : ''}>
-            ${isComplete ? '✓' : `$${value}`}
+          <button type="button" class="${escapeHtml(displayState.className)}" data-clue-id="${clue.id}" aria-label="${escapeHtml(displayState.ariaLabel)}" ${displayState.disabled ? 'disabled' : ''}>
+            ${escapeHtml(displayState.text)}
           </button>
         `;
       }).join('')).join('');
@@ -3788,6 +3843,7 @@
     applyScoreDecision,
     applyAnswerJudgment,
     applyNoBuzzForClue,
+    getClueBoardDisplayState,
     shouldAutoCloseAfterAnswerResult,
     truncateLessonContent,
     buildOpenAiMessages,

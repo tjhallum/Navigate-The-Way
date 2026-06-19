@@ -2527,8 +2527,27 @@ button.primary-action {
 }
 
 .game-board__clue.is-complete {
+  cursor: default;
+  border-color: currentColor;
+}
+
+.review-game-play .game-board__clue.is-complete:disabled {
+  opacity: 1;
+}
+
+.game-board__clue.is-correct {
   color: #9df0b1;
   background: rgba(9, 30, 20, 0.8);
+}
+
+.game-board__clue.is-partial {
+  color: #ffdf72;
+  background: rgba(126, 92, 13, 0.32);
+}
+
+.game-board__clue.is-incorrect {
+  color: #ff9d9d;
+  background: rgba(132, 22, 32, 0.34);
 }
 
 .active-clue-panel {
