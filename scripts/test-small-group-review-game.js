@@ -812,8 +812,9 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<section id="buzzer-setup-section" class="buzzer-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="buzzer" aria-labelledby="buzzer-setup-title">/);
   assert.match(html, /<button id="buzzer-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="buzzer-setup-content" aria-disabled="true" disabled>/);
   assert.match(html, /<span id="buzzer-setup-title" class="setup-step-title">2\. In-person or Remote<\/span>/);
-  assert.match(html, /<input type="radio" name="buzzer-mode" value="in-person" checked \/>[\s\S]*In-person[\s\S]*Physical buzzers[\s\S]*id="buzzer-storybook-in-person-people"/);
-  assert.match(html, /<input type="radio" name="buzzer-mode" value="virtual" \/>[\s\S]*Virtual[\s\S]*Virtual buzzers[\s\S]*id="buzzer-storybook-virtual-devices"/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="in-person" checked \/>[\s\S]*In-person[\s\S]*Physical buzzers[\s\S]*id="buzzer-storybook-in-person-gathering"[\s\S]*id="buzzer-storybook-in-person-shared-buzzer"/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="virtual" \/>[\s\S]*Virtual[\s\S]*Virtual buzzers[\s\S]*id="buzzer-storybook-virtual-phone"[\s\S]*id="buzzer-storybook-virtual-people-connected"[\s\S]*id="buzzer-storybook-virtual-phone-buzzer"/);
+  assert.doesNotMatch(html, /buzzer-storybook-in-person-people|buzzer-storybook-virtual-devices|buzzer-storybook-virtual-signal/);
   assert.match(html, /<div id="virtual-buzzer-host-panel" class="virtual-buzzer-host-panel" hidden>/);
   assert.match(html, /<div id="virtual-buzzer-qr" class="virtual-buzzer-qr" aria-label="Virtual buzzer QR code"><\/div>/);
   assert.match(html, /<button id="continue-to-lesson-setup-button" type="button" class="primary-action">Continue to Lesson Setup<\/button>/);
