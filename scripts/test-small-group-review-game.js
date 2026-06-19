@@ -4,6 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const game = require('../docs/small-group-review-game.js');
+const virtualBuzzers = require('../docs/virtual-buzzer-service.js');
 
 function sampleGeneratedGame() {
   return {
@@ -189,48 +190,103 @@ test('requires clearing a generated game board when the confirmed players change
   }), false);
 });
 
+test('requires resetting virtual buzzers when the confirmed player roster changes', () => {
+  assert.equal(game.shouldResetVirtualBuzzersForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Daniel'],
+    hasVirtualSession: true,
+    selectedBuzzerMode: 'virtual',
+    buzzerSetupComplete: true,
+  }), true);
+
+  assert.equal(game.shouldResetVirtualBuzzersForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Daniel'],
+    hasVirtualSession: false,
+    selectedBuzzerMode: 'virtual',
+    buzzerSetupComplete: true,
+  }), true);
+
+  assert.equal(game.shouldResetVirtualBuzzersForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    hasVirtualSession: true,
+    selectedBuzzerMode: 'virtual',
+    buzzerSetupComplete: true,
+  }), false);
+
+  assert.equal(game.shouldResetVirtualBuzzersForPlayerSelectionChange({
+    currentPlayerNames: ['Ada', 'Boaz', 'Chloe'],
+    nextPlayerNames: ['Ada', 'Boaz', 'Daniel'],
+    hasVirtualSession: false,
+    selectedBuzzerMode: 'in-person',
+    buzzerSetupComplete: true,
+  }), false);
+});
+
 test('maps setup stages to the step that should be expanded', () => {
   assert.deepEqual(game.getSetupStepExpansionState('group'), {
     groupExpanded: true,
+    buzzerExpanded: false,
     lessonExpanded: false,
     difficultyExpanded: false,
     apiExpanded: false,
+    buzzerAvailable: false,
+    lessonAvailable: false,
+    difficultyAvailable: false,
+    apiAvailable: false,
+  });
+  assert.deepEqual(game.getSetupStepExpansionState('buzzer'), {
+    groupExpanded: false,
+    buzzerExpanded: true,
+    lessonExpanded: false,
+    difficultyExpanded: false,
+    apiExpanded: false,
+    buzzerAvailable: true,
     lessonAvailable: false,
     difficultyAvailable: false,
     apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('lesson'), {
     groupExpanded: false,
+    buzzerExpanded: false,
     lessonExpanded: true,
     difficultyExpanded: false,
     apiExpanded: false,
+    buzzerAvailable: true,
     lessonAvailable: true,
     difficultyAvailable: false,
     apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('difficulty'), {
     groupExpanded: false,
+    buzzerExpanded: false,
     lessonExpanded: false,
     difficultyExpanded: true,
     apiExpanded: false,
+    buzzerAvailable: true,
     lessonAvailable: true,
     difficultyAvailable: true,
     apiAvailable: false,
   });
   assert.deepEqual(game.getSetupStepExpansionState('api'), {
     groupExpanded: false,
+    buzzerExpanded: false,
     lessonExpanded: false,
     difficultyExpanded: false,
     apiExpanded: true,
+    buzzerAvailable: true,
     lessonAvailable: true,
     difficultyAvailable: true,
     apiAvailable: true,
   });
   assert.deepEqual(game.getSetupStepExpansionState('game'), {
     groupExpanded: false,
+    buzzerExpanded: false,
     lessonExpanded: false,
     difficultyExpanded: false,
     apiExpanded: false,
+    buzzerAvailable: true,
     lessonAvailable: true,
     difficultyAvailable: true,
     apiAvailable: true,
@@ -263,6 +319,171 @@ test('defines Berean Board difficulty levels and generation guidance', () => {
   assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Grade 12-16\+/);
   assert.match(game.buildDifficultyGenerationInstructions('theologian'), /Theological complexity and readability guidance/);
   assert.throws(() => game.requireDifficultyLevel(''), /difficulty level/i);
+});
+
+test('defines in-person and virtual buzzer modes with deterministic player colors', () => {
+  assert.deepEqual(
+    game.BUZZER_MODES.map(({ value, label, name }) => ({ value, label, name })),
+    [
+      { value: 'in-person', label: 'In-person', name: 'Physical buzzers' },
+      { value: 'virtual', label: 'Virtual', name: 'Virtual buzzers' },
+    ]
+  );
+  assert.equal(game.DEFAULT_BUZZER_MODE, 'in-person');
+  assert.equal(game.getBuzzerModeConfig('Virtual buzzers').value, 'virtual');
+  assert.equal(game.requireBuzzerMode('in-person').label, 'In-person');
+  assert.throws(() => game.requireBuzzerMode(''), /buzzer mode/i);
+
+  assert.deepEqual(game.BUZZER_COLORS.map(({ number, name, value }) => ({ number, name, value })), [
+    { number: 1, name: 'Blue', value: '#3b82f6' },
+    { number: 2, name: 'Purple', value: '#a855f7' },
+    { number: 3, name: 'Green', value: '#22c55e' },
+    { number: 4, name: 'Orange', value: '#f97316' },
+  ]);
+  assert.equal(game.getBuzzerColorForPlayerIndex(2).name, 'Green');
+  assert.equal(game.getBuzzerColorForContestantId('contestant-4').value, '#f97316');
+});
+
+test('builds virtual buzzer session records, join URLs, claims, and first-buzz payloads', () => {
+  const session = virtualBuzzers.buildVirtualBuzzerSessionRecord({
+    hostUid: 'host-123',
+    playerNames: ['Ada', 'Boaz', 'Chloe'],
+    nowMs: Date.UTC(2026, 0, 2, 3, 4, 5),
+  });
+
+  assert.equal(session.hostUid, 'host-123');
+  assert.equal(session.status, 'setup');
+  assert.equal(session.buzzRound, 0);
+  assert.equal(session.expiresAt, Date.UTC(2026, 0, 2, 7, 4, 5));
+  assert.deepEqual(session.playerNames, { 0: 'Ada', 1: 'Boaz', 2: 'Chloe' });
+  assert.deepEqual(session.playerClaims, {});
+  assert.deepEqual(session.buzz, { open: false, first: null, lockedOutPlayerIndexes: {} });
+
+  assert.equal(
+    virtualBuzzers.buildVirtualBuzzerJoinUrl({
+      origin: 'https://www.navtheway.com',
+      pathname: '/small-group-review-game',
+      sessionId: 'session_abc123',
+    }),
+    'https://www.navtheway.com/small-group-review-game?mode=buzz&session=session_abc123'
+  );
+
+  assert.deepEqual(virtualBuzzers.buildPlayerClaimValue({
+    uid: 'player-uid',
+    playerIndex: 1,
+    playerNames: ['Ada', 'Boaz'],
+    nowMs: 12345,
+  }), {
+    uid: 'player-uid',
+    playerName: 'Boaz',
+    buzzerNumber: 2,
+    claimedAt: 12345,
+  });
+
+  assert.deepEqual(virtualBuzzers.buildFirstBuzzValue({
+    uid: 'player-uid',
+    playerIndex: 1,
+    playerNames: ['Ada', 'Boaz'],
+    round: 3,
+    nowMs: 67890,
+  }), {
+    uid: 'player-uid',
+    playerIndex: 1,
+    playerName: 'Boaz',
+    buzzerNumber: 2,
+    round: 3,
+    buzzedAt: 67890,
+  });
+});
+
+test('normalizes virtual buzzer state and only enables eligible claimed players', () => {
+  const session = {
+    status: 'open',
+    buzzRound: 2,
+    playerNames: { 0: 'Ada', 1: 'Boaz', 2: 'Chloe' },
+    playerClaims: {
+      0: { uid: 'ada-uid', playerName: 'Ada', buzzerNumber: 1 },
+      2: { uid: 'chloe-uid', playerName: 'Chloe', buzzerNumber: 3 },
+    },
+    buzz: { open: true, first: null, lockedOutPlayerIndexes: [2] },
+  };
+
+  const normalized = virtualBuzzers.normalizeVirtualBuzzerSession(session);
+  assert.deepEqual(normalized.playerNames, ['Ada', 'Boaz', 'Chloe']);
+  assert.deepEqual(normalized.claims.map((claim) => claim?.uid || ''), ['ada-uid', '', 'chloe-uid']);
+  assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(normalized), [
+    { playerIndex: 0, playerName: 'Ada', buzzerNumber: 1, claimed: true, claimedByCurrentUser: false },
+    { playerIndex: 1, playerName: 'Boaz', buzzerNumber: 2, claimed: false, claimedByCurrentUser: false },
+    { playerIndex: 2, playerName: 'Chloe', buzzerNumber: 3, claimed: true, claimedByCurrentUser: false },
+  ]);
+
+  assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[0], uid: 'ada-uid' }), true);
+  assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[2], uid: 'chloe-uid' }), false);
+  assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: { ...normalized, buzz: { ...normalized.buzz, first: { uid: 'ada-uid' } } }, claim: normalized.claims[0], uid: 'ada-uid' }), false);
+});
+
+test('waits for Firebase Auth state before deciding to sign in anonymously', async () => {
+  const authWithReady = {
+    currentUser: null,
+    async authStateReady() {
+      this.currentUser = { uid: 'restored-user' };
+    },
+  };
+  assert.deepEqual(await virtualBuzzers.waitForInitialAuthUser(authWithReady, {}), { uid: 'restored-user' });
+
+  let unsubscribeCalled = false;
+  const observedUser = await virtualBuzzers.waitForInitialAuthUser({ currentUser: null }, {
+    onAuthStateChanged(_auth, next) {
+      next({ uid: 'observer-user' });
+      return () => { unsubscribeCalled = true; };
+    },
+  });
+  assert.deepEqual(observedUser, { uid: 'observer-user' });
+  assert.equal(unsubscribeCalled, true);
+});
+
+test('host buzzer resets use scoped writes so existing player claims are not revalidated as host data', async () => {
+  const writes = [];
+  const context = {
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async runTransaction(reference, updater) {
+          writes.push(['transaction', reference.pathName]);
+          const nextValue = updater(2);
+          return { committed: true, snapshot: { val: () => nextValue } };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  const result = await virtualBuzzers.resetBuzzersForHost({
+    context,
+    sessionId: 'session123456',
+    open: true,
+    lockedOutPlayerIndexes: [1],
+  });
+
+  assert.deepEqual(writes[0], ['transaction', 'sessions/session123456/buzzRound']);
+  assert.equal(writes[1][0], 'update');
+  assert.equal(writes[1][1], 'sessions/session123456');
+  assert.deepEqual(writes[1][2], {
+    status: 'open',
+    buzz: {
+      open: true,
+      first: null,
+      lockedOutPlayerIndexes: { 1: true },
+    },
+  });
+
+  assert.equal(result.committed, true);
+  assert.equal(result.snapshot.val().buzzRound, 3);
 });
 
 test('start over returns leaders to group setup before rebuilding a game', () => {
@@ -313,9 +534,19 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="clear-group-cookie-button" type="button"/);
   assert.match(html, /<section id="player-picker-panel"[^>]*hidden>/);
   assert.match(html, /<button id="randomize-players-button" type="button"/);
-  assert.match(html, /<button id="confirm-players-button" type="button" class="primary-action"/);
+  assert.match(html, /<button id="confirm-players-button" type="button" class="primary-action"[^>]*>Continue to In-person or Remote<\/button>/);
+  assert.match(html, /<section id="buzzer-setup-section" class="buzzer-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="buzzer" aria-labelledby="buzzer-setup-title">/);
+  assert.match(html, /<button id="buzzer-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="buzzer-setup-content" aria-disabled="true" disabled>/);
+  assert.match(html, /<span id="buzzer-setup-title" class="setup-step-title">2\. In-person or Remote<\/span>/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="in-person" checked \/>[\s\S]*In-person[\s\S]*Physical buzzers[\s\S]*id="buzzer-storybook-in-person-people"/);
+  assert.match(html, /<input type="radio" name="buzzer-mode" value="virtual" \/>[\s\S]*Virtual[\s\S]*Virtual buzzers[\s\S]*id="buzzer-storybook-virtual-devices"/);
+  assert.match(html, /<div id="virtual-buzzer-host-panel" class="virtual-buzzer-host-panel" hidden>/);
+  assert.match(html, /<div id="virtual-buzzer-qr" class="virtual-buzzer-qr" aria-label="Virtual buzzer QR code"><\/div>/);
+  assert.match(html, /<button id="continue-to-lesson-setup-button" type="button" class="primary-action">Continue to Lesson Setup<\/button>/);
+  assert.match(html, /<p id="buzzer-setup-status" class="game-status" aria-live="polite"><\/p>/);
   assert.match(html, /<section id="lesson-setup-section" class="lesson-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="lesson" aria-labelledby="lesson-setup-title">/);
   assert.match(html, /<button id="lesson-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="lesson-setup-content" aria-disabled="true" disabled>/);
+  assert.match(html, /<span id="lesson-setup-title" class="setup-step-title">3\. Add lesson files, topic, or instructions<\/span>/);
   assert.match(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /Or type the lesson topic, summary, or focus instructions/);
   assert.match(html, /focus more attention on/);
@@ -325,7 +556,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="lesson-setup-status" class="game-status" aria-live="polite"><\/p>/);
   assert.match(html, /<section id="difficulty-setup-section" class="difficulty-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="difficulty" aria-labelledby="difficulty-setup-title">/);
   assert.match(html, /<button id="difficulty-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="difficulty-setup-content" aria-disabled="true" disabled>/);
-  assert.match(html, /<span id="difficulty-setup-title" class="setup-step-title">3\. Choose the game difficulty<\/span>/);
+  assert.match(html, /<span id="difficulty-setup-title" class="setup-step-title">4\. Choose the game difficulty<\/span>/);
   assert.match(html, /theological complexity of the questions and the readability of the wording/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="child" \/>[\s\S]*Little Lamb[\s\S]*<span class="difficulty-option__grade">Grade 1-2<\/span>[\s\S]*<span class="difficulty-option__art difficulty-option__art--portrait" aria-hidden="true">[\s\S]*viewBox="0 0 96 132"[\s\S]*id="difficulty-storybook-lamb-face"/);
   assert.match(html, /<input type="radio" name="game-difficulty" value="preteen" \/>[\s\S]*Bible Explorer[\s\S]*<span class="difficulty-option__grade">Grade 4-5<\/span>[\s\S]*id="difficulty-storybook-explorer-compass"/);
@@ -344,11 +575,11 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /Target Flesch-Kincaid:/);
   assert.match(html, /<button id="continue-to-api-setup-button" type="button" class="primary-action" disabled>Continue to API Setup<\/button>/);
   assert.match(html, /<p id="difficulty-setup-status" class="game-status" aria-live="polite"><\/p>/);
-  assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>4\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
+  assert.doesNotMatch(html, /<div id="lesson-setup-content" class="setup-step-content" hidden>[\s\S]*<h2>5\. Connect to NTW’s API<\/h2>[\s\S]*<\/div>\s*<\/section>\s*<\/form>/);
   assert.match(html, /<section id="api-setup-section" class="api-setup-section setup-step setup-step--collapsed setup-step--locked" data-setup-step="api" aria-labelledby="api-setup-title">/);
   assert.match(html, /<button id="api-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="false" aria-controls="api-setup-content" aria-disabled="true" disabled>/);
-  assert.match(html, /<span id="api-setup-title" class="setup-step-title">4\. Connect to NTW’s API<\/span>/);
-  assert.doesNotMatch(html, /<span id="api-setup-title" class="setup-step-title">3\. Connect to NTW’s API<\/span>/);
+  assert.match(html, /<span id="api-setup-title" class="setup-step-title">5\. Connect to NTW’s API<\/span>/);
+  assert.doesNotMatch(html, /<span id="api-setup-title" class="setup-step-title">4\. Connect to NTW’s API<\/span>/);
   assert.match(html, /<div id="api-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /<div class="api-grid">/);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
@@ -357,8 +588,82 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-lesson-file-controls" \/>/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-lesson-drop-resilience"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260618-virtual-buzzers" \/>/);
+  assert.match(html, /<script src="firebase-config\.js\?v=20260618-virtual-buzzers"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260618-virtual-buzzers"><\/script>/);
+  assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260618-virtual-buzzers"><\/script>/);
+});
+
+
+
+test('documents developer-only Firebase setup and database rules for virtual buzzers', () => {
+  const guide = fs.readFileSync(path.join(__dirname, '..', 'docs', 'developer-docs', 'virtual-buzzers-firebase.md'), 'utf8');
+  const rules = fs.readFileSync(path.join(__dirname, '..', 'docs', 'developer-docs', 'virtual-buzzers-rtdb-rules.json'), 'utf8');
+
+  assert.match(guide, /Virtual Buzzers with Firebase/);
+  assert.match(guide, /small group leaders do not create rooms/i);
+  assert.match(guide, /Anonymous Authentication/);
+  assert.match(guide, /Realtime Database/);
+  assert.match(guide, /App Check/);
+  assert.match(guide, /Firebase config is public project identification/i);
+  assert.match(rules, /"\.read": false/);
+  assert.match(rules, /auth\.uid === data\.parent\(\)\.child\('hostUid'\)\.val\(\)/);
+  assert.match(rules, /newData\.child\('uid'\)\.val\(\) === auth\.uid/);
+  assert.match(rules, /newData\.child\('round'\)\.val\(\) === data\.parent\(\)\.parent\(\)\.child\('buzzRound'\)\.val\(\)/);
+  const parsedRules = JSON.parse(rules).rules.sessions.$sessionId;
+  assert.equal(Object.hasOwn(parsedRules.playerNames, '$playerIndex'), false);
+  assert.equal(Object.hasOwn(parsedRules.playerClaims, '$playerIndex'), false);
+  assert.equal(Object.hasOwn(parsedRules.buzz.lockedOutPlayerIndexes, '$playerIndex'), false);
+  ['0', '1', '2', '3'].forEach((playerIndex) => {
+    assert.equal(typeof parsedRules.playerNames[playerIndex]['.validate'], 'string');
+    assert.equal(parsedRules.playerClaims[playerIndex].$other['.validate'], false);
+    assert.equal(typeof parsedRules.buzz.lockedOutPlayerIndexes[playerIndex]['.validate'], 'string');
+  });
+  assert.equal(parsedRules.playerClaims.$other['.validate'], false);
+  assert.equal(parsedRules.buzz.first.$other['.validate'], false);
+});
+
+test('wires virtual buzzers into host/player UI and scoped session actions', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const service = fs.readFileSync(path.join(__dirname, '..', 'docs', 'virtual-buzzer-service.js'), 'utf8');
+
+  assert.match(html, /<section id="virtual-buzzer-player-screen" class="virtual-buzzer-player-screen" hidden>/);
+  assert.match(html, /<button id="virtual-buzzer-button" type="button" class="virtual-buzzer-button" disabled>BUZZ<\/button>/);
+  assert.match(html, /<section id="virtual-buzzer-game-panel" class="virtual-buzzer-game-panel" hidden>/);
+  assert.match(html, /<p id="virtual-buzzer-first" class="virtual-buzzer-first" aria-live="polite" hidden><\/p>/);
+  assert.match(js, /const virtualBuzzerService = ROOT\.NTWVirtualBuzzerService/);
+  assert.match(js, /function initializeVirtualBuzzerPlayerScreen/);
+  assert.match(js, /function createVirtualBuzzerHostSession/);
+  assert.match(js, /function openVirtualBuzzersForActiveClue/);
+  assert.match(js, /function handleVirtualFirstBuzz/);
+  assert.match(js, /function resetVirtualBuzzersForNextAttempt/);
+  assert.match(js, /function closeVirtualSession/);
+  assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
+  assert.match(js, /virtualBuzzerPlayerClaim = session\.claims\?\.find\(\(claim\) => claim\?\.uid === virtualBuzzerPlayerContext\?\.uid\) \|\| null/);
+  assert.match(js, /function shouldResetVirtualBuzzersForPlayerSelectionChange/);
+  assert.match(js, /void closeVirtualSession\(\);/);
+  assert.match(js, /Players changed, so virtual buzzers were reset/);
+  assert.match(service, /const FIREBASE_SDK_ORIGIN = \['https:', '', 'www\.gstatic\.com'\]\.join\('\/'\);/);
+  assert.match(service, /const FIREBASE_SIGNIN_SCRIPT = \[SDK_BASE, 'firebase-auth\.js'\]\.join\('\/'\);/);
+  assert.match(service, /function waitForInitialAuthUser/);
+  assert.match(service, /auth\?\.authStateReady/);
+  assert.ok(
+    js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'") < js.indexOf('if (isVirtualBuzzerPlayerRoute(window.location))'),
+    'player claim listener must be wired before the player-route early return'
+  );
+  assert.ok(
+    js.indexOf("virtualBuzzerButton?.addEventListener('click'") < js.indexOf('if (isVirtualBuzzerPlayerRoute(window.location))'),
+    'player buzz listener must be wired before the player-route early return'
+  );
+  assert.match(service, /runTransaction\(firstBuzzRef/);
+  assert.match(service, /runTransaction\(claimRef/);
+  assert.match(service, /runTransaction\(buzzRoundRef/);
+  assert.doesNotMatch(service, /runTransaction\(sessionRef/);
+
+  assert.match(service, /sessions\/\$\{sessionId\}\/playerClaims/);
+  assert.match(service, /sessions\/\$\{sessionId\}\/buzz/);
 });
 
 test('styles setup steps as expandable/collapsible panels', () => {
@@ -370,6 +675,9 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step--locked'), /opacity:\s*0\.58/);
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
+  assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 260px\), 1fr\)\)/);
+  assert.match(cssRule(css, '.virtual-buzzer-first strong'), /color:\s*var\(--virtual-buzzer-player-color, #ffce48\)/);
+  assert.match(cssRule(css, '.virtual-buzzer-button'), /min-height:\s*12rem/);
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 220px\), 1fr\)\)/);
   assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto max-content minmax\(0, 1fr\)/);
   assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 0\.52rem 0\.72rem 0\.78rem/);
