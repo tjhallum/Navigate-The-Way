@@ -530,6 +530,39 @@ test('Firebase config keeps legacy App Check site-key overrides on reCAPTCHA v3'
   assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY, 'legacy-override-site-key');
 });
 
+test('Firebase config treats an old in-file legacy App Check site key assignment as reCAPTCHA v3', () => {
+  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8');
+  const legacyFallbackLine = "window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY = window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey || '';";
+  const configuredLegacyLine = "window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY = window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || 'legacy-configured-site-key';";
+  const configuredScript = firebaseConfigScript.replace(legacyFallbackLine, configuredLegacyLine);
+  const sandbox = { window: {} };
+
+  assert.notEqual(configuredScript, firebaseConfigScript);
+  vm.runInNewContext(configuredScript, sandbox);
+
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-v3');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, 'legacy-configured-site-key');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY, 'legacy-configured-site-key');
+});
+
+test('Firebase config keeps explicit App Check objects ahead of legacy aliases', () => {
+  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8');
+  const sandbox = {
+    window: {
+      BEREAN_BOARD_FIREBASE_APP_CHECK: {
+        provider: 'recaptcha-enterprise',
+        siteKey: '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
+      },
+      BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-leftover-site-key',
+    },
+  };
+
+  vm.runInNewContext(firebaseConfigScript, sandbox);
+
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-enterprise');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr');
+});
+
 test('initializes Firebase App Check with reCAPTCHA Enterprise before Firebase services', async () => {
   const calls = [];
   const appInstance = { name: 'berean-board-virtual-buzzers' };
