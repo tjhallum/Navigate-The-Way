@@ -24,7 +24,7 @@ window.BEREAN_BOARD_FIREBASE_CONFIG = window.BEREAN_BOARD_FIREBASE_CONFIG || {
 };
 
 window.BEREAN_BOARD_FIREBASE_APP_CHECK = window.BEREAN_BOARD_FIREBASE_APP_CHECK || {
-  provider: 'recaptcha-enterprise',
+  provider: window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY ? 'recaptcha-v3' : 'recaptcha-enterprise',
   siteKey: window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || '6LcEjCctAAAAANI5ECfNQV1ZPe5AipYep-YGhGcr',
 };
 

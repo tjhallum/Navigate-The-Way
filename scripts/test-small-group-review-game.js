@@ -512,10 +512,10 @@ test('normalizes App Check config for enterprise and legacy v3 site keys', () =>
   assert.deepEqual(virtualBuzzers.getAppCheckConfig({
     BEREAN_BOARD_FIREBASE_APP_CHECK: { provider: 'enterprise', siteKey: 'checked-in-site-key' },
     BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-override-site-key',
-  }), { provider: 'recaptcha-enterprise', siteKey: 'legacy-override-site-key' });
+  }), { provider: 'recaptcha-enterprise', siteKey: 'checked-in-site-key' });
 });
 
-test('Firebase config seeds App Check defaults from a legacy site-key override', () => {
+test('Firebase config keeps legacy App Check site-key overrides on reCAPTCHA v3', () => {
   const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8');
   const sandbox = {
     window: {
@@ -525,7 +525,7 @@ test('Firebase config seeds App Check defaults from a legacy site-key override',
 
   vm.runInNewContext(firebaseConfigScript, sandbox);
 
-  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-enterprise');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-v3');
   assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, 'legacy-override-site-key');
   assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY, 'legacy-override-site-key');
 });
