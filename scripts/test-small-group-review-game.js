@@ -1082,7 +1082,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-player-name-selection"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-host-buzzer-audio"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
 
 
