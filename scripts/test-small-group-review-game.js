@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const game = require('../docs/small-group-review-game.js');
 const virtualBuzzers = require('../docs/virtual-buzzer-service.js');
@@ -507,6 +508,26 @@ test('normalizes App Check config for enterprise and legacy v3 site keys', () =>
   assert.deepEqual(virtualBuzzers.getAppCheckConfig({
     BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-v3-site-key',
   }), { provider: 'recaptcha-v3', siteKey: 'legacy-v3-site-key' });
+
+  assert.deepEqual(virtualBuzzers.getAppCheckConfig({
+    BEREAN_BOARD_FIREBASE_APP_CHECK: { provider: 'enterprise', siteKey: 'checked-in-site-key' },
+    BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-override-site-key',
+  }), { provider: 'recaptcha-enterprise', siteKey: 'legacy-override-site-key' });
+});
+
+test('Firebase config seeds App Check defaults from a legacy site-key override', () => {
+  const firebaseConfigScript = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase-config.js'), 'utf8');
+  const sandbox = {
+    window: {
+      BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY: 'legacy-override-site-key',
+    },
+  };
+
+  vm.runInNewContext(firebaseConfigScript, sandbox);
+
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.provider, 'recaptcha-enterprise');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK.siteKey, 'legacy-override-site-key');
+  assert.equal(sandbox.window.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY, 'legacy-override-site-key');
 });
 
 test('initializes Firebase App Check with reCAPTCHA Enterprise before Firebase services', async () => {
