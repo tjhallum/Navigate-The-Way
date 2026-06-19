@@ -10,6 +10,8 @@
   const FIREBASE_SIGNIN_SCRIPT = [SDK_BASE, 'firebase-auth.js'].join('/');
   const FIREBASE_DATABASE_URL = [SDK_BASE, 'firebase-database.js'].join('/');
   const FIREBASE_APP_CHECK_URL = [SDK_BASE, 'firebase-app-check.js'].join('/');
+  const APP_CHECK_PROVIDER_ENTERPRISE = 'recaptcha-enterprise';
+  const APP_CHECK_PROVIDER_V3 = 'recaptcha-v3';
 
   let sdkPromise = null;
 
@@ -250,8 +252,35 @@
     return hasUsableFirebaseConfig(config) ? config : null;
   }
 
+  function normalizeAppCheckProvider(value, fallback = APP_CHECK_PROVIDER_V3) {
+    const text = coerceText(value).toLowerCase();
+    if (text === APP_CHECK_PROVIDER_ENTERPRISE || text === 'enterprise' || text === 'recaptchaenterprise') {
+      return APP_CHECK_PROVIDER_ENTERPRISE;
+    }
+    if (text === APP_CHECK_PROVIDER_V3 || text === 'recaptcha-v3-provider' || text === 'recaptchav3' || text === 'v3') {
+      return APP_CHECK_PROVIDER_V3;
+    }
+    return fallback;
+  }
+
+  function getAppCheckConfig(root = ROOT) {
+    const config = root.BEREAN_BOARD_FIREBASE_APP_CHECK || root.NTWBereanBoardFirebaseAppCheck || null;
+    const legacySiteKey = coerceText(root.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || root.NTWBereanBoardFirebaseAppCheckSiteKey || '');
+    if (config && typeof config === 'object') {
+      return {
+        provider: normalizeAppCheckProvider(config.provider, APP_CHECK_PROVIDER_ENTERPRISE),
+        siteKey: coerceText(config.siteKey || config.recaptchaSiteKey || legacySiteKey),
+      };
+    }
+    return { provider: APP_CHECK_PROVIDER_V3, siteKey: legacySiteKey };
+  }
+
   function getAppCheckSiteKey(root = ROOT) {
-    return coerceText(root.BEREAN_BOARD_FIREBASE_APP_CHECK_SITE_KEY || root.NTWBereanBoardFirebaseAppCheckSiteKey || '');
+    return getAppCheckConfig(root).siteKey;
+  }
+
+  function getAppCheckProvider(root = ROOT) {
+    return getAppCheckConfig(root).provider;
   }
 
   function createSessionId(cryptoRef = ROOT.crypto) {
@@ -304,7 +333,7 @@
     });
   }
 
-  async function initializeFirebaseContext({ config = getFirebaseConfig(), appCheckSiteKey = getAppCheckSiteKey(), importer } = {}) {
+  async function initializeFirebaseContext({ config = getFirebaseConfig(), appCheckSiteKey = getAppCheckSiteKey(), appCheckProvider = getAppCheckProvider(), importer } = {}) {
     if (!hasUsableFirebaseConfig(config)) {
       throw new Error('Virtual buzzers need the Berean Board Firebase config to be set by the developer.');
     }
@@ -312,13 +341,25 @@
     const appName = 'berean-board-virtual-buzzers';
     const existingApp = sdk.app.getApps().find((candidate) => candidate.name === appName);
     const app = existingApp || sdk.app.initializeApp(config, appName);
-    if (appCheckSiteKey && sdk.appCheck?.initializeAppCheck && sdk.appCheck?.ReCaptchaV3Provider) {
+    let appCheck = null;
+    if (appCheckSiteKey) {
+      const normalizedAppCheckProvider = normalizeAppCheckProvider(appCheckProvider);
+      const Provider = normalizedAppCheckProvider === APP_CHECK_PROVIDER_ENTERPRISE
+        ? sdk.appCheck?.ReCaptchaEnterpriseProvider
+        : sdk.appCheck?.ReCaptchaV3Provider;
+      if (!sdk.appCheck?.initializeAppCheck || !Provider) {
+        throw new Error(`Firebase App Check ${normalizedAppCheckProvider} provider is unavailable.`);
+      }
       try {
-        sdk.appCheck.initializeAppCheck(app, {
-          provider: new sdk.appCheck.ReCaptchaV3Provider(appCheckSiteKey),
+        appCheck = sdk.appCheck.initializeAppCheck(app, {
+          provider: new Provider(appCheckSiteKey),
           isTokenAutoRefreshEnabled: true,
         });
-      } catch (_error) {
+      } catch (error) {
+        const duplicateMessage = `${error?.code || ''} ${error?.message || ''}`;
+        if (!/already|duplicate/i.test(duplicateMessage)) {
+          throw error;
+        }
         // App Check may already be initialized for this app instance.
       }
     }
@@ -326,7 +367,7 @@
     const existingUser = await waitForInitialAuthUser(auth, sdk.auth);
     const credential = existingUser || (await sdk.auth.signInAnonymously(auth)).user;
     const database = sdk.database.getDatabase(app);
-    return { sdk, app, auth, database, uid: credential.uid };
+    return { sdk, app, appCheck, auth, database, uid: credential.uid };
   }
 
   function sessionRefPath(sessionId) {
@@ -471,7 +512,9 @@
     FIREBASE_SDK_VERSION,
     hasUsableFirebaseConfig,
     getFirebaseConfig,
+    getAppCheckConfig,
     getAppCheckSiteKey,
+    getAppCheckProvider,
     createSessionId,
     normalizeSessionId,
     normalizePlayerNames,
