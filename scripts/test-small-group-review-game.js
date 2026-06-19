@@ -459,6 +459,19 @@ test('defines in-person and virtual buzzer modes with deterministic player color
   assert.equal(game.getBuzzerColorForContestantId('contestant-4').value, '#f97316');
 });
 
+test('host buzzer audio design is loud enough and long enough for a TV game-show buzz-in cue', () => {
+  assert.equal(game.HOST_BUZZER_SOUND_DURATION_SECONDS, 0.72);
+  assert.equal(game.HOST_BUZZER_SOUND_VOLUME, 0.38);
+  assert.ok(
+    game.HOST_BUZZER_SOUND_VOICES.reduce((total, { gain }) => total + gain, 0) >= 0.9,
+    'audible voice mix should be materially louder than the original quiet buzz'
+  );
+  assert.ok(
+    game.HOST_BUZZER_SOUND_VOICES.some(({ type, startFrequency }) => type === 'square' && startFrequency >= 520),
+    'the cue should include a bright square-wave game-show buzzer voice'
+  );
+});
+
 test('host buzzer audio controller safely no-ops when Web Audio is unavailable', () => {
   const controller = game.createHostBuzzerAudioController({ root: {} });
 
@@ -467,7 +480,7 @@ test('host buzzer audio controller safely no-ops when Web Audio is unavailable',
   assert.equal(controller.play(), false);
 });
 
-test('host buzzer audio controller primes silently and schedules a polished synthesized buzz', () => {
+test('host buzzer audio controller primes silently and schedules a louder game-show synthesized buzz', () => {
   const log = [];
   const controller = game.createHostBuzzerAudioController({
     root: createFakeAudioRoot(log),
@@ -493,7 +506,11 @@ test('host buzzer audio controller primes silently and schedules a polished synt
     game.HOST_BUZZER_SOUND_VOICES.map(({ type }) => type)
   );
   assert.equal(oscillatorStarts.some(([, type]) => type === 'sine'), false);
-  assert.ok(log.some(([event, name, value]) => event === 'param.exponential' && /frequency$/.test(name) && value <= 180));
+  assert.ok(log.some(([event, name, value]) => event === 'param.exponential' && /frequency$/.test(name) && value <= 220));
+  assert.ok(
+    log.some(([event, name, value, time]) => event === 'param.linear' && /gain$/.test(name) && value >= game.HOST_BUZZER_SOUND_VOLUME * 0.9 && time >= 12.26),
+    'the audible cue should have a second louder pulse so it reads like a TV game-show buzz-in'
+  );
   assert.ok(log.some(([event, source, destination]) => event === 'connect' && /^compressor-/.test(source) && destination === 'destination'));
   assert.ok(
     log
@@ -529,7 +546,7 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
 
-  assert.match(html, /host screen will play a short buzzer sound when a remote player buzzes in first/);
+  assert.match(html, /host screen will play a clear buzzer sound when a remote player buzzes in first/);
   assert.match(js, /const hostBuzzerAudio = createHostBuzzerAudioController\(\)/);
 
   const firstBuzzStart = js.indexOf('function handleVirtualFirstBuzz(firstBuzz)');
@@ -1082,7 +1099,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-host-buzzer-audio"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-louder-host-buzzer"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
 
