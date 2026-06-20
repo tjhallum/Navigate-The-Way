@@ -214,8 +214,11 @@ test('adds subsequent lesson file selections instead of replacing previous files
 test('detects file drags so the browser does not open lesson files accidentally', () => {
   assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain', 'Files'] } }), true);
   assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: { contains: (type) => type === 'Files' } } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['application/x-moz-file'], items: [{ kind: 'file' }], files: [] } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['public.file-url'], items: { length: 1, 0: { kind: 'file' } }, files: [] } }), true);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['files'], files: [] } }), true);
   assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: [], files: [{ name: 'lesson.pdf' }] } }), true);
-  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain'], files: [] } }), false);
+  assert.equal(game.fileDragEventHasFiles({ dataTransfer: { types: ['text/plain'], items: [{ kind: 'string' }], files: [] } }), false);
 });
 
 test('keeps lesson file drags associated with the drop zone when coordinates are still inside it', () => {
@@ -1164,7 +1167,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-lesson-files"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-file-drag-detection"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-lesson-files/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
