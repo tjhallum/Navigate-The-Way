@@ -2843,6 +2843,11 @@ body.has-active-clue-modal {
   cursor: pointer;
 }
 
+.contestant-choice--has-host-overrides {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
 .contestant-choice__label {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -2853,25 +2858,35 @@ body.has-active-clue-modal {
 
 .contestant-choice__body {
   display: grid;
+  min-width: 0;
   gap: 0.08rem;
+}
+
+.contestant-choice--has-host-overrides .contestant-choice__label {
+  min-width: 0;
 }
 
 .contestant-choice__name {
   color: #f9fbff;
   font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contestant-choice small {
   display: block;
   color: var(--muted);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contestant-choice__host-overrides {
-  position: absolute;
-  inset-block-start: 0.42rem;
-  inset-inline-end: 0.42rem;
-  z-index: 2;
+  position: static;
+  justify-self: end;
+  align-self: start;
   display: flex;
   flex-wrap: nowrap;
   gap: 0.22rem;
