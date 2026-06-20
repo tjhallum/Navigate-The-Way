@@ -2833,6 +2833,7 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice {
+  position: relative;
   grid-template-columns: 1fr;
   align-items: stretch;
   border: 1px solid var(--border);
@@ -2867,34 +2868,75 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice__host-overrides {
+  position: absolute;
+  inset-block-start: 0.42rem;
+  inset-inline-end: 0.42rem;
+  z-index: 2;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.32rem;
-  padding-left: 1.6rem;
+  flex-wrap: nowrap;
+  gap: 0.22rem;
+  padding: 0;
 }
 
 .contestant-choice__host-override-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.24rem;
-  border: 1px solid rgba(247, 199, 91, 0.45);
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 1px solid rgba(190, 207, 255, 0.32);
   border-radius: 999px;
-  padding: 0.22rem 0.46rem;
-  color: #fff6d8;
-  background: rgba(247, 199, 91, 0.12);
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.1;
+  padding: 0;
+  color: #eaf0ff;
+  background: rgba(8, 15, 32, 0.78);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.9;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.contestant-choice__host-override-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.contestant-choice__host-override-button[data-host-verdict-override="correct"] {
+  border-color: rgba(126, 239, 161, 0.58);
+  color: #baf7cb;
+  background: rgba(45, 152, 88, 0.18);
+}
+
+.contestant-choice__host-override-button[data-host-verdict-override="partial"] {
+  border-color: rgba(247, 199, 91, 0.58);
+  color: #ffe7a6;
+  background: rgba(247, 199, 91, 0.16);
+}
+
+.contestant-choice__host-override-button[data-host-verdict-override="incorrect"] {
+  border-color: rgba(255, 139, 154, 0.6);
+  color: #ffc3cc;
+  background: rgba(255, 90, 112, 0.16);
 }
 
 .contestant-choice__host-override-button:hover,
 .contestant-choice__host-override-button:focus-visible {
-  border-color: rgba(247, 199, 91, 0.78);
-  background: rgba(247, 199, 91, 0.22);
+  transform: translateY(-1px);
+  opacity: 1;
+  border-color: rgba(255, 225, 150, 0.84);
+  background: rgba(255, 206, 72, 0.2);
 }
 
 .contestant-choice--attempted {
-  opacity: 0.58;
+  border-color: rgba(122, 168, 255, 0.28);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.contestant-choice--attempted .contestant-choice__label {
+  opacity: 0.62;
 }
 
 .contestant-choice--disabled {

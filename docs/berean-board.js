@@ -1598,7 +1598,7 @@
     if (!outcome || outcome.verdict === 'correct') return [];
     if (outcome.verdict === 'partial') {
       return [
-        { decision: 'incorrect', label: 'Mark incorrect', icon: '✕' },
+        { decision: 'incorrect', label: 'Downgrade to incorrect', icon: '×' },
         { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
       ];
     }
@@ -4143,12 +4143,14 @@
       if (options.length === 0) return '';
       return `
         <div class="contestant-choice__host-overrides" aria-label="Host override options for ${escapeHtml(contestant.name)}">
-          ${options.map((option) => `
-            <button type="button" class="contestant-choice__host-override-button" data-host-verdict-override="${escapeHtml(option.decision)}" data-host-override-contestant-id="${escapeHtml(contestant.id)}" aria-label="${escapeHtml(`${option.label} for ${contestant.name}`)}">
-              <span aria-hidden="true">${escapeHtml(option.icon)}</span>
-              <span>${escapeHtml(option.label)}</span>
-            </button>
-          `).join('')}
+          ${options.map((option) => {
+            const tooltip = `${option.label} for ${contestant.name}`;
+            return `
+              <button type="button" class="contestant-choice__host-override-button" data-host-verdict-override="${escapeHtml(option.decision)}" data-host-override-contestant-id="${escapeHtml(contestant.id)}" aria-label="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}">
+                <span class="contestant-choice__host-override-icon" aria-hidden="true">${escapeHtml(option.icon)}</span>
+              </button>
+            `;
+          }).join('')}
         </div>
       `;
     }
