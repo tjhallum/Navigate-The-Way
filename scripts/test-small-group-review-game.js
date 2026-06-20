@@ -625,8 +625,8 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
     'the sound should play only after the first-buzz event is accepted as new'
   );
   assert.ok(
-    firstBuzzHandler.indexOf('hostBuzzerAudio.play();') < firstBuzzHandler.indexOf('disableVirtualBuzzersForHost();'),
-    'the host should hear the buzz before the Firebase best-effort lock runs'
+    firstBuzzHandler.indexOf('hostBuzzerAudio.play();') < firstBuzzHandler.indexOf('disableVirtualBuzzersForHost(firstBuzz.round);'),
+    'the host should hear the buzz before the round-guarded Firebase best-effort lock runs'
   );
 
   const modeChangedStart = js.indexOf('async function handleBuzzerModeChanged()');
@@ -639,6 +639,88 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   const manualChoiceStart = js.indexOf("contestantChoices?.addEventListener('change'");
   const manualChoiceEnd = js.indexOf("checkResponseButton?.addEventListener('click'", manualChoiceStart);
   assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
+});
+
+test('player buzzer screen requests a screen wake lock and reacquires it after visibility changes', async () => {
+  const calls = [];
+  let releaseHandler = null;
+  const sentinel = {
+    addEventListener(eventName, handler) {
+      if (eventName === 'release') releaseHandler = handler;
+    },
+    async release() {
+      calls.push(['release']);
+      if (releaseHandler) releaseHandler();
+    },
+  };
+  const documentRef = {
+    visibilityState: 'visible',
+    hidden: false,
+    listeners: {},
+    addEventListener(eventName, handler) {
+      this.listeners[eventName] = handler;
+    },
+    removeEventListener(eventName) {
+      delete this.listeners[eventName];
+    },
+  };
+  const root = {
+    navigator: {
+      wakeLock: {
+        async request(lockType) {
+          calls.push(['request', lockType]);
+          return sentinel;
+        },
+      },
+    },
+  };
+
+  const controller = game.createPlayerScreenWakeLockController({ root, documentRef });
+
+  assert.equal(await controller.request(), true);
+  assert.deepEqual(calls, [['request', 'screen']]);
+  documentRef.hidden = true;
+  documentRef.visibilityState = 'hidden';
+  await controller.handleVisibilityChange();
+  assert.deepEqual(calls, [['request', 'screen'], ['release']]);
+  documentRef.hidden = false;
+  documentRef.visibilityState = 'visible';
+  await controller.handleVisibilityChange();
+  assert.deepEqual(calls, [['request', 'screen'], ['release'], ['request', 'screen']]);
+  await controller.release();
+  assert.deepEqual(calls, [['request', 'screen'], ['release'], ['request', 'screen'], ['release']]);
+});
+
+test('player wake lock releases a pending request if the phone route stops needing it', async () => {
+  const calls = [];
+  let resolveRequest;
+  const sentinel = {
+    addEventListener() {},
+    async release() {
+      calls.push(['release']);
+    },
+  };
+  const root = {
+    navigator: {
+      wakeLock: {
+        request(lockType) {
+          calls.push(['request', lockType]);
+          return new Promise((resolve) => {
+            resolveRequest = resolve;
+          });
+        },
+      },
+    },
+  };
+
+  const controller = game.createPlayerScreenWakeLockController({ root, documentRef: { hidden: false, visibilityState: 'visible' } });
+  const requestPromise = controller.request();
+  const releasePromise = controller.release();
+  resolveRequest(sentinel);
+
+  assert.equal(await requestPromise, false);
+  assert.equal(await releasePromise, true);
+  assert.deepEqual(calls, [['request', 'screen'], ['release']]);
 });
 
 test('builds virtual buzzer session records, join URLs, claims, and first-buzz payloads', () => {
@@ -654,7 +736,7 @@ test('builds virtual buzzer session records, join URLs, claims, and first-buzz p
   assert.equal(session.expiresAt, Date.UTC(2026, 0, 2, 7, 4, 5));
   assert.deepEqual(session.playerNames, { 0: 'Ada', 1: 'Boaz', 2: 'Chloe' });
   assert.deepEqual(session.playerClaims, {});
-  assert.deepEqual(session.buzz, { open: false, first: null, lockedOutPlayerIndexes: {} });
+  assert.deepEqual(session.buzz, { round: 0, open: false, first: null, lockedOutPlayerIndexes: {} });
 
   assert.equal(
     virtualBuzzers.buildVirtualBuzzerJoinUrl({
@@ -1046,6 +1128,7 @@ test('host buzzer resets use scoped writes so existing player claims are not rev
   assert.deepEqual(writes[1][2], {
     status: 'open',
     buzz: {
+      round: 3,
       open: true,
       first: null,
       lockedOutPlayerIndexes: { 1: true },
@@ -1054,6 +1137,85 @@ test('host buzzer resets use scoped writes so existing player claims are not rev
 
   assert.equal(result.committed, true);
   assert.equal(result.snapshot.val().buzzRound, 3);
+  assert.equal(result.snapshot.val().buzz.round, 3);
+});
+
+test('host buzzer disables are round-guarded so stale locks cannot close a reopened attempt', async () => {
+  const writes = [];
+  const context = {
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async get(reference) {
+          writes.push(['get', reference.pathName]);
+          return { val: () => ({
+            round: 3,
+            open: true,
+            first: null,
+            lockedOutPlayerIndexes: { 0: true },
+          }) };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  const result = await virtualBuzzers.disableBuzzersForHost({
+    context,
+    sessionId: 'session123456',
+    expectedRound: 2,
+  });
+
+  assert.equal(result.committed, false);
+  assert.deepEqual(writes, [
+    ['get', 'sessions/session123456/buzz'],
+  ]);
+});
+
+test('host buzzer disables write a scoped lock when the expected round is current', async () => {
+  const writes = [];
+  const context = {
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async get(reference) {
+          writes.push(['get', reference.pathName]);
+          return { val: () => ({
+            round: 2,
+            open: true,
+            first: { uid: 'ada-uid', playerIndex: 0, round: 2 },
+            lockedOutPlayerIndexes: {},
+          }) };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  const result = await virtualBuzzers.disableBuzzersForHost({
+    context,
+    sessionId: 'session123456',
+    expectedRound: 2,
+  });
+
+  assert.equal(result.committed, true);
+  assert.deepEqual(writes, [
+    ['get', 'sessions/session123456/buzz'],
+    ['update', 'sessions/session123456/buzz', { open: false, lockRound: 2 }],
+  ]);
+  assert.equal(result.snapshot.val().open, false);
+  assert.equal(result.snapshot.val().round, 2);
+  assert.equal(result.snapshot.val().lockRound, 2);
 });
 
 test('start over returns leaders to group setup before rebuilding a game', () => {
@@ -1165,14 +1327,16 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-completed-review" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-reopen"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-file-drag-detection"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-remote-buzzer-reopen"><\/script>/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-lesson-files/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-file-drag-detection/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260619-app-check/);
 });
 
 
@@ -1197,6 +1361,10 @@ test('documents developer-only Firebase setup and database rules for virtual buz
   assert.equal(Object.hasOwn(parsedRules.playerNames, '$playerIndex'), false);
   assert.equal(Object.hasOwn(parsedRules.playerClaims, '$playerIndex'), false);
   assert.equal(Object.hasOwn(parsedRules.buzz.lockedOutPlayerIndexes, '$playerIndex'), false);
+  assert.match(parsedRules.buzz.round['.validate'], /newData\.parent\(\)\.parent\(\)\.child\('buzzRound'\)\.val\(\)/);
+  assert.match(parsedRules.buzz.open['.validate'], /child\('lockRound'\)\.isNumber\(\)/);
+  assert.match(parsedRules.buzz.open['.validate'], /child\('status'\)\.val\(\) === 'closed'/);
+  assert.match(parsedRules.buzz.lockRound['.validate'], /newData\.parent\(\)\.child\('round'\)\.val\(\)/);
   ['0', '1', '2', '3'].forEach((playerIndex) => {
     assert.equal(typeof parsedRules.playerNames[playerIndex]['.validate'], 'string');
     assert.match(parsedRules.playerClaims[playerIndex]['.write'], /child\('status'\)\.val\(\) !== 'closed'/);
@@ -1244,6 +1412,8 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
     playerInitializerSetup.indexOf('if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;') < playerInitializerSetup.indexOf('if (!virtualBuzzerService)'),
     'player-route error status must be visible even when the buzzer service fails to load'
   );
+  assert.match(playerInitializerSetup, /if \(!virtualBuzzerService\) \{\s+void playerWakeLock\.release\(\);/);
+  assert.match(js, /catch \(error\) \{\s+void playerWakeLock\.release\(\);\s+renderStatus\(virtualBuzzerPlayerStatus/);
   assert.ok(
     js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'") < js.indexOf('if (isVirtualBuzzerPlayerRoute(window.location))'),
     'player claim listener must be wired before the player-route early return'

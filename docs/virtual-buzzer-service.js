@@ -102,7 +102,7 @@
       buzzRound: 0,
       playerNames: objectFromPlayerNames(playerNames),
       playerClaims: {},
-      buzz: { open: false, first: null, lockedOutPlayerIndexes: {} },
+      buzz: { round: 0, open: false, first: null, lockedOutPlayerIndexes: {} },
     };
   }
 
@@ -185,6 +185,7 @@
       playerNames,
       claims,
       buzz: {
+        round: Math.max(0, Math.floor(Number(rawBuzz.round ?? first?.round ?? source.buzzRound) || 0)),
         open: Boolean(rawBuzz.open),
         first,
         lockedOutPlayerIndexes,
@@ -460,6 +461,7 @@
     }
     const nextRound = Number(roundResult.snapshot?.val?.()) || 0;
     const buzz = {
+      round: nextRound,
       open: Boolean(open),
       first: null,
       lockedOutPlayerIndexes: objectFromLockedOutPlayerIndexes(lockedOutPlayerIndexes),
@@ -477,11 +479,36 @@
     };
   }
 
-  async function disableBuzzersForHost({ context, sessionId }) {
-    await context.sdk.database.update(context.sdk.database.ref(context.database, sessionBuzzRefPath(sessionId)), {
-      open: false,
-    });
-    await setHostStatus(context, sessionId, 'locked');
+  async function disableBuzzersForHost({ context, sessionId, expectedRound = null } = {}) {
+    const buzzRef = context.sdk.database.ref(context.database, sessionBuzzRefPath(sessionId));
+    const hasExpectedRound = expectedRound !== null && expectedRound !== undefined && expectedRound !== '';
+    const guardedRound = Math.max(0, Math.floor(Number(expectedRound) || 0));
+    let currentBuzz = null;
+    let lockRound = hasExpectedRound ? guardedRound : null;
+    if (typeof context.sdk.database.get === 'function') {
+      currentBuzz = (await context.sdk.database.get(buzzRef))?.val?.() || null;
+      const currentRound = Math.max(0, Math.floor(Number(currentBuzz?.round ?? currentBuzz?.first?.round ?? 0) || 0));
+      if (hasExpectedRound && currentRound !== guardedRound) {
+        return { committed: false, snapshot: { val: () => currentBuzz } };
+      }
+      lockRound = currentRound;
+    }
+    const hasLockRound = Number.isInteger(lockRound) && lockRound >= 0;
+    const updateValue = hasLockRound
+      ? { open: false, lockRound }
+      : { open: false };
+    await context.sdk.database.update(buzzRef, updateValue);
+    return {
+      committed: true,
+      snapshot: {
+        val: () => ({
+          ...(currentBuzz || {}),
+          round: hasLockRound ? lockRound : Number(currentBuzz?.round || 0),
+          open: false,
+          ...(hasLockRound ? { lockRound } : {}),
+        }),
+      },
+    };
   }
 
   async function closeVirtualBuzzerSession({ context, sessionId }) {

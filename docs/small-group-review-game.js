@@ -406,6 +406,89 @@
     };
   }
 
+  function createPlayerScreenWakeLockController({ root = ROOT, documentRef = root?.document } = {}) {
+    let wakeLockSentinel = null;
+    let wakeLockRequestPromise = null;
+    let shouldHoldWakeLock = false;
+
+    function isSupported() {
+      return typeof root?.navigator?.wakeLock?.request === 'function';
+    }
+
+    function pageIsVisible() {
+      return !documentRef || (!documentRef.hidden && documentRef.visibilityState !== 'hidden');
+    }
+
+    async function releaseSentinel() {
+      const sentinel = wakeLockSentinel;
+      wakeLockSentinel = null;
+      if (sentinel && typeof sentinel.release === 'function') {
+        try {
+          await sentinel.release();
+        } catch (_error) {
+          // A wake lock may already have been released by the browser.
+        }
+      }
+    }
+
+    async function request() {
+      shouldHoldWakeLock = true;
+      if (!isSupported() || !pageIsVisible()) return false;
+      if (wakeLockSentinel) return true;
+      if (wakeLockRequestPromise) return wakeLockRequestPromise;
+      wakeLockRequestPromise = root.navigator.wakeLock.request('screen')
+        .then(async (sentinel) => {
+          if (!shouldHoldWakeLock || !pageIsVisible()) {
+            if (typeof sentinel?.release === 'function') {
+              try {
+                await sentinel.release();
+              } catch (_error) {
+                // A wake lock may already have been released by the browser.
+              }
+            }
+            return false;
+          }
+          wakeLockSentinel = sentinel;
+          if (typeof sentinel?.addEventListener === 'function') {
+            sentinel.addEventListener('release', () => {
+              if (wakeLockSentinel === sentinel) wakeLockSentinel = null;
+            });
+          }
+          return true;
+        })
+        .catch(() => false)
+        .finally(() => {
+          wakeLockRequestPromise = null;
+        });
+      return wakeLockRequestPromise;
+    }
+
+    async function handleVisibilityChange() {
+      if (!shouldHoldWakeLock) return false;
+      if (!pageIsVisible()) {
+        await releaseSentinel();
+        return false;
+      }
+      return request();
+    }
+
+    async function release() {
+      shouldHoldWakeLock = false;
+      if (wakeLockRequestPromise) {
+        await wakeLockRequestPromise;
+      }
+      await releaseSentinel();
+      return true;
+    }
+
+    return {
+      isSupported,
+      request,
+      release,
+      handleVisibilityChange,
+    };
+  }
+
   function getFileExtension(name) {
     const cleanName = String(name || '').toLowerCase();
     const dotIndex = cleanName.lastIndexOf('.');
@@ -2493,6 +2576,7 @@
     const virtualBuzzerButton = app.querySelector('#virtual-buzzer-button');
     const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
     const hostBuzzerAudio = createHostBuzzerAudioController();
+    const playerWakeLock = createPlayerScreenWakeLockController();
 
     let selectedFiles = [];
     let groupMemberNames = readSavedGroupMembersCookie(document.cookie);
@@ -2875,7 +2959,7 @@
         clueFeedback.innerHTML = `<strong style="color: ${color.value}">${escapeHtml(firstBuzz.playerName)}</strong> buzzed first. Type that player's response below.`;
       }
       updateVirtualBuzzerGamePanel();
-      disableVirtualBuzzersForHost();
+      disableVirtualBuzzersForHost(firstBuzz.round);
     }
 
     function handleVirtualBuzzerBuzzUpdate(rawBuzz) {
@@ -3032,11 +3116,24 @@
       await resetVirtualBuzzersForNextAttempt();
     }
 
-    async function disableVirtualBuzzersForHost() {
+    async function disableVirtualBuzzersForHost(expectedRound = virtualBuzzerSession?.buzz?.round ?? virtualBuzzerSession?.buzzRound) {
       if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId) return;
       try {
-        await virtualBuzzerService.disableBuzzersForHost({ context: virtualBuzzerContext, sessionId: virtualBuzzerSessionId });
-        mergeVirtualBuzzerSession({ status: 'locked', buzz: { ...(virtualBuzzerSession?.buzz || {}), open: false } });
+        const result = await virtualBuzzerService.disableBuzzersForHost({
+          context: virtualBuzzerContext,
+          sessionId: virtualBuzzerSessionId,
+          expectedRound,
+        });
+        const snapshotValue = result?.snapshot?.val?.() || {};
+        if (result?.committed) {
+          mergeVirtualBuzzerSession({
+            buzz: {
+              ...(virtualBuzzerSession?.buzz || {}),
+              ...snapshotValue,
+              open: false,
+            },
+          });
+        }
       } catch (_error) {
         // Best-effort only; the next reset/open transaction will recover.
       }
@@ -3091,6 +3188,7 @@
         } else if (session.status === 'closed' || (session.expiresAt && session.expiresAt < Date.now())) {
           virtualBuzzerPhoneStatus.textContent = 'This virtual buzzer session is closed.';
           if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+          void playerWakeLock.release();
         } else {
           virtualBuzzerPhoneStatus.textContent = 'Waiting for the host…';
         }
@@ -3103,7 +3201,9 @@
       if (setupForm) setupForm.hidden = true;
       if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;
       if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
+      void playerWakeLock.request();
       if (!virtualBuzzerService) {
+        void playerWakeLock.release();
         if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.disabled = true;
         if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
         renderStatus(virtualBuzzerPlayerStatus, 'Virtual buzzers are unavailable on this page load.', 'error');
@@ -3122,10 +3222,10 @@
           renderPlayerPhoneSession();
         });
       } catch (error) {
+        void playerWakeLock.release();
         renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not join the virtual buzzer session.', 'error');
       }
       return true;
-
     }
 
     function markDifficultySetupChanged() {
@@ -3383,9 +3483,11 @@
     }
 
     virtualBuzzerNameOptions?.addEventListener('change', () => {
+      void playerWakeLock.request();
       renderPlayerPhoneSession();
     });
     virtualBuzzerClaimButton?.addEventListener('click', async () => {
+      void playerWakeLock.request();
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession) return;
       if (virtualBuzzerService.isVirtualBuzzerSessionClosed?.(virtualBuzzerPlayerSession)) {
         renderStatus(virtualBuzzerPlayerStatus, 'This virtual buzzer session is closed.', 'error');
@@ -3414,6 +3516,7 @@
       }
     });
     virtualBuzzerButton?.addEventListener('click', async () => {
+      void playerWakeLock.request();
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession || !virtualBuzzerPlayerClaim) return;
       if (!virtualBuzzerService.canSubmitVirtualBuzz({ session: virtualBuzzerPlayerSession, claim: virtualBuzzerPlayerClaim, uid: virtualBuzzerPlayerContext.uid })) return;
       try {
@@ -3432,6 +3535,12 @@
         if (virtualBuzzerPhoneStatus) virtualBuzzerPhoneStatus.textContent = error.message || 'Could not send your buzz.';
         renderPlayerPhoneSession();
       }
+    });
+    document.addEventListener('visibilitychange', () => {
+      void playerWakeLock.handleVisibilityChange();
+    });
+    window.addEventListener('pagehide', () => {
+      void playerWakeLock.release();
     });
 
     if (isVirtualBuzzerPlayerRoute(window.location)) {
@@ -4243,6 +4352,7 @@
     HOST_BUZZER_SOUND_VOICES,
     scheduleHostBuzzerSound,
     createHostBuzzerAudioController,
+    createPlayerScreenWakeLockController,
     isSupportedLessonFile,
     addLessonFilesToSelection,
     fileDragEventHasFiles,
