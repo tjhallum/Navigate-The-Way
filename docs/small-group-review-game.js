@@ -763,6 +763,21 @@
     return partialCreditIds.map((contestantId) => ({ contestantId, points: fallbackPoints }));
   }
 
+  function normalizeNoCreditAwards(clue) {
+    const explicitAwards = Array.isArray(clue?.noCreditAwards)
+      ? clue.noCreditAwards
+      : [];
+    const awardsByContestantId = new Map();
+    explicitAwards.forEach((award) => {
+      const contestantId = coerceText(award?.contestantId ?? award?.contestant_id ?? award?.id);
+      const rawPoints = award?.points ?? award?.awardedPoints ?? award?.awarded_points ?? award?.pointsDelta ?? award?.points_delta ?? award?.delta;
+      const points = Number(rawPoints ?? 0);
+      if (!contestantId || !Number.isFinite(points) || points > 0) return;
+      awardsByContestantId.set(contestantId, (awardsByContestantId.get(contestantId) || 0) + Math.round(points));
+    });
+    return Array.from(awardsByContestantId, ([contestantId, points]) => ({ contestantId, points }));
+  }
+
   function buildCompletedClueReviewPresentation({ clue, contestants } = {}) {
     const outcome = getClueBoardCompletionOutcome(clue);
     const nameLookup = buildContestantNameLookup(contestants);
@@ -1315,6 +1330,7 @@
               ? [...new Set(rawClue.partialCreditContestantIds.map(String))]
               : [],
             partialCreditAwards: normalizePartialCreditAwards(rawClue),
+            noCreditAwards: normalizeNoCreditAwards(rawClue),
           };
         }),
       };
@@ -1345,6 +1361,7 @@
       attemptedContestantIds: Array.isArray(clue.attemptedContestantIds)
         ? [...clue.attemptedContestantIds]
         : [],
+      noCreditAwards: normalizeNoCreditAwards(clue),
     };
 
     if (normalizedDecision === 'reveal' || normalizedDecision === 'pass') {
@@ -1365,10 +1382,12 @@
     }
 
     if (normalizedDecision === 'wrong') {
-      nextContestants[contestantIndex].score -= Number(clue.value || 0);
+      const awardedPoints = -Number(clue.value || 0);
+      nextContestants[contestantIndex].score += awardedPoints;
       if (!nextClue.attemptedContestantIds.includes(contestantId)) {
         nextClue.attemptedContestantIds.push(contestantId);
       }
+      nextClue.noCreditAwards.push({ contestantId, points: awardedPoints });
       nextClue.completed = false;
       return { contestants: nextContestants, clue: nextClue };
     }
@@ -1475,7 +1494,12 @@
     const winningContestantId = String(clue?.winningContestantId || '').trim();
     const partialCreditAwards = normalizePartialCreditAwards(clue);
     const partialCreditIds = new Set(partialCreditAwards.map((award) => String(award.contestantId || '')));
+    const noCreditAwards = normalizeNoCreditAwards(clue);
+    const noCreditAwardIds = new Set(noCreditAwards.map((award) => String(award.contestantId || '')));
     partialCreditAwards.forEach((award) => {
+      addContestantDelta(deltas, award.contestantId, award.points);
+    });
+    noCreditAwards.forEach((award) => {
       addContestantDelta(deltas, award.contestantId, award.points);
     });
     if (winningContestantId) {
@@ -1485,7 +1509,7 @@
       ? [...new Set(clue.attemptedContestantIds.map(String).filter(Boolean))]
       : [];
     attemptedIds.forEach((contestantId) => {
-      if (contestantId === winningContestantId || partialCreditIds.has(contestantId)) return;
+      if (contestantId === winningContestantId || partialCreditIds.has(contestantId) || noCreditAwardIds.has(contestantId)) return;
       addContestantDelta(deltas, contestantId, -clueValue);
     });
     return deltas;
@@ -1535,6 +1559,7 @@
       partialCreditAwarded: 0,
       partialCreditContestantIds: [],
       partialCreditAwards: [],
+      noCreditAwards: [],
       hostOverrideApplied: true,
       hostOverrideDecision: decision,
       hostOverrideUpdatedAt: now,
@@ -1644,6 +1669,7 @@
         throw new Error('Incorrect-answer overrides cannot award positive points.');
       }
       nextContestants[contestantIndex].score += awardedPoints;
+      nextClue.noCreditAwards = [{ contestantId: contestantIdText, points: awardedPoints }];
       const allContestantsAttempted = nextContestants.length === 1;
       nextClue.completed = Boolean(complete) || allContestantsAttempted;
       nextClue.allContestantsMissed = nextClue.completed;
@@ -1693,6 +1719,7 @@
         ? [...clue.partialCreditContestantIds.map(String)]
         : [],
       partialCreditAwards: normalizePartialCreditAwards(clue),
+      noCreditAwards: normalizeNoCreditAwards(clue),
     };
     let awardedPoints = 0;
 
@@ -1716,6 +1743,7 @@
     } else {
       awardedPoints = -Number(clue.value || 0);
       nextContestants[contestantIndex].score += awardedPoints;
+      nextClue.noCreditAwards.push({ contestantId: contestantIdText, points: awardedPoints });
       nextClue.completed = false;
       if (!nextClue.attemptedContestantIds.includes(contestantIdText)) {
         nextClue.attemptedContestantIds.push(contestantIdText);
@@ -1761,6 +1789,7 @@
         ? [...clue.partialCreditContestantIds.map(String)]
         : [],
       partialCreditAwards: normalizePartialCreditAwards(clue),
+      noCreditAwards: normalizeNoCreditAwards(clue),
     };
     return {
       contestants: cloneContestants(contestants),
@@ -4174,6 +4203,9 @@
         renderScoreboard();
         renderBoard();
         maybeCloseVirtualSessionWhenGameComplete();
+        if (result.clue.completed) {
+          disableVirtualBuzzersForHost();
+        }
         openClue(result.clue.id);
         showHostOverrideStatus(hostOverrideSuccessMessage(result, decision, contestantName), 'success');
       } catch (error) {
