@@ -1890,6 +1890,23 @@ test('host outcome overrides replace NTW automated verdicts and update board sta
   assert.equal(reopenedAfterCustomIncorrect.contestants[0].score, 0);
   assert.equal(game.getClueBoardDisplayState({ clue: reopenedAfterCustomIncorrect.clue, value: 100 }).text, '$100');
 
+  const fractionalIncorrect = game.applyHostOverride({
+    contestants: corrected.contestants,
+    clue: corrected.clue,
+    decision: 'incorrect',
+    contestantId: 'contestant-1',
+    pointsDelta: -33.33,
+  });
+  assert.equal(fractionalIncorrect.contestants[0].score, -33.33);
+  assert.deepEqual(fractionalIncorrect.clue.noCreditAwards, [{ contestantId: 'contestant-1', points: -33.33 }]);
+
+  const reopenedAfterFractionalIncorrect = game.applyHostOverride({
+    contestants: fractionalIncorrect.contestants,
+    clue: fractionalIncorrect.clue,
+    decision: 'reopen',
+  });
+  assert.equal(reopenedAfterFractionalIncorrect.contestants[0].score, 0);
+
   const noBuzz = game.applyHostOverride({
     contestants: corrected.contestants,
     clue: corrected.clue,

@@ -772,7 +772,7 @@
       const rawPoints = award?.points ?? award?.awardedPoints ?? award?.awarded_points ?? award?.pointsDelta ?? award?.points_delta ?? award?.delta;
       const points = Number(rawPoints ?? 0);
       if (!contestantId || !Number.isFinite(points) || points > 0) return;
-      awardsByContestantId.set(contestantId, (awardsByContestantId.get(contestantId) || 0) + Math.round(points));
+      awardsByContestantId.set(contestantId, addScoreValues(awardsByContestantId.get(contestantId) || 0, points));
     });
     return Array.from(awardsByContestantId, ([contestantId, points]) => ({ contestantId, points }));
   }
