@@ -2834,6 +2834,7 @@ body.has-active-clue-modal {
 
 .contestant-choice {
   position: relative;
+  container-type: inline-size;
   grid-template-columns: 1fr;
   align-items: stretch;
   border: 1px solid var(--border);
@@ -2844,8 +2845,10 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice--has-host-overrides {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: 1fr;
+  align-content: start;
+  padding-block-start: 0.48rem;
+  padding-block-end: 1.95rem;
 }
 
 .contestant-choice__label {
@@ -2856,14 +2859,19 @@ body.has-active-clue-modal {
   cursor: inherit;
 }
 
+.contestant-choice--has-host-overrides .contestant-choice__label {
+  min-width: 0;
+  gap: 0.34rem;
+}
+
 .contestant-choice__body {
   display: grid;
   min-width: 0;
   gap: 0.08rem;
 }
 
-.contestant-choice--has-host-overrides .contestant-choice__label {
-  min-width: 0;
+.contestant-choice--has-host-overrides .contestant-choice__body {
+  gap: 0.03rem;
 }
 
 .contestant-choice__name {
@@ -2872,6 +2880,11 @@ body.has-active-clue-modal {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.contestant-choice--has-host-overrides .contestant-choice__name {
+  font-size: clamp(0.88rem, 8.2cqi, 1rem);
+  line-height: 1.05;
 }
 
 .contestant-choice small {
@@ -2883,12 +2896,19 @@ body.has-active-clue-modal {
   white-space: nowrap;
 }
 
+.contestant-choice--has-host-overrides small {
+  font-size: clamp(0.68rem, 6.2cqi, 0.82rem);
+  line-height: 1.05;
+}
+
 .contestant-choice__host-overrides {
-  position: static;
-  justify-self: end;
-  align-self: start;
+  position: absolute;
+  inset-block-end: 0.35rem;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-wrap: nowrap;
+  justify-content: center;
   gap: 0.22rem;
   padding: 0;
 }
@@ -2897,8 +2917,8 @@ body.has-active-clue-modal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
+  width: 1.4rem;
+  height: 1.4rem;
   border: 1px solid rgba(190, 207, 255, 0.32);
   border-radius: 999px;
   padding: 0;
