@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260620-virtual-buzzer-phone-fit" />
+  <link rel="stylesheet" href="styles.css?v=20260620-host-overrides-fit" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -143,7 +143,7 @@
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
           <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
           <li>Choose in-person play for physical buzzers, or Virtual buzzers for remote players using phones. The leader selects or receives the first buzzer, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
-          <li>Points are assigned automatically. Wrong answers subtract that clue’s value, biblically sound but not-by-the-book answers can each receive equal limited partial credit, correct answers receive the remaining clue value, and at least 40% of the clue value is preserved for a final fully correct answer.</li>
+          <li>Points are assigned automatically, and the human host remains in charge through override controls that can change incorrect/partial/correct results, adjust points, reopen a clue, or correct a no-buzz/all-missed outcome.</li>
         </ol>
         <p><strong>Important:</strong> this static GitHub Pages app cannot hide a server-side secret. Do not hardcode an API key into this repository. For a public/shared deployment, use a small server-side proxy with the key stored as a secret. This page only accepts the key at runtime in the leader’s browser.</p>
         <p>The default API configuration uses <a href="https://apologistproject.org/documentation/apologist-fusion/chat-completion">Apologist Fusion Chat Completions</a> at <code>https://navtheway.apologist.ai/api/v1/chat/completions</code>, language <code>en</code>, and premium model <code>openai/gpt/5.4</code>.</p>
@@ -683,6 +683,38 @@
             </div>
 
             <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
+            <div id="host-override-panel" class="host-override-panel" aria-labelledby="host-override-title">
+              <div>
+                <h3 id="host-override-title">Host override</h3>
+                <p>Use these controls to correct automated answer decisions, score changes, and clue state when appropriate.</p>
+              </div>
+              <div class="host-override-grid">
+                <label for="host-override-contestant">Contestant
+                  <select id="host-override-contestant">
+                    <option value="">Choose a contestant</option>
+                  </select>
+                </label>
+                <label for="host-override-decision">Decision
+                  <select id="host-override-decision">
+                    <option value="correct">Mark selected answer correct</option>
+                    <option value="partial">Mark selected answer partially correct</option>
+                    <option value="incorrect">Mark selected answer incorrect</option>
+                    <option value="no-buzz">Mark no one buzzed in</option>
+                    <option value="reopen">Reopen this clue</option>
+                    <option value="score-adjustment">Adjust selected contestant’s score only</option>
+                  </select>
+                </label>
+                <label for="host-override-points">Point change
+                  <input id="host-override-points" type="number" step="1" inputmode="numeric" placeholder="Auto by decision" />
+                </label>
+                <label class="host-override-checkbox" for="host-override-complete">
+                  <input id="host-override-complete" type="checkbox" />
+                  Complete and reveal after override
+                </label>
+              </div>
+              <button id="apply-host-override-button" type="button">Apply Host Override</button>
+              <p id="host-override-status" class="game-status" aria-live="polite"></p>
+            </div>
             <div class="clue-actions">
               <button id="no-buzz-button" type="button">No one buzzed in</button>
               <button id="close-clue-button" type="button">Back to Board</button>
@@ -707,6 +739,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260620-remote-buzzer-lockout-array"></script>
-<script src="small-group-review-game.js?v=20260620-virtual-buzzer-phone-fit"></script>
+<script src="small-group-review-game.js?v=20260620-host-overrides-fit"></script>
 </body>
 </html>

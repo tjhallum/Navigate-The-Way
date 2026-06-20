@@ -2450,6 +2450,8 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 .review-game-setup input:focus,
 .review-game-setup textarea:focus,
 .active-clue-panel textarea:focus,
+.active-clue-panel select:focus,
+.active-clue-panel input[type="number"]:focus,
 .contestant-choice:focus-within,
 .game-board__clue:focus-visible,
 .review-game-setup button:focus-visible,
@@ -2871,7 +2873,9 @@ body.has-active-clue-modal {
   font-weight: 650;
 }
 
-.active-clue-panel textarea {
+.active-clue-panel textarea,
+.active-clue-panel select,
+.active-clue-panel input[type="number"] {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2879,6 +2883,56 @@ body.has-active-clue-modal {
   color: var(--text);
   background: rgba(5, 11, 30, 0.92);
   font: inherit;
+}
+
+.host-override-panel {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.25rem 0;
+  padding: 0.62rem;
+  border: 1px solid rgba(122, 168, 255, 0.24);
+  border-radius: 12px;
+  background: rgba(122, 168, 255, 0.08);
+}
+
+.host-override-panel h3,
+.host-override-panel p {
+  margin: 0;
+}
+
+.host-override-panel p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.32;
+}
+
+.host-override-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 0.45rem;
+}
+
+.host-override-grid label,
+.host-override-checkbox {
+  display: grid;
+  gap: 0.26rem;
+  color: #dbe7ff;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.host-override-checkbox {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  align-self: end;
+}
+
+.host-override-checkbox input {
+  width: auto;
+}
+
+.host-override-panel .game-status {
+  margin: 0;
 }
 
 @media (max-width: 760px) {
