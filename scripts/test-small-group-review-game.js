@@ -255,7 +255,7 @@ test('renders removable lesson file controls and sticky drag-drop protection', (
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
 
   assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
-  assert.match(html, /Supported: text\/markup \(\.txt, \.md\/\.markdown, \.rtf, \.html\/\.htm, \.json, \.xml, \.yaml\/\.yml, \.tex\); documents \(\.pdf, \.doc\/\.docx, \.odt, \.pages\); slides \(\.ppt\/\.pptx, \.odp, \.key\); spreadsheets\/data \(\.csv, \.xls\/\.xlsx, \.ods\)/);
+  assert.match(html, /Supported: \.txt, \.md, \.markdown, \.rtf, \.html, \.htm, \.json, \.xml, \.yaml, \.yml, \.tex, \.pdf, \.doc, \.docx, \.odt, \.pages, \.ppt, \.pptx, \.odp, \.key, \.csv, \.xls, \.xlsx, \.ods/);
   ['.doc', '.docx', '.odt', '.pages', '.ppt', '.pptx', '.odp', '.key', '.csv', '.xls', '.xlsx', '.ods', '.xml', '.yaml', '.yml', '.tex'].forEach((extension) => {
     assert.match(html, new RegExp(extension.replace('.', '\\.')));
   });
