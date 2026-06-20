@@ -138,7 +138,7 @@
   ]);
   const PDF_MIME_TYPES = new Set(['application/pdf']);
   const GAME_RESPONSE_JSON_SCHEMA = {
-    name: 'ntw_small_group_review_game',
+    name: 'ntw_berean_board',
     strict: true,
     schema: {
       type: 'object',
@@ -1868,7 +1868,7 @@
           'Do not quote Scripture from memory. If exact Scripture text appears in the supplied lesson material, you may use that supplied text; otherwise cite references without fabricating verse wording.',
           'Do not invent doctrines, anecdotes, precise lesson details, or source claims that are not supported by the supplied material.',
           'Adjust both theological complexity and wording readability to the selected difficulty level, aiming for the selected Flesch-Kincaid grade range without weakening biblical or theological accuracy.',
-          'Keep the tone warm, clear, and suitable for a fun small group review activity.',
+          'Keep the tone warm, clear, and suitable for a fun Berean Board review activity.',
           'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
         ].join('\n'),
       },
@@ -1941,7 +1941,7 @@
       {
         role: 'user',
         content: [
-          'Judge this contestant response for a Bible small group review game.',
+          'Judge this contestant response for a Berean Board.',
           `Contestant: ${coerceText(contestantName, 'Selected contestant')}`,
           `Clue value: $${Number(clue.value || 0)}`,
           `Clue: ${coerceText(clue.clue)}`,
@@ -2745,8 +2745,8 @@
     element.textContent = message;
   }
 
-  function initializeSmallGroupGame() {
-    const app = document.querySelector('[data-small-group-review-game]');
+  function initializeBereanBoard() {
+    const app = document.querySelector('[data-berean-board]');
     if (!app) return;
     const virtualBuzzerService = ROOT.NTWVirtualBuzzerService;
 
@@ -4839,20 +4839,20 @@
     hasLessonSourceInput,
     buildLessonSourceContent,
     shouldSubmitResponseFromKeydown,
-    initializeSmallGroupGame,
+    initializeBereanBoard,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = publicApi;
   }
 
-  ROOT.NTWSmallGroupReviewGame = publicApi;
+  ROOT.NTWBereanBoard = publicApi;
 
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeSmallGroupGame);
+      document.addEventListener('DOMContentLoaded', initializeBereanBoard);
     } else {
-      initializeSmallGroupGame();
+      initializeBereanBoard();
     }
   }
 })();

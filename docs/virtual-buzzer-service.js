@@ -116,7 +116,7 @@
     const id = normalizeSessionId(sessionId);
     if (!id) throw new Error('A valid virtual buzzer session id is required for the join link.');
     const baseOrigin = coerceText(origin) || (ROOT.location?.origin || '');
-    const basePath = coerceText(pathname) || (ROOT.location?.pathname || '/small-group-review-game');
+    const basePath = coerceText(pathname) || (ROOT.location?.pathname || '/berean-board');
     const url = new URL(basePath, baseOrigin || 'https://www.navtheway.com');
     url.search = '';
     url.hash = '';

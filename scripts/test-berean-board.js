@@ -4,7 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const game = require('../docs/small-group-review-game.js');
+const game = require('../docs/berean-board.js');
 const virtualBuzzers = require('../docs/virtual-buzzer-service.js');
 
 function sampleGeneratedGame() {
@@ -204,7 +204,7 @@ test('adds subsequent lesson file selections instead of replacing previous files
     ['lesson-one.pdf', 'leader-guide.docx']
   );
 
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   assert.match(js, /function addSelectedFiles\(files\)/);
   assert.match(js, /fileInput\?\.addEventListener\('change', \(\) => addSelectedFiles\(fileInput\.files\)\)/);
   assert.match(js, /addSelectedFiles\(event\.dataTransfer\?\.files \|\| \[\]\)/);
@@ -250,9 +250,9 @@ test('removes selected lesson files by index without mutating the original list'
 });
 
 test('renders removable lesson file controls and sticky drag-drop protection', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
   assert.match(html, /Supported: \.txt, \.md, \.markdown, \.rtf, \.html, \.htm, \.json, \.xml, \.yaml, \.yml, \.tex, \.pdf, \.doc, \.docx, \.odt, \.pages, \.ppt, \.pptx, \.odp, \.key, \.csv, \.xls, \.xlsx, \.ods/);
@@ -610,8 +610,8 @@ test('host buzzer audio controller rate-limits repeats so buzzes are not obnoxio
 });
 
 test('virtual first-buzz host flow primes and plays the synthesized buzzer sound only for remote buzzes', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(html, /host screen will play a clear buzzer sound when a remote player buzzes in first/);
   assert.match(js, /const hostBuzzerAudio = createHostBuzzerAudioController\(\)/);
@@ -741,10 +741,10 @@ test('builds virtual buzzer session records, join URLs, claims, and first-buzz p
   assert.equal(
     virtualBuzzers.buildVirtualBuzzerJoinUrl({
       origin: 'https://www.navtheway.com',
-      pathname: '/small-group-review-game',
+      pathname: '/berean-board',
       sessionId: 'session_abc123',
     }),
-    'https://www.navtheway.com/small-group-review-game?mode=buzz&session=session_abc123'
+    'https://www.navtheway.com/berean-board?mode=buzz&session=session_abc123'
   );
 
   assert.deepEqual(virtualBuzzers.buildPlayerClaimValue({
@@ -1234,7 +1234,7 @@ test('host buzzer disables write a scoped lock when the expected round is curren
 });
 
 test('start over returns leaders to group setup before rebuilding a game', () => {
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   const resetHandlerMatch = js.match(/resetButton\?\.addEventListener\('click', \(\) => \{[\s\S]*?renderStatus\(setupStatus, 'Ready to build a new game\.', 'info'\);[\s\S]*?\n    \}\);/);
 
   assert.ok(resetHandlerMatch, 'expected Start Over click handler to be present');
@@ -1269,7 +1269,7 @@ test('keeps setup usable when browser local storage is unavailable', () => {
 });
 
 test('renders group setup wizard controls before lesson setup in the browser form', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
 
   assert.match(html, /<section id="group-setup-step" class="group-setup-step setup-step setup-step--expanded" data-setup-step="group" aria-labelledby="group-setup-title">/);
   assert.match(html, /<button id="group-setup-toggle" class="setup-step-toggle" type="button" aria-expanded="true" aria-controls="group-setup-content">/);
@@ -1345,21 +1345,22 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-adaptive-scoring"><\/script>/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-override-feedback/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260620-no-credit-cents"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-adaptive-scoring/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-host-override-feedback/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides-fit/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides-fit/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-host-overrides-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides"/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides"/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-host-overrides"/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-virtual-buzzer-phone-fit/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-virtual-buzzer-phone-fit/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-virtual-buzzer-phone-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260619-completed-review/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-remote-buzzer-reopen/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-lesson-files/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-partial-awards/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
-  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-file-drag-detection/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-remote-buzzer-reopen/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260619-lesson-files/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260619-partial-awards/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260619-host-buzzer-audio/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260619-player-name-selection/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-file-drag-detection/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260619-app-check/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-reopen/);
 });
@@ -1402,8 +1403,8 @@ test('documents developer-only Firebase setup and database rules for virtual buz
 });
 
 test('wires virtual buzzers into host/player UI and scoped session actions', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   const service = fs.readFileSync(path.join(__dirname, '..', 'docs', 'virtual-buzzer-service.js'), 'utf8');
 
   assert.match(html, /<section id="virtual-buzzer-player-screen" class="virtual-buzzer-player-screen" hidden>/);
@@ -1478,7 +1479,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route'), /height:\s*100vh;\s*height:\s*100dvh/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route main'), /height:\s*100vh;\s*height:\s*100dvh/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route main'), /height:\s*100dvh/);
-  assert.match(cssRule(css, 'body.virtual-buzzer-player-route .small-group-game-page'), /overflow:\s*hidden/);
+  assert.match(cssRule(css, 'body.virtual-buzzer-player-route .berean-board-page'), /overflow:\s*hidden/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-player-screen'), /grid-template-rows:\s*auto auto auto minmax\(0, 1fr\) auto auto/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-name-options span'), /overflow-wrap:\s*anywhere/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-button'), /height:\s*100%/);
@@ -1569,8 +1570,8 @@ test('preserves selected contestant while pending checks disable the radio group
 });
 
 test('does not focus a contestant choice before the leader selects who buzzed in', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(html, /<section id="active-clue-panel"[^>]*tabindex="-1"/);
   assert.doesNotMatch(js, /querySelector\('input\[name="active-contestant"\]:not\(:disabled\)'\)\?\.focus\(\)/);
@@ -1583,7 +1584,7 @@ test('clears stale contestant radio selections between clue modal sessions', () 
     { checked: true },
     { checked: false },
   ];
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   game.clearContestantChoiceSelection(inputs);
 
@@ -1819,9 +1820,9 @@ test('includes distinct board tile styles for correct partial and missed outcome
 });
 
 test('provides host override controls for every NTW answer-judgment outcome', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(html, /id="host-override-panel"/);
   assert.doesNotMatch(html, /NTW can be wrong/i);
@@ -1977,9 +1978,9 @@ test('host partial overrides default to cents-based adaptive scoring', () => {
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
-  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   const panelRule = cssRule(css, '.active-clue-panel');
   const cardRule = cssRule(css, '.active-clue-card');
   const contentRule = cssRule(css, '.active-clue-card__content');
@@ -2048,15 +2049,27 @@ test('formats sub-thousandth clue modal scales without collapsing to zero', () =
   assert.notEqual(formattedScale, '0');
 });
 
-test('uses game board wording consistently in small group game copy', () => {
+test('uses game board and Berean Board wording consistently in copy and filenames', () => {
   const copy = [
-    fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8'),
-    fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'llms.txt'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'llms-full.txt'), 'utf8'),
   ].join('\n');
+  const staleSlug = ['small', 'group', 'review', 'game'].join('-');
+  const staleNomenclature = new RegExp(['small', 'group', 'review', 'game'].join('[-_ ]'), 'i');
+  const renamedFiles = [
+    path.join(__dirname, '..', 'docs', 'berean-board.html'),
+    path.join(__dirname, '..', 'docs', 'berean-board.js'),
+    path.join(__dirname, '..', 'scripts', 'test-berean-board.js'),
+  ];
 
   assert.doesNotMatch(copy, /\breview[- ]board\b/i);
   assert.doesNotMatch(copy, new RegExp(`\\b${['jeop', 'ardy'].join('')}\\b`, 'i'));
+  assert.doesNotMatch(copy, staleNomenclature);
   assert.match(copy, /\bgame board\b/i);
+  assert.match(copy, /https:\/\/www\.navtheway\.com\/berean-board/);
+  assert.deepEqual(renamedFiles.filter((filePath) => path.basename(filePath).includes(staleSlug)), []);
 });
 
 test('normalizes and validates a generated five-by-five game board', () => {
@@ -2545,7 +2558,7 @@ test('builds Apologist Fusion chat completion request bodies', () => {
   assert.equal(body.model, 'openai/gpt/5.4');
   assert.equal(body.stream, false);
   assert.equal(body.response_format.type, 'json_schema');
-  assert.equal(body.response_format.json_schema.name, 'ntw_small_group_review_game');
+  assert.equal(body.response_format.json_schema.name, 'ntw_berean_board');
   assert.equal(body.response_format.json_schema.strict, true);
   assert.deepEqual(body.response_format.json_schema.schema.required, ['title', 'categories']);
   assert.equal(body.response_format.json_schema.schema.properties.categories.type, 'array');
