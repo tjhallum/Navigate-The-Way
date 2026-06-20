@@ -3150,9 +3150,14 @@
       const session = virtualBuzzerPlayerSession;
       const uid = virtualBuzzerPlayerContext?.uid || '';
       const sessionClosed = virtualBuzzerService.isVirtualBuzzerSessionClosed?.(session || {}) || false;
+      const hasClaim = Boolean(virtualBuzzerPlayerClaim);
+      document.body?.classList.toggle('virtual-buzzer-player-route--claimed', hasClaim);
+      if (virtualBuzzerNameOptions) virtualBuzzerNameOptions.hidden = hasClaim;
+      if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.hidden = hasClaim;
+      if (virtualBuzzerClaimedPanel) virtualBuzzerClaimedPanel.hidden = !hasClaim;
       const selectedPlayerIndex = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked')?.value ?? null;
       const claimOptions = virtualBuzzerService.getPlayerClaimOptions(session || {}, uid, selectedPlayerIndex);
-      if (virtualBuzzerNameOptions && !virtualBuzzerPlayerClaim) {
+      if (virtualBuzzerNameOptions && !hasClaim) {
         virtualBuzzerNameOptions.innerHTML = claimOptions.map((option) => {
           const inputId = `virtual-player-name-${option.playerIndex}`;
           const disabled = Boolean(option.disabled);
@@ -3163,11 +3168,10 @@
         }).join('');
       }
       if (virtualBuzzerClaimButton) {
-        virtualBuzzerClaimButton.disabled = sessionClosed || Boolean(virtualBuzzerPlayerClaim) || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
+        virtualBuzzerClaimButton.disabled = sessionClosed || hasClaim || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       }
       if (virtualBuzzerPlayerClaim) {
         const color = getBuzzerColorForPlayerIndex(virtualBuzzerPlayerClaim.playerIndex);
-        if (virtualBuzzerClaimedPanel) virtualBuzzerClaimedPanel.hidden = false;
         if (virtualBuzzerClaimedName) {
           virtualBuzzerClaimedName.textContent = `${virtualBuzzerPlayerClaim.playerName} — Buzzer #${virtualBuzzerPlayerClaim.buzzerNumber}`;
           virtualBuzzerClaimedName.style.setProperty('--virtual-buzzer-player-color', color.value);
@@ -3198,6 +3202,8 @@
     async function initializeVirtualBuzzerPlayerScreen() {
       if (!isVirtualBuzzerPlayerRoute(window.location)) return false;
       virtualBuzzerPlayerSessionId = getVirtualBuzzerSessionIdFromLocation(window.location);
+      document.body?.classList.add('virtual-buzzer-player-route');
+      document.body?.classList.remove('virtual-buzzer-player-route--claimed');
       if (setupForm) setupForm.hidden = true;
       if (virtualBuzzerPlayerScreen) virtualBuzzerPlayerScreen.hidden = false;
       if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
@@ -3511,6 +3517,7 @@
         virtualBuzzerPlayerClaim = { ...result.claim, playerIndex };
         renderStatus(virtualBuzzerPlayerStatus, 'Name claimed. Keep this screen open for the next question.', 'success');
         renderPlayerPhoneSession();
+        virtualBuzzerClaimedPanel?.focus({ preventScroll: true });
       } catch (error) {
         renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not claim that player name.', 'error');
       }

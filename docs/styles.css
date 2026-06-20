@@ -2054,6 +2054,165 @@ footer {
   opacity: 0.62;
 }
 
+html:has(body.virtual-buzzer-player-route) {
+  height: 100%;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+body.virtual-buzzer-player-route {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.virtual-buzzer-player-route header,
+body.virtual-buzzer-player-route footer,
+body.virtual-buzzer-player-route .page-header,
+body.virtual-buzzer-player-route .review-game-intro,
+body.virtual-buzzer-player-route #game-setup-form,
+body.virtual-buzzer-player-route #game-play-area {
+  display: none !important;
+}
+
+body.virtual-buzzer-player-route main {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+}
+
+body.virtual-buzzer-player-route .small-group-game-page {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: max(0.65rem, env(safe-area-inset-top)) max(0.7rem, env(safe-area-inset-right)) max(0.65rem, env(safe-area-inset-bottom)) max(0.7rem, env(safe-area-inset-left));
+  align-content: stretch;
+  justify-items: center;
+  gap: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(122, 168, 255, 0.22), transparent 18rem),
+    linear-gradient(180deg, rgba(18, 34, 71, 0.98), #040815 72%);
+  box-shadow: none;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-screen {
+  width: min(100%, 42rem);
+  max-width: 42rem;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  align-content: stretch;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  gap: clamp(0.42rem, 1.35dvh, 0.78rem);
+  overflow: hidden;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-screen .eyebrow,
+body.virtual-buzzer-player-route .virtual-buzzer-player-screen h2,
+body.virtual-buzzer-player-route #virtual-buzzer-player-status,
+body.virtual-buzzer-player-route .virtual-buzzer-phone-status,
+body.virtual-buzzer-player-route .virtual-buzzer-claimed-name {
+  text-align: center;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-screen .eyebrow {
+  font-size: clamp(0.68rem, 2.2vw, 0.82rem);
+  line-height: 1.1;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-screen h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 7.5vw, 3rem);
+  line-height: 1;
+}
+
+body.virtual-buzzer-player-route #virtual-buzzer-player-status,
+body.virtual-buzzer-player-route .virtual-buzzer-phone-status {
+  margin: 0;
+  min-height: 0;
+  font-size: clamp(0.88rem, 3.45vw, 1.08rem);
+  line-height: 1.22;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-name-options {
+  min-height: 0;
+  align-content: center;
+  gap: clamp(0.35rem, 1dvh, 0.55rem);
+  overflow: hidden;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-name-options label {
+  min-height: clamp(2.45rem, 7dvh, 3.25rem);
+  padding: 0.45rem 0.6rem;
+  line-height: 1.12;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-name-options small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: clamp(0.68rem, 2.4vw, 0.82rem);
+  white-space: nowrap;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-name-options span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.virtual-buzzer-player-route .primary-action {
+  min-height: clamp(2.65rem, 7dvh, 3.25rem);
+  padding: 0.48rem 0.7rem;
+  line-height: 1.1;
+}
+
+body.virtual-buzzer-player-route--claimed .virtual-buzzer-player-screen {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+body.virtual-buzzer-player-route--claimed .virtual-buzzer-player-screen h2 {
+  font-size: clamp(1.25rem, 5.5vw, 2.15rem);
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-claimed-panel {
+  min-height: 0;
+  align-self: stretch;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(0.45rem, 1.3dvh, 0.75rem);
+  overflow: hidden;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-claimed-name {
+  color: var(--virtual-buzzer-player-color, #f3f8ff);
+  font-size: clamp(1.05rem, 4.8vw, 1.85rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0.15rem 0.2rem;
+  border-radius: clamp(22px, 7vw, 38px) !important;
+  font-size: clamp(3.1rem, 18vw, 7rem);
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+}
+
 .virtual-buzzer-game-panel {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
