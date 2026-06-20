@@ -444,15 +444,43 @@
     ];
   }
 
+  function dataTransferListToArray(list) {
+    if (!list) return [];
+    try {
+      const values = Array.from(list);
+      if (values.length > 0) return values;
+    } catch (_error) {
+      // Some browser-provided drag lists are only array-like.
+    }
+    const length = Number(list.length) || 0;
+    const values = [];
+    for (let index = 0; index < length; index += 1) {
+      const item = typeof list.item === 'function' ? list.item(index) : list[index];
+      if (item !== undefined && item !== null) values.push(item);
+    }
+    return values;
+  }
+
+  function dataTransferTypesIncludeFileMarker(types) {
+    if (!types) return false;
+    if (typeof types.includes === 'function' && (types.includes('Files') || types.includes('files'))) return true;
+    if (typeof types.contains === 'function' && (types.contains('Files') || types.contains('files'))) return true;
+    const fileTypeMarkers = new Set(['files', 'application/x-moz-file', 'application/x-moz-file-promise', 'public.file-url']);
+    return dataTransferListToArray(types)
+      .some((type) => fileTypeMarkers.has(String(type || '').toLowerCase()));
+  }
+
+  function dataTransferItemsIncludeFile(items) {
+    return dataTransferListToArray(items)
+      .some((item) => String(item?.kind || '').toLowerCase() === 'file');
+  }
+
   function fileDragEventHasFiles(event) {
     const dataTransfer = event?.dataTransfer;
     if (!dataTransfer) return false;
-    const { types, files } = dataTransfer;
-    if (types) {
-      if (typeof types.includes === 'function' && types.includes('Files')) return true;
-      if (typeof types.contains === 'function' && types.contains('Files')) return true;
-      if (Array.from(types).includes('Files')) return true;
-    }
+    const { types, files, items } = dataTransfer;
+    if (dataTransferTypesIncludeFileMarker(types)) return true;
+    if (dataTransferItemsIncludeFile(items)) return true;
     return Boolean(files && files.length > 0);
   }
 
