@@ -123,9 +123,17 @@
           }
         },
         "buzz": {
+          "round": {
+            ".write": "auth != null && auth.uid === data.parent().parent().child('hostUid').val()",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() === newData.parent().parent().child('buzzRound').val()"
+          },
           "open": {
             ".write": "auth != null && auth.uid === data.parent().parent().child('hostUid').val()",
-            ".validate": "newData.isBoolean()"
+            ".validate": "newData.isBoolean() && (newData.val() === true || !data.exists() || newData.parent().parent().child('status').val() === 'closed' || (newData.parent().child('lockRound').isNumber() && newData.parent().child('lockRound').val() === data.parent().child('round').val()))"
+          },
+          "lockRound": {
+            ".write": "auth != null && auth.uid === data.parent().parent().child('hostUid').val()",
+            ".validate": "newData.isNumber() && newData.val() === newData.parent().child('round').val()"
           },
           "lockedOutPlayerIndexes": {
             ".write": "auth != null && auth.uid === data.parent().parent().child('hostUid').val()",
