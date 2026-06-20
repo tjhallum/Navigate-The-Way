@@ -4322,7 +4322,7 @@
       if (clueFeedback) {
         clueFeedback.textContent = isVirtualBuzzerMode()
           ? 'Virtual buzzers are opening. The first player to buzz will be selected automatically. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.'
-          : 'Call on the first person who buzzed in physically, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+          : 'Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
       }
       renderContestantChoices();
       cluePanel.hidden = false;
