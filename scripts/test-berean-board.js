@@ -1340,12 +1340,14 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-host-override-feedback" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-verdict-overrides" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260620-no-credit-cents"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260620-verdict-overrides"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260620-host-override-feedback/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-no-credit-cents/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-adaptive-scoring/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-host-override-feedback/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides-fit/);
@@ -1819,162 +1821,169 @@ test('includes distinct board tile styles for correct partial and missed outcome
   assert.match(cssRule(css, '.clue-review'), /rgba\(255, 206, 72, 0\.07\)/i);
 });
 
-test('provides host override controls for every NTW answer-judgment outcome', () => {
+test('hides host override controls until a contestant has an answer verdict', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
-  assert.match(html, /id="host-override-panel"/);
-  assert.doesNotMatch(html, /NTW can be wrong/i);
-  assert.match(html, /id="host-override-contestant"/);
-  assert.match(html, /id="host-override-decision"/);
-  assert.match(html, /value="correct"[\s\S]*Mark selected answer correct/);
-  assert.match(html, /value="partial"[\s\S]*Mark selected answer partially correct/);
-  assert.match(html, /value="incorrect"[\s\S]*Mark selected answer incorrect/);
-  assert.match(html, /value="no-buzz"[\s\S]*Mark no one buzzed in/);
-  assert.match(html, /value="reopen"[\s\S]*Reopen this clue/);
-  assert.match(html, /id="host-override-points"/);
-  assert.match(html, /id="apply-host-override-button"/);
-  assert.match(css, /\.host-override-panel\s*{/);
-  assert.match(js, /applyHostOverrideButton\?\.addEventListener\('click'/);
-  assert.match(js, /function handleHostOverride\(\)/);
-  assert.match(js, /getPartialCreditAward\(\{ clue: activeClue, contestantCount: contestants\.length \}\)/);
-  assert.doesNotMatch(js, /PARTIAL_CREDIT_(?:PER_RESPONSE|MAX_TOTAL)_FRACTION/);
-  assert.match(js, /if \(result\.clue\.completed\) \{\s*disableVirtualBuzzersForHost\(\);\s*\}/);
+  assert.doesNotMatch(html, /id="host-override-panel"/);
+  assert.doesNotMatch(html, /id="host-override-points"/);
+  assert.doesNotMatch(html, /Complete and reveal after override/);
+  assert.doesNotMatch(html, /score-adjustment|Adjust selected contestant/i);
+  assert.match(css, /\.contestant-choice__host-overrides\s*{/);
+  assert.match(cssRule(css, '.contestant-choice__host-overrides'), /display:\s*flex/i);
+  assert.match(css, /\.contestant-choice__host-override-button\s*{/);
+  assert.match(js, /data-host-verdict-override/);
+  assert.match(js, /function handleHostVerdictOverride\(/);
+  assert.match(js, /contestantChoices\?\.addEventListener\('click'/);
+  assert.doesNotMatch(js, /hostOverridePoints|hostOverrideComplete|applyHostScoreAdjustment/);
 });
 
-test('host outcome overrides replace NTW automated verdicts and update board state', () => {
+test('offers only verdict-safe host override options on attempted player tiles', () => {
   const contestants = game.createContestants(['Ada', 'Boaz']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
-  const automatedIncorrect = game.applyAnswerJudgment({
+
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue, contestantId: 'contestant-1' }), []);
+
+  const partial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  assert.deepEqual(game.getContestantAnswerOutcome({ clue: partial.clue, contestantId: 'contestant-1' }), {
+    verdict: 'partial',
+    label: 'Partial credit',
+  });
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: partial.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['incorrect', 'correct']);
+
+  const incorrect = game.applyAnswerJudgment({
     contestants,
     clue,
     contestantId: 'contestant-1',
     judgment: { verdict: 'incorrect' },
   });
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: incorrect.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['partial', 'correct']);
 
-  assert.equal(automatedIncorrect.contestants[0].score, -100);
-
-  const corrected = game.applyHostOverride({
-    contestants: automatedIncorrect.contestants,
-    clue: automatedIncorrect.clue,
-    decision: 'correct',
+  const correct = game.applyAnswerJudgment({
+    contestants,
+    clue,
     contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: correct.clue, contestantId: 'contestant-1' }), []);
+});
+
+test('host verdict overrides use normal scoring and derive reveal and buzzer state from the corrected outcome', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const automatedPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
   });
 
-  assert.equal(corrected.contestants[0].score, 100);
-  assert.equal(corrected.clue.completed, true);
-  assert.equal(corrected.clue.winningContestantId, 'contestant-1');
-  assert.equal(corrected.clue.hostOverrideApplied, true);
-  assert.deepEqual(game.getClueBoardDisplayState({ clue: corrected.clue, value: 100 }), {
+  assert.equal(automatedPartial.contestants[0].score, 33.33);
+  const upgraded = game.applyHostVerdictOverride({
+    contestants: automatedPartial.contestants,
+    clue: automatedPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'correct',
+  });
+
+  assert.equal(upgraded.contestants[0].score, 100);
+  assert.equal(upgraded.clue.completed, true);
+  assert.equal(upgraded.clue.winningContestantId, 'contestant-1');
+  assert.equal(upgraded.clue.partialCreditAwarded, 0);
+  assert.equal(upgraded.answerShouldBeRevealed, true);
+  assert.equal(upgraded.buzzersShouldBeOpen, false);
+  assert.equal(upgraded.clue.hostOverrideApplied, true);
+  assert.deepEqual(game.getClueBoardDisplayState({ clue: upgraded.clue, value: 100 }), {
     text: '✓',
     className: 'game-board__clue is-complete is-correct',
     disabled: false,
     ariaLabel: '$100 clue answered correctly. Review result',
   });
 
-  const customIncorrect = game.applyHostOverride({
-    contestants: corrected.contestants,
-    clue: corrected.clue,
-    decision: 'incorrect',
-    contestantId: 'contestant-1',
-    pointsDelta: -50,
-  });
-  assert.equal(customIncorrect.contestants[0].score, -50);
-  assert.deepEqual(customIncorrect.clue.noCreditAwards, [{ contestantId: 'contestant-1', points: -50 }]);
-
-  const reopenedAfterCustomIncorrect = game.applyHostOverride({
-    contestants: customIncorrect.contestants,
-    clue: customIncorrect.clue,
-    decision: 'reopen',
-  });
-  assert.equal(reopenedAfterCustomIncorrect.contestants[0].score, 0);
-  assert.equal(game.getClueBoardDisplayState({ clue: reopenedAfterCustomIncorrect.clue, value: 100 }).text, '$100');
-
-  const fractionalIncorrect = game.applyHostOverride({
-    contestants: corrected.contestants,
-    clue: corrected.clue,
-    decision: 'incorrect',
-    contestantId: 'contestant-1',
-    pointsDelta: -33.33,
-  });
-  assert.equal(fractionalIncorrect.contestants[0].score, -33.33);
-  assert.deepEqual(fractionalIncorrect.clue.noCreditAwards, [{ contestantId: 'contestant-1', points: -33.33 }]);
-
-  const reopenedAfterFractionalIncorrect = game.applyHostOverride({
-    contestants: fractionalIncorrect.contestants,
-    clue: fractionalIncorrect.clue,
-    decision: 'reopen',
-  });
-  assert.equal(reopenedAfterFractionalIncorrect.contestants[0].score, 0);
-
-  const noBuzz = game.applyHostOverride({
-    contestants: corrected.contestants,
-    clue: corrected.clue,
-    decision: 'no-buzz',
-  });
-  assert.equal(noBuzz.contestants[0].score, 0);
-  assert.equal(noBuzz.clue.completed, true);
-  assert.equal(noBuzz.clue.noContestantsBuzzed, true);
-  assert.equal(game.getClueBoardDisplayState({ clue: noBuzz.clue, value: 100 }).text, '✕');
-
-  const partialComplete = game.applyHostOverride({
-    contestants: noBuzz.contestants,
-    clue: noBuzz.clue,
-    decision: 'partial',
-    contestantId: 'contestant-2',
-    pointsDelta: 30,
-    complete: true,
-  });
-  assert.equal(partialComplete.contestants[1].score, 30);
-  assert.equal(partialComplete.clue.completed, true);
-  assert.equal(partialComplete.clue.partialCreditAwarded, 30);
-  assert.equal(game.getClueBoardDisplayState({ clue: partialComplete.clue, value: 100 }).text, '⚠');
-
-  const reopened = game.applyHostOverride({
-    contestants: partialComplete.contestants,
-    clue: partialComplete.clue,
-    decision: 'reopen',
-  });
-  assert.equal(reopened.contestants[1].score, 0);
-  assert.equal(reopened.clue.completed, false);
-  assert.deepEqual(reopened.clue.attemptedContestantIds, []);
-  assert.equal(game.getClueBoardDisplayState({ clue: reopened.clue, value: 100 }).text, '$100');
-});
-
-test('host score adjustments let leaders correct points independently from NTW verdict state', () => {
-  const contestants = game.createContestants(['Ada', 'Boaz']);
-  const adjusted = game.applyHostScoreAdjustment({
-    contestants,
-    contestantId: 'contestant-2',
-    pointsDelta: -75,
-  });
-
-  assert.equal(adjusted.contestants[0].score, 0);
-  assert.equal(adjusted.contestants[1].score, -75);
-  const centsAdjusted = game.applyHostScoreAdjustment({
-    contestants,
-    contestantId: 'contestant-1',
-    pointsDelta: -33.33,
-  });
-  assert.equal(centsAdjusted.contestants[0].score, -33.33);
-  assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: '', pointsDelta: 10 }), /Choose a contestant/i);
-  assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: 'contestant-1', pointsDelta: Number.NaN }), /valid point adjustment/i);
-});
-
-test('host partial overrides default to cents-based adaptive scoring', () => {
-  const contestants = game.createContestants(['Ada', 'Boaz']);
-  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
-  const partial = game.applyHostOverride({
+  const automatedIncorrect = game.applyAnswerJudgment({
     contestants,
     clue,
-    decision: 'partial',
     contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+  assert.equal(automatedIncorrect.contestants[0].score, -100);
+  const upgradedToPartial = game.applyHostVerdictOverride({
+    contestants: automatedIncorrect.contestants,
+    clue: automatedIncorrect.clue,
+    contestantId: 'contestant-1',
+    decision: 'partial',
   });
 
-  assert.equal(partial.awardedPoints, 33.33);
-  assert.equal(partial.contestants[0].score, 33.33);
-  assert.equal(partial.clue.partialCreditAwarded, 33.33);
+  assert.equal(upgradedToPartial.contestants[0].score, 33.33);
+  assert.equal(upgradedToPartial.clue.completed, false);
+  assert.equal(upgradedToPartial.clue.partialCreditAwarded, 33.33);
+  assert.equal(upgradedToPartial.answerShouldBeRevealed, false);
+  assert.equal(upgradedToPartial.buzzersShouldBeOpen, true);
+  assert.deepEqual(upgradedToPartial.clue.noCreditAwards, []);
+
+  const downgradedToIncorrect = game.applyHostVerdictOverride({
+    contestants: automatedPartial.contestants,
+    clue: automatedPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+  assert.equal(downgradedToIncorrect.contestants[0].score, -100);
+  assert.equal(downgradedToIncorrect.clue.completed, false);
+  assert.equal(downgradedToIncorrect.answerShouldBeRevealed, false);
+  assert.equal(downgradedToIncorrect.buzzersShouldBeOpen, true);
+  assert.deepEqual(downgradedToIncorrect.clue.noCreditAwards, [{ contestantId: 'contestant-1', points: -100 }]);
+});
+
+test('host verdict overrides complete and reveal only when the corrected state exhausts available credit', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const partial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const allAttempted = game.applyAnswerJudgment({
+    contestants: partial.contestants,
+    clue: partial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'incorrect' },
+  });
+
+  assert.equal(allAttempted.clue.completed, true);
+  assert.equal(game.getClueBoardDisplayState({ clue: allAttempted.clue, value: 100 }).text, '⚠');
+
+  const downgradedPartial = game.applyHostVerdictOverride({
+    contestants: allAttempted.contestants,
+    clue: allAttempted.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+  assert.equal(downgradedPartial.contestants[0].score, -100);
+  assert.equal(downgradedPartial.contestants[1].score, -100);
+  assert.equal(downgradedPartial.clue.completed, true);
+  assert.equal(downgradedPartial.answerShouldBeRevealed, true);
+  assert.equal(downgradedPartial.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: downgradedPartial.clue, value: 100 }).text, '✕');
+
+  assert.throws(() => game.applyHostVerdictOverride({
+    contestants: allAttempted.contestants,
+    clue: allAttempted.clue,
+    contestantId: 'contestant-2',
+    decision: 'incorrect',
+  }), /already marked incorrect/i);
+  assert.throws(() => game.applyHostVerdictOverride({
+    contestants: allAttempted.contestants,
+    clue: allAttempted.clue,
+    contestantId: 'contestant-1',
+    decision: 'reopen',
+  }), /valid host verdict/i);
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {

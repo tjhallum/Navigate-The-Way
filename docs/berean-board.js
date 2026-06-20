@@ -1543,26 +1543,12 @@
     return nextContestants;
   }
 
-  function normalizeHostOverrideDecision(value) {
+  function normalizeHostVerdictOverrideDecision(value) {
     const normalized = coerceText(value).toLowerCase().replace(/[\s_]+/g, '-');
-    if (['correct', 'partial', 'incorrect', 'no-buzz', 'reopen', 'score-adjustment'].includes(normalized)) {
-      return normalized;
-    }
-    if (normalized === 'wrong') return 'incorrect';
-    if (normalized === 'nobuzz' || normalized === 'no-one-buzzed' || normalized === 'no-contestants-buzzed') return 'no-buzz';
-    if (normalized === 'adjust-score' || normalized === 'score') return 'score-adjustment';
-    throw new Error('Choose a valid host override decision.');
-  }
-
-  function normalizeOptionalPointDelta(rawValue, fallback, errorMessage = 'Enter a valid point adjustment.') {
-    if (rawValue === undefined || rawValue === null || rawValue === '') {
-      return centsToScore(scoreToCents(fallback));
-    }
-    const points = Number(rawValue);
-    if (!Number.isFinite(points)) {
-      throw new Error(errorMessage);
-    }
-    return centsToScore(scoreToCents(points));
+    if (['correct', 'partial', 'incorrect'].includes(normalized)) return normalized;
+    if (normalized === 'full' || normalized === 'full-credit') return 'correct';
+    if (normalized === 'wrong' || normalized === 'no-credit') return 'incorrect';
+    throw new Error('Choose a valid host verdict override.');
   }
 
   function baseHostOverrideClue(clue, decision, now = new Date().toISOString()) {
@@ -1584,120 +1570,169 @@
     };
   }
 
-  function requireHostOverrideContestant(nextContestants, contestantId) {
+  function getContestantAnswerOutcome({ clue, contestantId } = {}) {
+    const contestantIdText = String(contestantId || '').trim();
+    if (!clue || !contestantIdText) return null;
+    if (String(clue.winningContestantId || '') === contestantIdText) {
+      return { verdict: 'correct', label: 'Full credit' };
+    }
+    const partialCreditAwards = normalizePartialCreditAwards(clue);
+    const partialCreditIds = Array.isArray(clue.partialCreditContestantIds)
+      ? clue.partialCreditContestantIds.map(String)
+      : [];
+    if (partialCreditIds.includes(contestantIdText) || partialCreditAwards.some((award) => String(award.contestantId || '') === contestantIdText)) {
+      return { verdict: 'partial', label: 'Partial credit' };
+    }
+    const noCreditAwards = normalizeNoCreditAwards(clue);
+    const attemptedIds = Array.isArray(clue.attemptedContestantIds)
+      ? clue.attemptedContestantIds.map(String)
+      : [];
+    if (attemptedIds.includes(contestantIdText) || noCreditAwards.some((award) => String(award.contestantId || '') === contestantIdText)) {
+      return { verdict: 'incorrect', label: 'Incorrect' };
+    }
+    return null;
+  }
+
+  function getHostOverrideOptionsForContestant({ clue, contestantId } = {}) {
+    const outcome = getContestantAnswerOutcome({ clue, contestantId });
+    if (!outcome || outcome.verdict === 'correct') return [];
+    if (outcome.verdict === 'partial') {
+      return [
+        { decision: 'incorrect', label: 'Mark incorrect', icon: '✕' },
+        { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
+      ];
+    }
+    if (outcome.verdict === 'incorrect') {
+      return [
+        { decision: 'partial', label: 'Upgrade to partial credit', icon: '½' },
+        { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
+      ];
+    }
+    return [];
+  }
+
+  function clueHasHostVerdictOverrideOptions(clue, contestants) {
+    return (Array.isArray(contestants) ? contestants : []).some((contestant) => getHostOverrideOptionsForContestant({
+      clue,
+      contestantId: contestant?.id,
+    }).length > 0);
+  }
+
+  function buildContestantVerdictSequence(clue) {
+    const ids = [];
+    const addId = (id) => {
+      const contestantId = String(id || '').trim();
+      if (contestantId && !ids.includes(contestantId)) ids.push(contestantId);
+    };
+    (Array.isArray(clue?.attemptedContestantIds) ? clue.attemptedContestantIds : []).forEach(addId);
+    normalizePartialCreditAwards(clue).forEach((award) => addId(award.contestantId));
+    normalizeNoCreditAwards(clue).forEach((award) => addId(award.contestantId));
+    addId(clue?.winningContestantId);
+    return ids.map((contestantId) => {
+      const outcome = getContestantAnswerOutcome({ clue, contestantId });
+      return outcome ? { contestantId, verdict: outcome.verdict } : null;
+    }).filter(Boolean);
+  }
+
+  function requireHostVerdictOverrideContestant(nextContestants, contestantId) {
     const contestantIdText = String(contestantId || '').trim();
     const contestantIndex = nextContestants.findIndex((contestant) => contestant.id === contestantIdText);
     if (contestantIndex < 0) {
-      throw new Error('Choose a contestant before applying this host override.');
+      throw new Error('Choose a contestant with an answer verdict before applying a host override.');
     }
     return { contestantIdText, contestantIndex };
   }
 
-  function applyHostScoreAdjustment({ contestants, contestantId, pointsDelta }) {
-    if (!Array.isArray(contestants)) {
-      throw new Error('Contestants are required before adjusting a score.');
-    }
-    const nextContestants = cloneContestants(contestants);
-    const { contestantIndex } = requireHostOverrideContestant(nextContestants, contestantId);
-    const delta = normalizeOptionalPointDelta(pointsDelta, Number.NaN, 'Enter a valid point adjustment.');
-    if (!Number.isFinite(delta)) {
-      throw new Error('Enter a valid point adjustment.');
-    }
-    applyContestantScoreDelta(nextContestants[contestantIndex], delta);
-    return { contestants: nextContestants, pointsDelta: delta };
-  }
-
-  function applyHostOverride({ contestants, clue, decision, contestantId, pointsDelta, complete = false, now } = {}) {
+  function applyHostVerdictOverride({ contestants, clue, decision, contestantId, now } = {}) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required before applying a host override.');
     }
     if (!clue || typeof clue !== 'object') {
       throw new Error('A clue is required before applying a host override.');
     }
-    const normalizedDecision = normalizeHostOverrideDecision(decision);
-    if (normalizedDecision === 'score-adjustment') {
-      const adjusted = applyHostScoreAdjustment({ contestants, contestantId, pointsDelta });
-      return {
-        contestants: adjusted.contestants,
-        clue: { ...clue, hostOverrideApplied: true, hostOverrideDecision: normalizedDecision, hostOverrideUpdatedAt: now || new Date().toISOString() },
-        awardedPoints: adjusted.pointsDelta,
-        answerShouldBeRevealed: Boolean(clue.completed),
-        hostOverride: true,
-      };
+    const normalizedDecision = normalizeHostVerdictOverrideDecision(decision);
+    const nextContestants = removeClueScoreDeltas(contestants, clue);
+    const { contestantIdText } = requireHostVerdictOverrideContestant(nextContestants, contestantId);
+    const currentOutcome = getContestantAnswerOutcome({ clue, contestantId: contestantIdText });
+    if (!currentOutcome) {
+      throw new Error('That contestant has not answered this clue yet.');
+    }
+    if (currentOutcome.verdict === 'correct') {
+      throw new Error('Full-credit answers cannot be downgraded after the correct response is revealed.');
+    }
+    if (currentOutcome.verdict === normalizedDecision) {
+      throw new Error(`That contestant is already marked ${currentOutcome.label.toLowerCase()}.`);
+    }
+    const allowed = getHostOverrideOptionsForContestant({ clue, contestantId: contestantIdText })
+      .some((option) => option.decision === normalizedDecision);
+    if (!allowed) {
+      throw new Error('Choose a valid host verdict override for that contestant.');
     }
 
-    const nextContestants = removeClueScoreDeltas(contestants, clue);
     const nextClue = baseHostOverrideClue(clue, normalizedDecision, now || new Date().toISOString());
     const clueValue = Number(clue.value || 0);
-
-    if (normalizedDecision === 'reopen') {
-      return {
-        contestants: nextContestants,
-        clue: nextClue,
-        awardedPoints: 0,
-        answerShouldBeRevealed: false,
-        hostOverride: true,
-      };
-    }
-
-    if (normalizedDecision === 'no-buzz') {
-      nextClue.completed = true;
-      nextClue.allContestantsMissed = true;
-      nextClue.noContestantsBuzzed = true;
-      return {
-        contestants: nextContestants,
-        clue: nextClue,
-        awardedPoints: 0,
-        noBuzz: true,
-        answerShouldBeRevealed: true,
-        hostOverride: true,
-      };
-    }
-
-    const { contestantIdText, contestantIndex } = requireHostOverrideContestant(nextContestants, contestantId);
+    const sequence = buildContestantVerdictSequence(clue).map((entry) => (
+      entry.contestantId === contestantIdText ? { ...entry, verdict: normalizedDecision } : entry
+    ));
     let awardedPoints = 0;
-    nextClue.attemptedContestantIds = [contestantIdText];
 
-    if (normalizedDecision === 'correct') {
-      awardedPoints = normalizeOptionalPointDelta(pointsDelta, clueValue, 'Enter a valid point value for the correct-answer override.');
-      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
-      nextClue.completed = true;
-      nextClue.winningContestantId = contestantIdText;
-      nextClue.winningAwardPoints = awardedPoints;
-    } else if (normalizedDecision === 'partial') {
-      awardedPoints = normalizeOptionalPointDelta(pointsDelta, getPartialCreditAward({ clue: nextClue, contestantCount: nextContestants.length }), 'Enter a valid point value for the partial-credit override.');
-      if (awardedPoints < 0) {
-        throw new Error('Partial-credit overrides cannot award negative points.');
+    sequence.some((entry) => {
+      const contestantIndex = nextContestants.findIndex((contestant) => contestant.id === entry.contestantId);
+      if (contestantIndex < 0) return false;
+      if (entry.verdict === 'correct') {
+        const award = getFullCreditAward(nextClue);
+        applyContestantScoreDelta(nextContestants[contestantIndex], award);
+        nextClue.completed = true;
+        nextClue.winningContestantId = entry.contestantId;
+        nextClue.winningAwardPoints = award;
+        if (entry.contestantId === contestantIdText) awardedPoints = award;
+        return true;
       }
-      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
-      if (awardedPoints > 0) {
-        nextClue.partialCreditAwarded = awardedPoints;
-        nextClue.partialCreditContestantIds = [contestantIdText];
-        nextClue.partialCreditAwards = [{ contestantId: contestantIdText, points: awardedPoints }];
+      if (!nextClue.attemptedContestantIds.includes(entry.contestantId)) {
+        nextClue.attemptedContestantIds.push(entry.contestantId);
       }
-      nextClue.completed = Boolean(complete);
-      nextClue.allContestantsMissed = Boolean(complete);
-    } else if (normalizedDecision === 'incorrect') {
-      awardedPoints = normalizeOptionalPointDelta(pointsDelta, -clueValue, 'Enter a valid point value for the incorrect-answer override.');
-      if (awardedPoints > 0) {
-        throw new Error('Incorrect-answer overrides cannot award positive points.');
+      if (entry.verdict === 'partial') {
+        const award = getPartialCreditAward({ clue: nextClue, contestantCount: nextContestants.length });
+        if (award > 0) {
+          applyContestantScoreDelta(nextContestants[contestantIndex], award);
+          nextClue.partialCreditAwarded = addScoreValues(nextClue.partialCreditAwarded, award);
+          nextClue.partialCreditContestantIds.push(entry.contestantId);
+          nextClue.partialCreditAwards.push({ contestantId: entry.contestantId, points: award });
+        }
+        if (entry.contestantId === contestantIdText) awardedPoints = award;
+        return false;
       }
-      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
-      nextClue.noCreditAwards = [{ contestantId: contestantIdText, points: awardedPoints }];
-      const allContestantsAttempted = nextContestants.length === 1;
-      nextClue.completed = Boolean(complete) || allContestantsAttempted;
-      nextClue.allContestantsMissed = nextClue.completed;
+      if (entry.verdict === 'incorrect') {
+        const award = -clueValue;
+        applyContestantScoreDelta(nextContestants[contestantIndex], award);
+        nextClue.noCreditAwards.push({ contestantId: entry.contestantId, points: award });
+        if (entry.contestantId === contestantIdText) awardedPoints = award;
+      }
+      return false;
+    });
+
+    if (!nextClue.winningContestantId) {
+      const allContestantsAttempted = nextContestants.length > 0 &&
+        nextContestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
+      nextClue.allContestantsMissed = allContestantsAttempted;
+      nextClue.completed = allContestantsAttempted;
     }
 
+    const correctedOutcome = getContestantAnswerOutcome({ clue: nextClue, contestantId: contestantIdText }) || { verdict: normalizedDecision };
     return {
       contestants: nextContestants,
       clue: nextClue,
-      judgment: { verdict: normalizedDecision === 'incorrect' ? 'incorrect' : normalizedDecision },
+      judgment: { verdict: correctedOutcome.verdict },
       awardedPoints,
       allContestantsAttempted: Boolean(nextClue.allContestantsMissed),
       answerShouldBeRevealed: Boolean(nextClue.completed),
+      buzzersShouldBeOpen: !nextClue.completed,
       hostOverride: true,
     };
+  }
+
+  function applyHostOverride(options) {
+    return applyHostVerdictOverride(options);
   }
 
   function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect, judgment }) {
@@ -2784,13 +2819,6 @@
     const responseInput = app.querySelector('#contestant-response-input');
     const checkResponseButton = app.querySelector('#check-response-button');
     const clueFeedback = app.querySelector('#clue-feedback');
-    const hostOverridePanel = app.querySelector('#host-override-panel');
-    const hostOverrideContestant = app.querySelector('#host-override-contestant');
-    const hostOverrideDecision = app.querySelector('#host-override-decision');
-    const hostOverridePoints = app.querySelector('#host-override-points');
-    const hostOverrideComplete = app.querySelector('#host-override-complete');
-    const applyHostOverrideButton = app.querySelector('#apply-host-override-button');
-    const hostOverrideStatus = app.querySelector('#host-override-status');
     const noBuzzButton = app.querySelector('#no-buzz-button');
     const closeClueButton = app.querySelector('#close-clue-button');
     const groupEditor = app.querySelector('#group-member-editor');
@@ -4049,11 +4077,6 @@
       }
       clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
       if (contestantChoices) contestantChoices.innerHTML = '';
-      if (hostOverrideContestant) hostOverrideContestant.innerHTML = '<option value="">Choose a contestant</option>';
-      if (hostOverridePoints) hostOverridePoints.value = '';
-      if (hostOverrideComplete) hostOverrideComplete.checked = false;
-      clearHostOverrideStatus();
-      updateHostOverrideControls();
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = false;
     }
@@ -4094,6 +4117,21 @@
       scheduleActiveClueFit();
     }
 
+    function renderHostVerdictOverrideButtons(contestant) {
+      const options = getHostOverrideOptionsForContestant({ clue: activeClue, contestantId: contestant.id });
+      if (options.length === 0) return '';
+      return `
+        <div class="contestant-choice__host-overrides" aria-label="Host override options for ${escapeHtml(contestant.name)}">
+          ${options.map((option) => `
+            <button type="button" class="contestant-choice__host-override-button" data-host-verdict-override="${escapeHtml(option.decision)}" data-host-override-contestant-id="${escapeHtml(contestant.id)}" aria-label="${escapeHtml(`${option.label} for ${contestant.name}`)}">
+              <span aria-hidden="true">${escapeHtml(option.icon)}</span>
+              <span>${escapeHtml(option.label)}</span>
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
     function renderContestantChoices() {
       if (!contestantChoices || !activeClue) return;
       const attemptedIds = Array.isArray(activeClue.attemptedContestantIds)
@@ -4101,6 +4139,7 @@
         : [];
       const selectedId = selectedContestantId();
       contestantChoices.innerHTML = contestants.map((contestant) => {
+        const outcome = getContestantAnswerOutcome({ clue: activeClue, contestantId: contestant.id });
         const renderState = getContestantChoiceRenderState({
           contestantId: contestant.id,
           selectedContestantId: selectedId,
@@ -4108,112 +4147,47 @@
           clueIsComplete: Boolean(activeClue.completed),
           responseCheckInFlight,
         });
+        const outcomeNote = outcome ? ` · ${outcome.label}` : (renderState.attempted ? ' · already tried' : '');
         return `
-          <label class="contestant-choice${renderState.attempted ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}">
-            <input type="radio" name="active-contestant" value="${contestant.id}" ${renderState.checked ? 'checked' : ''} ${renderState.disabled ? 'disabled' : ''} />
-            <span>${escapeHtml(contestant.name)} <small>${formatScore(contestant.score)}${renderState.attempted ? ' · already tried' : ''}</small></span>
-          </label>
+          <article class="contestant-choice${renderState.attempted || outcome ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}">
+            <label class="contestant-choice__label">
+              <input type="radio" name="active-contestant" value="${contestant.id}" ${renderState.checked ? 'checked' : ''} ${renderState.disabled ? 'disabled' : ''} />
+              <span class="contestant-choice__body">
+                <span class="contestant-choice__name">${escapeHtml(contestant.name)}</span>
+                <small>${formatScore(contestant.score)}${escapeHtml(outcomeNote)}</small>
+              </span>
+            </label>
+            ${renderHostVerdictOverrideButtons(contestant)}
+          </article>
         `;
       }).join('');
       updateResponseEntryState();
-      renderHostOverrideControls({ keepSelection: true });
     }
 
-    function hostOverrideDecisionValue() {
-      try {
-        return normalizeHostOverrideDecision(hostOverrideDecision?.value || 'correct');
-      } catch (_error) {
-        return 'correct';
-      }
-    }
-
-    function hostOverrideNeedsContestant(decision) {
-      return !['no-buzz', 'reopen'].includes(decision);
-    }
-
-    function renderHostOverrideControls({ keepSelection = false } = {}) {
-      if (!hostOverridePanel) return;
-      const selectedOverrideId = keepSelection ? (hostOverrideContestant?.value || selectedContestantId()) : selectedContestantId();
-      if (hostOverrideContestant) {
-        hostOverrideContestant.innerHTML = [
-          '<option value="">Choose a contestant</option>',
-          ...contestants.map((contestant) => `<option value="${contestant.id}" ${contestant.id === selectedOverrideId ? 'selected' : ''}>${escapeHtml(contestant.name)} (${formatScore(contestant.score)})</option>`),
-        ].join('');
-      }
-      updateHostOverrideControls();
-    }
-
-    function updateHostOverrideControls() {
-      if (!hostOverridePanel) return;
-      const decision = hostOverrideDecisionValue();
-      const needsContestant = hostOverrideNeedsContestant(decision);
-      const disabled = responseCheckInFlight || !activeClue;
-      if (hostOverrideContestant) {
-        hostOverrideContestant.disabled = disabled || !needsContestant;
-      }
-      if (hostOverridePoints) {
-        hostOverridePoints.disabled = disabled || decision === 'no-buzz' || decision === 'reopen';
-        if (decision === 'correct') hostOverridePoints.placeholder = activeClue ? `Default ${formatScore(activeClue.value)}` : 'Auto by decision';
-        if (decision === 'partial') hostOverridePoints.placeholder = activeClue ? `Default ${formatScore(getPartialCreditAward({ clue: activeClue, contestantCount: contestants.length }))}` : 'Auto by decision';
-        if (decision === 'incorrect') hostOverridePoints.placeholder = activeClue ? `Default -${formatScore(activeClue.value)}` : 'Auto by decision';
-        if (decision === 'score-adjustment') hostOverridePoints.placeholder = 'Required, e.g. -25 or 50';
-        if (decision === 'no-buzz' || decision === 'reopen') hostOverridePoints.placeholder = 'Not used';
-      }
-      if (hostOverrideComplete) {
-        hostOverrideComplete.disabled = disabled || !['partial', 'incorrect'].includes(decision);
-        if (hostOverrideComplete.disabled) hostOverrideComplete.checked = false;
-      }
-      if (applyHostOverrideButton) {
-        const missingContestant = needsContestant && !hostOverrideContestant?.value;
-        const missingScoreAdjustment = decision === 'score-adjustment' && !String(hostOverridePoints?.value || '').trim();
-        applyHostOverrideButton.disabled = disabled || missingContestant || missingScoreAdjustment;
-      }
-      scheduleActiveClueFit();
-    }
-
-    function clearHostOverrideStatus() {
-      if (!hostOverrideStatus) return;
-      hostOverrideStatus.textContent = '';
-      hostOverrideStatus.className = 'game-status';
-    }
-
-    function showHostOverrideStatus(message, type = 'info') {
-      renderStatus(hostOverrideStatus, message, type);
-      scheduleActiveClueFit();
-    }
-
-    function currentHostOverridePoints() {
-      const text = String(hostOverridePoints?.value || '').trim();
-      return text ? Number(text) : undefined;
-    }
-
-    function hostOverrideSuccessMessage(result, decision, contestantName = '') {
-      if (decision === 'score-adjustment') {
-        return `Score adjusted by ${formatScore(result.awardedPoints)}. Review the scoreboard before continuing.`;
-      }
-      if (decision === 'reopen') {
-        return 'Host override applied. The clue is open again and previous score effects for this clue were removed.';
-      }
-      if (decision === 'no-buzz') {
-        return 'Host override applied. The clue is marked as no one buzzed in and previous score effects for this clue were removed.';
-      }
+    function hostVerdictOverrideSuccessMessage(result, decision, contestantName = '') {
       const name = contestantName || 'the selected contestant';
-      return `Host override applied. ${name} is now marked ${decision.replace('-', ' ')} for this clue.`;
+      if (decision === 'correct') {
+        return `Host override applied. ${name} now receives full credit, so the answer is revealed and buzzers are closed.`;
+      }
+      if (decision === 'partial') {
+        return result.clue.completed
+          ? `Host override applied. ${name} now receives partial credit. All players have attempted, so the answer is revealed.`
+          : `Host override applied. ${name} now receives partial credit. Buzzers are open for another player.`;
+      }
+      return result.clue.completed
+        ? `Host override applied. ${name} is now marked incorrect. All players have attempted, so the answer is revealed.`
+        : `Host override applied. ${name} is now marked incorrect. Buzzers are open for another player.`;
     }
 
-    function handleHostOverride() {
-      if (!activeClue) return;
-      const decision = hostOverrideDecisionValue();
+    async function handleHostVerdictOverride({ contestantId, decision }) {
+      if (!activeClue || responseCheckInFlight) return;
+      const contestantName = contestants.find((contestant) => contestant.id === contestantId)?.name || '';
       try {
-        const contestantId = hostOverrideContestant?.value || selectedContestantId();
-        const contestantName = contestants.find((contestant) => contestant.id === contestantId)?.name || '';
-        const result = applyHostOverride({
+        const result = applyHostVerdictOverride({
           contestants,
           clue: activeClue,
           decision,
           contestantId,
-          pointsDelta: currentHostOverridePoints(),
-          complete: Boolean(hostOverrideComplete?.checked),
         });
         contestants = result.contestants;
         activeClue = result.clue;
@@ -4221,13 +4195,21 @@
         renderScoreboard();
         renderBoard();
         maybeCloseVirtualSessionWhenGameComplete();
-        if (result.clue.completed) {
-          disableVirtualBuzzersForHost();
+        if (result.buzzersShouldBeOpen) {
+          await resetVirtualBuzzersForNextAttempt();
+        } else {
+          await disableVirtualBuzzersForHost();
         }
         openClue(result.clue.id);
-        showHostOverrideStatus(hostOverrideSuccessMessage(result, decision, contestantName), 'success');
+        if (!result.clue.completed) {
+          showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName }));
+        }
+        if (clueFeedback) {
+          clueFeedback.textContent = hostVerdictOverrideSuccessMessage(result, decision, contestantName);
+        }
       } catch (error) {
-        showHostOverrideStatus(error.message || 'Could not apply the host override.', 'error');
+        if (clueFeedback) clueFeedback.textContent = error.message || 'Could not apply that host override.';
+        scheduleActiveClueFit();
       }
     }
 
@@ -4301,15 +4283,18 @@
         activeClueReview.textContent = '';
         activeClueReview.hidden = true;
       }
-      clearHostOverrideStatus();
-      if (hostOverridePoints) hostOverridePoints.value = '';
-      if (hostOverrideComplete) hostOverrideComplete.checked = false;
       clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
-      renderHostOverrideControls();
 
       if (activeClue.completed) {
-        if (contestantPromptSection) contestantPromptSection.hidden = true;
-        if (contestantChoices) contestantChoices.innerHTML = '';
+        const hasVerdictOverrideOptions = clueHasHostVerdictOverrideOptions(activeClue, contestants);
+        const promptHeading = contestantPromptSection?.querySelector('h3');
+        if (promptHeading) promptHeading.textContent = hasVerdictOverrideOptions ? 'Answer history' : 'Who buzzed in?';
+        if (contestantPromptSection) contestantPromptSection.hidden = !hasVerdictOverrideOptions;
+        if (hasVerdictOverrideOptions) {
+          renderContestantChoices();
+        } else if (contestantChoices) {
+          contestantChoices.innerHTML = '';
+        }
         if (responseInput) responseInput.disabled = true;
         if (checkResponseButton) checkResponseButton.disabled = true;
         if (noBuzzButton) noBuzzButton.disabled = true;
@@ -4323,6 +4308,8 @@
         return;
       }
 
+      const promptHeading = contestantPromptSection?.querySelector('h3');
+      if (promptHeading) promptHeading.textContent = 'Who buzzed in?';
       if (contestantPromptSection) contestantPromptSection.hidden = false;
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = false;
@@ -4481,7 +4468,7 @@
               renderContestantChoices();
               updateResponseEntryState();
             } else {
-              updateHostOverrideControls();
+              renderContestantChoices();
             }
           }
         }
@@ -4675,6 +4662,16 @@
       openClue(clueId);
     });
 
+    contestantChoices?.addEventListener('click', (event) => {
+      const overrideButton = event.target?.closest?.('[data-host-verdict-override]');
+      if (!overrideButton) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void handleHostVerdictOverride({
+        contestantId: overrideButton.dataset.hostOverrideContestantId || '',
+        decision: overrideButton.dataset.hostVerdictOverride || '',
+      });
+    });
     contestantChoices?.addEventListener('change', () => {
       if (responseInput) responseInput.value = '';
       updateResponseEntryState();
@@ -4684,21 +4681,6 @@
     });
     noBuzzButton?.addEventListener('click', () => {
       handleNoBuzz();
-    });
-    hostOverrideDecision?.addEventListener('change', () => {
-      updateHostOverrideControls();
-    });
-    hostOverrideContestant?.addEventListener('change', () => {
-      updateHostOverrideControls();
-    });
-    hostOverridePoints?.addEventListener('input', () => {
-      updateHostOverrideControls();
-    });
-    hostOverrideComplete?.addEventListener('change', () => {
-      updateHostOverrideControls();
-    });
-    applyHostOverrideButton?.addEventListener('click', () => {
-      handleHostOverride();
     });
     responseInput?.addEventListener('keydown', (event) => {
       if (shouldSubmitResponseFromKeydown(event)) {
@@ -4818,8 +4800,10 @@
     applyScoreDecision,
     applyAnswerJudgment,
     applyNoBuzzForClue,
+    getContestantAnswerOutcome,
+    getHostOverrideOptionsForContestant,
+    applyHostVerdictOverride,
     applyHostOverride,
-    applyHostScoreAdjustment,
     getClueBoardDisplayState,
     buildCompletedClueReviewPresentation,
     shouldAutoCloseAfterAnswerResult,
