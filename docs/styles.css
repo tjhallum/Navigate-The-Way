@@ -2833,8 +2833,8 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice {
-  grid-template-columns: auto 1fr;
-  align-items: center;
+  grid-template-columns: 1fr;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.52rem 0.6rem;
@@ -2842,10 +2842,55 @@ body.has-active-clue-modal {
   cursor: pointer;
 }
 
+.contestant-choice__label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: inherit;
+}
+
+.contestant-choice__body {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.contestant-choice__name {
+  color: #f9fbff;
+  font-weight: 750;
+}
+
 .contestant-choice small {
   display: block;
   color: var(--muted);
   font-weight: 500;
+}
+
+.contestant-choice__host-overrides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+  padding-left: 1.6rem;
+}
+
+.contestant-choice__host-override-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  border: 1px solid rgba(247, 199, 91, 0.45);
+  border-radius: 999px;
+  padding: 0.22rem 0.46rem;
+  color: #fff6d8;
+  background: rgba(247, 199, 91, 0.12);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.contestant-choice__host-override-button:hover,
+.contestant-choice__host-override-button:focus-visible {
+  border-color: rgba(247, 199, 91, 0.78);
+  background: rgba(247, 199, 91, 0.22);
 }
 
 .contestant-choice--attempted {
@@ -2883,56 +2928,6 @@ body.has-active-clue-modal {
   color: var(--text);
   background: rgba(5, 11, 30, 0.92);
   font: inherit;
-}
-
-.host-override-panel {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0.25rem 0;
-  padding: 0.62rem;
-  border: 1px solid rgba(122, 168, 255, 0.24);
-  border-radius: 12px;
-  background: rgba(122, 168, 255, 0.08);
-}
-
-.host-override-panel h3,
-.host-override-panel p {
-  margin: 0;
-}
-
-.host-override-panel p {
-  color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.32;
-}
-
-.host-override-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 0.45rem;
-}
-
-.host-override-grid label,
-.host-override-checkbox {
-  display: grid;
-  gap: 0.26rem;
-  color: #dbe7ff;
-  font-size: 0.92rem;
-  font-weight: 650;
-}
-
-.host-override-checkbox {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  align-self: end;
-}
-
-.host-override-checkbox input {
-  width: auto;
-}
-
-.host-override-panel .game-status {
-  margin: 0;
 }
 
 @media (max-width: 760px) {
