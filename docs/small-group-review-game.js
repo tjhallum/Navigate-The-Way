@@ -78,8 +78,7 @@
     { type: 'square', gain: 0.30, startFrequency: 554, midFrequency: 392, endFrequency: 196, detune: 0 },
     { type: 'triangle', gain: 0.18, startFrequency: 1320, midFrequency: 880, endFrequency: 440, detune: 8 },
   ]);
-  const PARTIAL_CREDIT_PER_RESPONSE_FRACTION = 0.2;
-  const PARTIAL_CREDIT_MAX_TOTAL_FRACTION = 0.6;
+  const LEGACY_PARTIAL_CREDIT_FRACTION = 0.2;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
   const GROUP_MEMBERS_COOKIE_NAME = 'ntwBereanBoardGroupMembers';
   const GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS = 31536000;
@@ -1375,7 +1374,7 @@
     }
 
     if (normalizedDecision === 'correct') {
-      nextContestants[contestantIndex].score += Number(clue.value || 0);
+      applyContestantScoreDelta(nextContestants[contestantIndex], Number(clue.value || 0));
       nextClue.completed = true;
       nextClue.winningContestantId = contestantId;
       return { contestants: nextContestants, clue: nextClue };
@@ -1383,7 +1382,7 @@
 
     if (normalizedDecision === 'wrong') {
       const awardedPoints = -Number(clue.value || 0);
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       if (!nextClue.attemptedContestantIds.includes(contestantId)) {
         nextClue.attemptedContestantIds.push(contestantId);
       }
@@ -1437,14 +1436,14 @@
       rawJudgment.partialCredit ??
       rawJudgment.creditPercent;
     if (rawValue === true || rawValue == null || rawValue === '') {
-      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
+      return LEGACY_PARTIAL_CREDIT_FRACTION;
     }
     const numeric = Number(rawValue);
     if (!Number.isFinite(numeric) || numeric <= 0) {
-      return PARTIAL_CREDIT_PER_RESPONSE_FRACTION;
+      return LEGACY_PARTIAL_CREDIT_FRACTION;
     }
     const fraction = numeric > 1 ? numeric / 100 : numeric;
-    return Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, Math.max(0, fraction));
+    return Math.min(LEGACY_PARTIAL_CREDIT_FRACTION, Math.max(0, fraction));
   }
 
   function normalizeAnswerJudgmentInput({ isCorrect, judgment } = {}) {
@@ -1454,22 +1453,41 @@
     return normalizeAnswerJudgment({ isCorrect });
   }
 
-  function getPartialCreditCap(clue) {
-    return Math.max(0, Math.round(Number(clue?.value || 0) * PARTIAL_CREDIT_MAX_TOTAL_FRACTION));
+  function scoreToCents(value) {
+    const numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.round(numeric * 100);
   }
 
-  function getPartialCreditAward({ clue, partialCreditFraction }) {
-    const clueValue = Math.max(0, Number(clue?.value || 0));
-    const alreadyAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
-    const cap = getPartialCreditCap(clue);
-    const requested = Math.max(0, Math.round(clueValue * Math.min(PARTIAL_CREDIT_PER_RESPONSE_FRACTION, partialCreditFraction || PARTIAL_CREDIT_PER_RESPONSE_FRACTION)));
-    return Math.min(requested, Math.max(0, cap - alreadyAwarded));
+  function centsToScore(cents) {
+    const numeric = Number(cents || 0);
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.round(numeric) / 100;
+  }
+
+  function addScoreValues(left, right) {
+    return centsToScore(scoreToCents(left) + scoreToCents(right));
+  }
+
+  function applyContestantScoreDelta(contestant, points) {
+    if (!contestant || typeof contestant !== 'object') return;
+    contestant.score = addScoreValues(contestant.score, points);
+  }
+
+  function getAdaptivePartialCreditAward({ clue, contestantCount }) {
+    const clueCents = Math.max(0, scoreToCents(clue?.value));
+    const activeContestants = Math.max(1, Number(contestantCount) || 1);
+    return centsToScore(Math.floor(clueCents / (activeContestants + 1)));
+  }
+
+  function getPartialCreditAward({ clue, contestantCount }) {
+    return getAdaptivePartialCreditAward({ clue, contestantCount });
   }
 
   function getFullCreditAward(clue) {
-    const clueValue = Math.max(0, Number(clue?.value || 0));
-    const alreadyAwarded = Math.max(0, Number(clue?.partialCreditAwarded || 0));
-    return Math.max(0, clueValue - alreadyAwarded);
+    const clueCents = Math.max(0, scoreToCents(clue?.value));
+    const alreadyAwardedCents = Math.max(0, scoreToCents(clue?.partialCreditAwarded));
+    return centsToScore(Math.max(0, clueCents - alreadyAwardedCents));
   }
 
   function getWinningCreditAward(clue) {
@@ -1485,7 +1503,7 @@
     const id = String(contestantId || '').trim();
     const value = Number(points || 0);
     if (!id || !Number.isFinite(value) || value === 0) return;
-    deltas.set(id, (deltas.get(id) || 0) + value);
+    deltas.set(id, addScoreValues(deltas.get(id) || 0, value));
   }
 
   function getClueScoreDeltas(clue) {
@@ -1520,7 +1538,7 @@
     const deltas = getClueScoreDeltas(clue);
     nextContestants.forEach((contestant) => {
       const delta = deltas.get(contestant.id) || 0;
-      if (delta) contestant.score -= delta;
+      if (delta) applyContestantScoreDelta(contestant, -delta);
     });
     return nextContestants;
   }
@@ -1538,13 +1556,13 @@
 
   function normalizeOptionalPointDelta(rawValue, fallback, errorMessage = 'Enter a valid point adjustment.') {
     if (rawValue === undefined || rawValue === null || rawValue === '') {
-      return fallback;
+      return centsToScore(scoreToCents(fallback));
     }
     const points = Number(rawValue);
     if (!Number.isFinite(points)) {
       throw new Error(errorMessage);
     }
-    return Math.round(points);
+    return centsToScore(scoreToCents(points));
   }
 
   function baseHostOverrideClue(clue, decision, now = new Date().toISOString()) {
@@ -1585,7 +1603,7 @@
     if (!Number.isFinite(delta)) {
       throw new Error('Enter a valid point adjustment.');
     }
-    nextContestants[contestantIndex].score += delta;
+    applyContestantScoreDelta(nextContestants[contestantIndex], delta);
     return { contestants: nextContestants, pointsDelta: delta };
   }
 
@@ -1642,20 +1660,16 @@
 
     if (normalizedDecision === 'correct') {
       awardedPoints = normalizeOptionalPointDelta(pointsDelta, clueValue, 'Enter a valid point value for the correct-answer override.');
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       nextClue.completed = true;
       nextClue.winningContestantId = contestantIdText;
       nextClue.winningAwardPoints = awardedPoints;
     } else if (normalizedDecision === 'partial') {
-      awardedPoints = normalizeOptionalPointDelta(
-        pointsDelta,
-        Math.round(Math.max(0, clueValue) * PARTIAL_CREDIT_PER_RESPONSE_FRACTION),
-        'Enter a valid point value for the partial-credit override.'
-      );
+      awardedPoints = normalizeOptionalPointDelta(pointsDelta, getPartialCreditAward({ clue: nextClue, contestantCount: nextContestants.length }), 'Enter a valid point value for the partial-credit override.');
       if (awardedPoints < 0) {
         throw new Error('Partial-credit overrides cannot award negative points.');
       }
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       if (awardedPoints > 0) {
         nextClue.partialCreditAwarded = awardedPoints;
         nextClue.partialCreditContestantIds = [contestantIdText];
@@ -1668,7 +1682,7 @@
       if (awardedPoints > 0) {
         throw new Error('Incorrect-answer overrides cannot award positive points.');
       }
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       nextClue.noCreditAwards = [{ contestantId: contestantIdText, points: awardedPoints }];
       const allContestantsAttempted = nextContestants.length === 1;
       nextClue.completed = Boolean(complete) || allContestantsAttempted;
@@ -1725,14 +1739,14 @@
 
     if (normalizedJudgment.verdict === 'correct') {
       awardedPoints = getFullCreditAward(nextClue);
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       nextClue.completed = true;
       nextClue.winningContestantId = contestantIdText;
     } else if (normalizedJudgment.verdict === 'partial') {
-      awardedPoints = getPartialCreditAward({ clue: nextClue, partialCreditFraction: normalizedJudgment.partialCreditFraction });
+      awardedPoints = getPartialCreditAward({ clue: nextClue, contestantCount: contestants.length });
       if (awardedPoints > 0) {
-        nextContestants[contestantIndex].score += awardedPoints;
-        nextClue.partialCreditAwarded += awardedPoints;
+        applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
+        nextClue.partialCreditAwarded = addScoreValues(nextClue.partialCreditAwarded, awardedPoints);
         nextClue.partialCreditContestantIds.push(contestantIdText);
         nextClue.partialCreditAwards.push({ contestantId: contestantIdText, points: awardedPoints });
       }
@@ -1742,7 +1756,7 @@
       }
     } else {
       awardedPoints = -Number(clue.value || 0);
-      nextContestants[contestantIndex].score += awardedPoints;
+      applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       nextClue.noCreditAwards.push({ contestantId: contestantIdText, points: awardedPoints });
       nextClue.completed = false;
       if (!nextClue.attemptedContestantIds.includes(contestantIdText)) {
@@ -2653,8 +2667,12 @@
   }
 
   function formatScore(score) {
-    const number = Number(score || 0);
-    return number < 0 ? `-$${Math.abs(number)}` : `$${number}`;
+    const cents = scoreToCents(score);
+    const absoluteCents = Math.abs(cents);
+    const amount = absoluteCents % 100 === 0
+      ? String(absoluteCents / 100)
+      : (absoluteCents / 100).toFixed(2);
+    return cents < 0 ? `-$${amount}` : `$${amount}`;
   }
 
   function formatClueBoardValue(value) {
@@ -4136,7 +4154,7 @@
       if (hostOverridePoints) {
         hostOverridePoints.disabled = disabled || decision === 'no-buzz' || decision === 'reopen';
         if (decision === 'correct') hostOverridePoints.placeholder = activeClue ? `Default ${formatScore(activeClue.value)}` : 'Auto by decision';
-        if (decision === 'partial') hostOverridePoints.placeholder = activeClue ? `Default ${formatScore(Math.round(Number(activeClue.value || 0) * PARTIAL_CREDIT_PER_RESPONSE_FRACTION))}` : 'Auto by decision';
+        if (decision === 'partial') hostOverridePoints.placeholder = activeClue ? `Default ${formatScore(getPartialCreditAward({ clue: activeClue, contestantCount: contestants.length }))}` : 'Auto by decision';
         if (decision === 'incorrect') hostOverridePoints.placeholder = activeClue ? `Default -${formatScore(activeClue.value)}` : 'Auto by decision';
         if (decision === 'score-adjustment') hostOverridePoints.placeholder = 'Required, e.g. -25 or 50';
         if (decision === 'no-buzz' || decision === 'reopen') hostOverridePoints.placeholder = 'Not used';
@@ -4443,7 +4461,7 @@
             const remainingCredit = getFullCreditAward(appliedClue);
             clueFeedback.textContent = result.awardedPoints > 0
               ? `${contestant.name}'s response was biblically sound but not the expected lesson answer. ${formatScore(result.awardedPoints)} partial credit awarded; ${formatScore(remainingCredit)} remains for a full answer.`
-              : `${contestant.name}'s response was biblically sound but not the expected lesson answer. The partial-credit cap has been reached; ${formatScore(remainingCredit)} remains for a full answer.`;
+              : `${contestant.name}'s response was biblically sound but not the expected lesson answer. No partial-credit points were available; ${formatScore(remainingCredit)} remains for a full answer.`;
           } else {
             clueFeedback.textContent = `${contestant.name}'s response was not accepted, so ${formatScore(Math.abs(result.awardedPoints))} was subtracted. Call on another buzzer and select the next contestant.`;
           }

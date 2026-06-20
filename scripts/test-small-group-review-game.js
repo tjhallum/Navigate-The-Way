@@ -1345,7 +1345,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-host-override-feedback"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-adaptive-scoring"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-override-feedback/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides-fit/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides"/);
@@ -1757,7 +1758,7 @@ test('builds completed clue review summaries for credit and no-credit outcomes',
   assert.equal(partialOnlyReview.label, 'Partial Credit');
   assert.equal(partialOnlyReview.className, 'clue-verdict clue-verdict--partial');
   assert.match(partialOnlyReview.message, /Partial credit only/i);
-  assert.match(partialOnlyReview.creditSummary, /Ada received \$20 partial credit\./);
+  assert.match(partialOnlyReview.creditSummary, /Ada received \$33\.33 partial credit\./);
   assert.match(partialOnlyReview.creditSummary, /No contestant supplied the full expected answer\./);
   assert.match(partialOnlyReview.creditSummary, /Boaz attempted without receiving credit\./);
 
@@ -1772,39 +1773,34 @@ test('builds completed clue review summaries for credit and no-credit outcomes',
   assert.match(noBuzzReview.creditSummary, /No one buzzed in\. No credit was awarded\./);
 });
 
-test('reviews uneven partial-credit awards with each contestant’s actual points', () => {
-  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+test('reviews cents-based adaptive partial and correct awards with each contestant’s actual points', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
-  const smallPartial = game.applyAnswerJudgment({
+  const partial = game.applyAnswerJudgment({
     contestants,
     clue,
     contestantId: 'contestant-1',
-    judgment: { verdict: 'partial', partialCreditFraction: 0.1 },
-  });
-  const defaultPartial = game.applyAnswerJudgment({
-    contestants: smallPartial.contestants,
-    clue: smallPartial.clue,
-    contestantId: 'contestant-2',
     judgment: { verdict: 'partial' },
   });
-  const completed = game.applyAnswerJudgment({
-    contestants: defaultPartial.contestants,
-    clue: defaultPartial.clue,
-    contestantId: 'contestant-3',
-    judgment: { verdict: 'incorrect' },
+  const correct = game.applyAnswerJudgment({
+    contestants: partial.contestants,
+    clue: partial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'correct' },
   });
 
-  assert.equal(completed.clue.partialCreditAwarded, 30);
+  assert.equal(partial.awardedPoints, 33.33);
+  assert.equal(partial.clue.partialCreditAwarded, 33.33);
+  assert.equal(partial.contestants[0].score, 33.33);
+  assert.equal(correct.awardedPoints, 66.67);
+  assert.equal(correct.contestants[1].score, 66.67);
   const review = game.buildCompletedClueReviewPresentation({
-    clue: completed.clue,
-    contestants: completed.contestants,
+    clue: correct.clue,
+    contestants: correct.contestants,
   });
 
-  assert.match(review.creditSummary, /Ada received \$10 partial credit\./);
-  assert.match(review.creditSummary, /Boaz received \$20 partial credit\./);
-  assert.doesNotMatch(review.creditSummary, /Ada received \$15 partial credit\./);
-  assert.doesNotMatch(review.creditSummary, /Boaz received \$15 partial credit\./);
-  assert.match(review.creditSummary, /Chloe attempted without receiving credit\./);
+  assert.match(review.creditSummary, /Ada received \$33\.33 partial credit\./);
+  assert.match(review.creditSummary, /Boaz received \$66\.67 for the accepted answer\./);
 });
 
 test('includes distinct board tile styles for correct partial and missed outcomes', () => {
@@ -1841,6 +1837,8 @@ test('provides host override controls for every NTW answer-judgment outcome', ()
   assert.match(css, /\.host-override-panel\s*{/);
   assert.match(js, /applyHostOverrideButton\?\.addEventListener\('click'/);
   assert.match(js, /function handleHostOverride\(\)/);
+  assert.match(js, /getPartialCreditAward\(\{ clue: activeClue, contestantCount: contestants\.length \}\)/);
+  assert.doesNotMatch(js, /PARTIAL_CREDIT_(?:PER_RESPONSE|MAX_TOTAL)_FRACTION/);
   assert.match(js, /if \(result\.clue\.completed\) \{\s*disableVirtualBuzzersForHost\(\);\s*\}/);
 });
 
@@ -1936,8 +1934,29 @@ test('host score adjustments let leaders correct points independently from NTW v
 
   assert.equal(adjusted.contestants[0].score, 0);
   assert.equal(adjusted.contestants[1].score, -75);
+  const centsAdjusted = game.applyHostScoreAdjustment({
+    contestants,
+    contestantId: 'contestant-1',
+    pointsDelta: -33.33,
+  });
+  assert.equal(centsAdjusted.contestants[0].score, -33.33);
   assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: '', pointsDelta: 10 }), /Choose a contestant/i);
   assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: 'contestant-1', pointsDelta: Number.NaN }), /valid point adjustment/i);
+});
+
+test('host partial overrides default to cents-based adaptive scoring', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const partial = game.applyHostOverride({
+    contestants,
+    clue,
+    decision: 'partial',
+    contestantId: 'contestant-1',
+  });
+
+  assert.equal(partial.awardedPoints, 33.33);
+  assert.equal(partial.contestants[0].score, 33.33);
+  assert.equal(partial.clue.partialCreditAwarded, 33.33);
 });
 
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
@@ -2289,6 +2308,87 @@ test('awards equal partial credit repeatedly while preserving final-answer value
   assert.equal(correct.awardedPoints, 40);
   assert.equal(correct.clue.completed, true);
   assert.equal(correct.answerShouldBeRevealed, true);
+
+  const allPartialContestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
+  const allPartialClue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const allPartialFirst = game.applyAnswerJudgment({
+    contestants: allPartialContestants,
+    clue: allPartialClue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const allPartialSecond = game.applyAnswerJudgment({
+    contestants: allPartialFirst.contestants,
+    clue: allPartialFirst.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const allPartialThird = game.applyAnswerJudgment({
+    contestants: allPartialSecond.contestants,
+    clue: allPartialSecond.clue,
+    contestantId: 'contestant-3',
+    judgment: { verdict: 'partial' },
+  });
+  const allPartialFourth = game.applyAnswerJudgment({
+    contestants: allPartialThird.contestants,
+    clue: allPartialThird.clue,
+    contestantId: 'contestant-4',
+    judgment: { verdict: 'partial' },
+  });
+
+  assert.equal(allPartialFourth.contestants[3].score, 20);
+  assert.equal(allPartialFourth.awardedPoints, 20);
+  assert.equal(allPartialFourth.clue.partialCreditAwarded, 80);
+  assert.deepEqual(allPartialFourth.clue.partialCreditContestantIds, ['contestant-1', 'contestant-2', 'contestant-3', 'contestant-4']);
+  assert.equal(allPartialFourth.clue.completed, true);
+  assert.equal(allPartialFourth.answerShouldBeRevealed, true);
+});
+
+test('adapts partial and final-correct awards to the active player count', () => {
+  const twoPlayers = game.createContestants(['Ada', 'Boaz']);
+  const twoPlayerClue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const twoPlayerPartial = game.applyAnswerJudgment({
+    contestants: twoPlayers,
+    clue: twoPlayerClue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const twoPlayerCorrect = game.applyAnswerJudgment({
+    contestants: twoPlayerPartial.contestants,
+    clue: twoPlayerPartial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'correct' },
+  });
+
+  assert.equal(twoPlayerPartial.awardedPoints, 33.33);
+  assert.equal(twoPlayerCorrect.awardedPoints, 66.67);
+  assert.equal(twoPlayerCorrect.clue.completed, true);
+
+  const threePlayers = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+  const threePlayerClue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const threePlayerFirstPartial = game.applyAnswerJudgment({
+    contestants: threePlayers,
+    clue: threePlayerClue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const threePlayerSecondPartial = game.applyAnswerJudgment({
+    contestants: threePlayerFirstPartial.contestants,
+    clue: threePlayerFirstPartial.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const threePlayerCorrect = game.applyAnswerJudgment({
+    contestants: threePlayerSecondPartial.contestants,
+    clue: threePlayerSecondPartial.clue,
+    contestantId: 'contestant-3',
+    judgment: { verdict: 'correct' },
+  });
+
+  assert.equal(threePlayerFirstPartial.awardedPoints, 25);
+  assert.equal(threePlayerSecondPartial.awardedPoints, 25);
+  assert.equal(threePlayerCorrect.awardedPoints, 50);
+  assert.equal(threePlayerCorrect.clue.completed, true);
 });
 
 test('marks clues complete without score changes when no one buzzes in', () => {
