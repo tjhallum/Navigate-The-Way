@@ -19,7 +19,13 @@ Small group leaders should never see this setup.
 2. Enable **Realtime Database**.
 3. Enable **Anonymous Authentication**.
 4. Add a Firebase Web App and copy its public web config into `docs/firebase-config.js`.
-5. Publish the Realtime Database Security Rules from `docs/developer-docs/virtual-buzzers-rtdb-rules.json`. Deploy rule updates in lockstep with browser JavaScript changes that add virtual-buzzer fields, because the rules intentionally reject unexpected session payloads.
+5. Publish the Realtime Database Security Rules from `docs/developer-docs/virtual-buzzers-rtdb-rules.json`. Deploy rule updates in lockstep with browser JavaScript changes that add virtual-buzzer fields, because the rules intentionally reject unexpected session payloads. Preferred CLI path from the repository root:
+
+   ```bash
+   bash scripts/deploy-virtual-buzzer-rules.sh
+   ```
+
+   The script validates the JSON and runs Firebase CLI against the `berean-board-virtual-buzzers` project configured in `.firebaserc` / `firebase.json`. If Firebase CLI has not been authorized on the machine yet, run `npx --yes firebase-tools@latest login --reauth` once and complete the browser login with a project owner account on the same machine. Use `npx --yes firebase-tools@latest login --no-localhost` only if a localhost browser callback is unavailable.
 6. Configure **App Check** for the deployed web origins, preferably with reCAPTCHA Enterprise for new web integrations, then set `window.BEREAN_BOARD_FIREBASE_APP_CHECK` in `docs/firebase-config.js`.
 7. Test locally from `docs/` with a simple static server.
 8. Deploy to GitHub Pages.

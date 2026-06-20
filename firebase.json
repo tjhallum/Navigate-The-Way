@@ -1,0 +1,5 @@
+{
+  "database": {
+    "rules": "docs/developer-docs/virtual-buzzers-rtdb-rules.json"
+  }
+}
