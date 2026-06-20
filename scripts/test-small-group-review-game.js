@@ -1340,12 +1340,14 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-host-overrides-fit" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-host-override-feedback" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-host-overrides-fit"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-host-override-feedback"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides-fit/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides"/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides"/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-virtual-buzzer-phone-fit/);
@@ -1839,6 +1841,7 @@ test('provides host override controls for every NTW answer-judgment outcome', ()
   assert.match(css, /\.host-override-panel\s*{/);
   assert.match(js, /applyHostOverrideButton\?\.addEventListener\('click'/);
   assert.match(js, /function handleHostOverride\(\)/);
+  assert.match(js, /if \(result\.clue\.completed\) \{\s*disableVirtualBuzzersForHost\(\);\s*\}/);
 });
 
 test('host outcome overrides replace NTW automated verdicts and update board state', () => {
@@ -1870,6 +1873,24 @@ test('host outcome overrides replace NTW automated verdicts and update board sta
     disabled: false,
     ariaLabel: '$100 clue answered correctly. Review result',
   });
+
+  const customIncorrect = game.applyHostOverride({
+    contestants: corrected.contestants,
+    clue: corrected.clue,
+    decision: 'incorrect',
+    contestantId: 'contestant-1',
+    pointsDelta: -50,
+  });
+  assert.equal(customIncorrect.contestants[0].score, -50);
+  assert.deepEqual(customIncorrect.clue.noCreditAwards, [{ contestantId: 'contestant-1', points: -50 }]);
+
+  const reopenedAfterCustomIncorrect = game.applyHostOverride({
+    contestants: customIncorrect.contestants,
+    clue: customIncorrect.clue,
+    decision: 'reopen',
+  });
+  assert.equal(reopenedAfterCustomIncorrect.contestants[0].score, 0);
+  assert.equal(game.getClueBoardDisplayState({ clue: reopenedAfterCustomIncorrect.clue, value: 100 }).text, '$100');
 
   const noBuzz = game.applyHostOverride({
     contestants: corrected.contestants,
