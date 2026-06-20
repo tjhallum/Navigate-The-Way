@@ -30,6 +30,15 @@ function cssRule(css, selector) {
   return match[1];
 }
 
+function makeLessonFile(name, type, text) {
+  return {
+    name,
+    type,
+    text: async () => text,
+    arrayBuffer: async () => new TextEncoder().encode(text).buffer,
+  };
+}
+
 function createFakeAudioRoot(log) {
   let nodeId = 0;
 
@@ -145,11 +154,61 @@ function createFakeAudioRoot(log) {
 }
 
 test('supports common lesson upload file types used by small groups', () => {
-  assert.equal(game.isSupportedLessonFile({ name: 'lesson.pdf', type: 'application/pdf' }), true);
-  assert.equal(game.isSupportedLessonFile({ name: 'notes.txt', type: 'text/plain' }), true);
-  assert.equal(game.isSupportedLessonFile({ name: 'leader-guide.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), true);
-  assert.equal(game.isSupportedLessonFile({ name: 'slides.pptx', type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }), true);
+  const supported = [
+    ['lesson.pdf', 'application/pdf'],
+    ['notes.txt', 'text/plain'],
+    ['outline.md', 'text/markdown'],
+    ['lesson.csv', 'text/csv'],
+    ['study.xml', 'application/xml'],
+    ['handout.yaml', 'application/x-yaml'],
+    ['handout.yml', 'application/yaml'],
+    ['source.tex', 'application/x-tex'],
+    ['leader-guide.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    ['legacy-guide.doc', 'application/msword'],
+    ['lesson-notes.odt', 'application/vnd.oasis.opendocument.text'],
+    ['lesson.pages', 'application/vnd.apple.pages'],
+    ['slides.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+    ['legacy-slides.ppt', 'application/vnd.ms-powerpoint'],
+    ['discussion.odp', 'application/vnd.oasis.opendocument.presentation'],
+    ['lesson.key', 'application/vnd.apple.keynote'],
+    ['scorecard.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    ['legacy-scorecard.xls', 'application/vnd.ms-excel'],
+    ['attendance.ods', 'application/vnd.oasis.opendocument.spreadsheet'],
+  ];
+
+  supported.forEach(([name, type]) => {
+    assert.equal(game.isSupportedLessonFile({ name, type }), true, `${name} should be accepted`);
+  });
   assert.equal(game.isSupportedLessonFile({ name: 'image.png', type: 'image/png' }), false);
+});
+
+test('adds subsequent lesson file selections instead of replacing previous files', () => {
+  const firstSelection = [
+    { name: 'lesson-one.pdf' },
+    { name: 'leader-guide.docx' },
+  ];
+  const additionalSelection = [
+    { name: 'slides.pptx' },
+    { name: 'extra-notes.yaml' },
+  ];
+
+  const combined = game.addLessonFilesToSelection(firstSelection, additionalSelection);
+
+  assert.deepEqual(
+    combined.map((file) => file.name),
+    ['lesson-one.pdf', 'leader-guide.docx', 'slides.pptx', 'extra-notes.yaml']
+  );
+  assert.deepEqual(firstSelection.map((file) => file.name), ['lesson-one.pdf', 'leader-guide.docx']);
+  assert.deepEqual(
+    game.addLessonFilesToSelection(firstSelection, null).map((file) => file.name),
+    ['lesson-one.pdf', 'leader-guide.docx']
+  );
+
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+  assert.match(js, /function addSelectedFiles\(files\)/);
+  assert.match(js, /fileInput\?\.addEventListener\('change', \(\) => addSelectedFiles\(fileInput\.files\)\)/);
+  assert.match(js, /addSelectedFiles\(event\.dataTransfer\?\.files \|\| \[\]\)/);
+  assert.doesNotMatch(js, /setSelectedFiles\(event\.dataTransfer\?\.files \|\| \[\]\)/);
 });
 
 test('detects file drags so the browser does not open lesson files accidentally', () => {
@@ -193,6 +252,10 @@ test('renders removable lesson file controls and sticky drag-drop protection', (
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
 
   assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
+  ['.doc', '.odt', '.pages', '.ppt', '.odp', '.key', '.xlsx', '.xls', '.ods', '.csv', '.xml', '.yaml', '.tex'].forEach((extension) => {
+    assert.match(html, new RegExp(extension.replace('.', '\\.')));
+  });
+  assert.match(html, /accept="[^"]*\.doc[^"]*\.odt[^"]*\.pages[^"]*\.ppt[^"]*\.odp[^"]*\.key[^"]*\.xlsx[^"]*\.xls[^"]*\.ods[^"]*\.csv[^"]*\.xml[^"]*\.yaml[^"]*\.tex/);
   assert.match(cssRule(css, '.lesson-drop-zone > *'), /pointer-events:\s*none/);
   assert.match(css, /\.lesson-file-list\s*{/);
   assert.match(js, /document\.addEventListener\('dragover', handleDocumentLessonFileDragover\)/);
@@ -1099,8 +1162,10 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-completed-review" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260619-app-check"><\/script>/);
+  assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-partial-awards"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260619-lesson-files"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-host-buzzer-audio/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
 });
@@ -1687,6 +1752,116 @@ test('still requires either a lesson file or a leader-provided lesson descriptio
     () => game.buildLessonSourceContent({ lessonTopicText: '   ', files: [] }),
     /lesson file or type a lesson topic, summary, or focus instructions/i
   );
+});
+
+test('extracts readable text from newly supported lesson file formats', async () => {
+  const previousJSZip = globalThis.JSZip;
+  const previousXLSX = globalThis.XLSX;
+  globalThis.JSZip = {
+    loadAsync: async () => ({
+      files: {
+        'content.xml': {
+          async: async () => '<office:document-content><office:body><office:text><text:p>OpenDocument lesson about prayer and fellowship.</text:p></office:text></office:body></office:document-content>',
+        },
+        'index.xml': {
+          async: async () => '<sf:document><sf:text-body><sf:p>iWork package lesson about grace.</sf:p></sf:text-body></sf:document>',
+        },
+      },
+    }),
+  };
+  globalThis.XLSX = {
+    read: () => ({
+      SheetNames: ['Sheet1'],
+      Sheets: { Sheet1: {} },
+    }),
+    utils: {
+      sheet_to_csv: () => 'Question,Answer\nCreation,God made all things',
+    },
+  };
+
+  try {
+    const extracted = await game.extractLessonTextFromFiles([
+      makeLessonFile('lesson.yaml', 'application/x-yaml', 'theme: assurance in Christ'),
+      makeLessonFile('study.tex', 'application/x-tex', '\\section{Perseverance of the saints}'),
+      makeLessonFile('lesson.odt', 'application/vnd.oasis.opendocument.text', 'odt package placeholder'),
+      makeLessonFile('lesson.pages', 'application/vnd.apple.pages', 'pages package placeholder'),
+      makeLessonFile('scorecard.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'sheet placeholder'),
+      makeLessonFile('legacy-guide.doc', 'application/msword', 'Legacy Office lesson about covenant grace.'),
+    ]);
+
+    assert.match(extracted, /theme: assurance in Christ/);
+    assert.match(extracted, /Perseverance of the saints/);
+    assert.match(extracted, /OpenDocument lesson about prayer and fellowship/);
+    assert.match(extracted, /iWork package lesson about grace/);
+    assert.match(extracted, /Creation,God made all things/);
+    assert.match(extracted, /Legacy Office lesson about covenant grace/);
+  } finally {
+    globalThis.JSZip = previousJSZip;
+    globalThis.XLSX = previousXLSX;
+  }
+});
+
+test('extracts current iWork package lesson text from nested Index data without using plist metadata', async () => {
+  const previousJSZip = globalThis.JSZip;
+  const encoder = new TextEncoder();
+  globalThis.JSZip = {
+    loadAsync: async (payload) => {
+      if (payload?.nestedIWorkZip) {
+        return {
+          files: {
+            'Document.iwa': {
+              async: async () => encoder.encode('Nested iWork lesson about sanctification and perseverance.').buffer,
+            },
+          },
+        };
+      }
+      return {
+        files: {
+          'Metadata/Properties.plist': {
+            async: async () => '<plist><string>Package metadata should not become lesson material.</string></plist>',
+          },
+          'Index.zip': {
+            async: async () => ({ nestedIWorkZip: true }),
+          },
+        },
+      };
+    },
+  };
+
+  try {
+    const extracted = await game.extractLessonTextFromFiles([
+      makeLessonFile('lesson.pages', 'application/vnd.apple.pages', 'current pages package'),
+    ]);
+
+    assert.match(extracted, /Nested iWork lesson about sanctification and perseverance/);
+    assert.doesNotMatch(extracted, /Package metadata should not become lesson material/);
+  } finally {
+    globalThis.JSZip = previousJSZip;
+  }
+});
+
+test('rejects iWork packages that only expose plist metadata', async () => {
+  const previousJSZip = globalThis.JSZip;
+  globalThis.JSZip = {
+    loadAsync: async () => ({
+      files: {
+        'Metadata/Properties.plist': {
+          async: async () => '<plist><string>Package title but no lesson body.</string></plist>',
+        },
+      },
+    }),
+  };
+
+  try {
+    await assert.rejects(
+      () => game.extractLessonTextFromFiles([
+        makeLessonFile('lesson.key', 'application/vnd.apple.keynote', 'keynote package'),
+      ]),
+      /did not contain browser-readable lesson text/i
+    );
+  } finally {
+    globalThis.JSZip = previousJSZip;
+  }
 });
 
 test('applies API-judged answer results and reveals only after a correct answer or all contestants miss', () => {
