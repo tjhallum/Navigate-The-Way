@@ -2034,18 +2034,75 @@
     });
   }
 
-  async function extractIWorkPackageText(file) {
-    try {
-      return await extractZipXmlText(file, {
-        label: 'iWork',
-        preferredPathPattern: /(^|\/)(index|document|metadata)\.xml$/i,
-        fallbackPathPattern: /\.(xml|plist|txt|rtf)$/i,
-      });
-    } catch (zipError) {
-      const fallbackText = await extractLegacyOfficeBinaryText(file, { allowEmpty: true });
-      if (fallbackText) return fallbackText;
-      throw zipError;
+  async function extractReadableBinaryEntryText(entry) {
+    const buffer = await entry.async('arraybuffer');
+    const fragments = [];
+    [
+      decodeArrayBuffer(buffer, 'utf-8'),
+      decodeArrayBuffer(buffer, 'windows-1252'),
+      decodeArrayBuffer(buffer, 'utf-16le'),
+    ].forEach((candidate) => {
+      extractReadableBinaryStrings(candidate).forEach((fragment) => fragments.push(fragment));
+    });
+    return [...new Set(fragments)].join('\n').trim();
+  }
+
+  function iWorkEntryLooksLikeLessonText(path) {
+    return !/(^|\/)__MACOSX\//i.test(path) &&
+      !/(^|\/)(metadata|properties|buildVersionHistory)\.(xml|plist)$/i.test(path) &&
+      !/\.plist$/i.test(path);
+  }
+
+  async function collectIWorkPackageSections(zip) {
+    const paths = Object.keys(zip.files || {})
+      .filter((path) => {
+        const entry = zip.files[path];
+        return entry && !entry.dir && iWorkEntryLooksLikeLessonText(path);
+      })
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    const sections = [];
+
+    const xmlPaths = paths.filter((path) => /(^|\/)(index|document)\.xml$/i.test(path) || /(^|\/)(index|document|presentation|slide)[^/]*\/.*\.xml$/i.test(path));
+    for (const path of xmlPaths) {
+      const text = xmlTextToPlainText(await zip.files[path].async('string'));
+      if (text) sections.push(text);
     }
+
+    const previewPdfPath = paths.find((path) => /(^|\/)QuickLook\/Preview\.pdf$/i.test(path) || /(^|\/)preview\.pdf$/i.test(path));
+    if (previewPdfPath) {
+      const previewFile = {
+        name: previewPdfPath,
+        type: 'application/pdf',
+        arrayBuffer: async () => await zip.files[previewPdfPath].async('arraybuffer'),
+      };
+      const text = normalizeLongFormText(await extractPdfText(previewFile));
+      if (text) sections.push(text);
+    }
+
+    for (const path of paths.filter((entryPath) => /(^|\/)Index.*\.zip$/i.test(entryPath))) {
+      const nestedZip = await ROOT.JSZip.loadAsync(await zip.files[path].async('arraybuffer'));
+      const nestedSections = await collectIWorkPackageSections(nestedZip);
+      nestedSections.forEach((section) => sections.push(section));
+    }
+
+    for (const path of paths.filter((entryPath) => /\.iwa$/i.test(entryPath))) {
+      const text = await extractReadableBinaryEntryText(zip.files[path]);
+      if (text) sections.push(text);
+    }
+
+    return [...new Set(sections.map((section) => normalizeLongFormText(section)).filter(Boolean))];
+  }
+
+  async function extractIWorkPackageText(file) {
+    if (!ROOT.JSZip) {
+      throw new Error('iWork support did not load. Check the JSZip CDN connection or export the file to TXT, PDF, DOCX, or PPTX.');
+    }
+    const zip = await ROOT.JSZip.loadAsync(await file.arrayBuffer());
+    const sections = await collectIWorkPackageSections(zip);
+    if (sections.length === 0) {
+      throw new Error(`${file?.name || 'This iWork file'} did not contain browser-readable lesson text. Current Pages/Keynote files often store the document body in compressed iWork data; export it to PDF, DOCX, PPTX, TXT, or CSV and try again.`);
+    }
+    return sections.join('\n\n');
   }
 
   async function extractPptxText(file) {

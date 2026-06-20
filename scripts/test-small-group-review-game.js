@@ -1801,6 +1801,69 @@ test('extracts readable text from newly supported lesson file formats', async ()
   }
 });
 
+test('extracts current iWork package lesson text from nested Index data without using plist metadata', async () => {
+  const previousJSZip = globalThis.JSZip;
+  const encoder = new TextEncoder();
+  globalThis.JSZip = {
+    loadAsync: async (payload) => {
+      if (payload?.nestedIWorkZip) {
+        return {
+          files: {
+            'Document.iwa': {
+              async: async () => encoder.encode('Nested iWork lesson about sanctification and perseverance.').buffer,
+            },
+          },
+        };
+      }
+      return {
+        files: {
+          'Metadata/Properties.plist': {
+            async: async () => '<plist><string>Package metadata should not become lesson material.</string></plist>',
+          },
+          'Index.zip': {
+            async: async () => ({ nestedIWorkZip: true }),
+          },
+        },
+      };
+    },
+  };
+
+  try {
+    const extracted = await game.extractLessonTextFromFiles([
+      makeLessonFile('lesson.pages', 'application/vnd.apple.pages', 'current pages package'),
+    ]);
+
+    assert.match(extracted, /Nested iWork lesson about sanctification and perseverance/);
+    assert.doesNotMatch(extracted, /Package metadata should not become lesson material/);
+  } finally {
+    globalThis.JSZip = previousJSZip;
+  }
+});
+
+test('rejects iWork packages that only expose plist metadata', async () => {
+  const previousJSZip = globalThis.JSZip;
+  globalThis.JSZip = {
+    loadAsync: async () => ({
+      files: {
+        'Metadata/Properties.plist': {
+          async: async () => '<plist><string>Package title but no lesson body.</string></plist>',
+        },
+      },
+    }),
+  };
+
+  try {
+    await assert.rejects(
+      () => game.extractLessonTextFromFiles([
+        makeLessonFile('lesson.key', 'application/vnd.apple.keynote', 'keynote package'),
+      ]),
+      /did not contain browser-readable lesson text/i
+    );
+  } finally {
+    globalThis.JSZip = previousJSZip;
+  }
+});
+
 test('applies API-judged answer results and reveals only after a correct answer or all contestants miss', () => {
   const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
