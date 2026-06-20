@@ -4171,8 +4171,9 @@
           responseCheckInFlight,
         });
         const outcomeNote = outcome ? ` · ${outcome.label}` : (renderState.attempted ? ' · already tried' : '');
+        const hostOverrideButtons = renderHostVerdictOverrideButtons(contestant);
         return `
-          <article class="contestant-choice${renderState.attempted || outcome ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}">
+          <article class="contestant-choice${renderState.attempted || outcome ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}${hostOverrideButtons ? ' contestant-choice--has-host-overrides' : ''}">
             <label class="contestant-choice__label">
               <input type="radio" name="active-contestant" value="${contestant.id}" ${renderState.checked ? 'checked' : ''} ${renderState.disabled ? 'disabled' : ''} />
               <span class="contestant-choice__body">
@@ -4180,7 +4181,7 @@
                 <small>${formatScore(contestant.score)}${escapeHtml(outcomeNote)}</small>
               </span>
             </label>
-            ${renderHostVerdictOverrideButtons(contestant)}
+            ${hostOverrideButtons}
           </article>
         `;
       }).join('');
