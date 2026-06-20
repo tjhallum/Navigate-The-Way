@@ -2020,6 +2020,13 @@ test('host verdict overrides preserve a prior no-buzz terminal state unless upgr
   assert.equal(downgradedAfterReveal.contestants[1].score, 0);
   assert.equal(downgradedAfterReveal.contestants[2].score, 0);
   assert.equal(game.getClueBoardDisplayState({ clue: downgradedAfterReveal.clue, value: 100 }).text, '✕');
+  const noBuzzOverrideMessage = game.buildHostVerdictOverrideSuccessMessage({
+    result: downgradedAfterReveal,
+    decision: 'incorrect',
+    contestantName: 'Ada',
+  });
+  assert.match(noBuzzOverrideMessage, /already been revealed because no one else buzzed in/i);
+  assert.doesNotMatch(noBuzzOverrideMessage, /All players have attempted/i);
 
   const upgradedAfterReveal = game.applyHostVerdictOverride({
     contestants: noBuzzAfterPartial.contestants,

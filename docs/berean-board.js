@@ -1737,6 +1737,25 @@
     return applyHostVerdictOverride(options);
   }
 
+  function buildHostVerdictOverrideSuccessMessage({ result, decision, contestantName = '' } = {}) {
+    const name = contestantName || 'the selected contestant';
+    const clue = result?.clue || {};
+    const completedReason = clue.noContestantsBuzzed
+      ? 'The clue had already been revealed because no one else buzzed in.'
+      : 'All players have attempted, so the answer is revealed.';
+    if (decision === 'correct') {
+      return `Host override applied. ${name} now receives full credit, so the answer is revealed and buzzers are closed.`;
+    }
+    if (decision === 'partial') {
+      return clue.completed
+        ? `Host override applied. ${name} now receives partial credit. ${completedReason}`
+        : `Host override applied. ${name} now receives partial credit. Buzzers are open for another player.`;
+    }
+    return clue.completed
+      ? `Host override applied. ${name} is now marked incorrect. ${completedReason}`
+      : `Host override applied. ${name} is now marked incorrect. Buzzers are open for another player.`;
+  }
+
   function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect, judgment }) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required for scorekeeping.');
@@ -4166,21 +4185,6 @@
       updateResponseEntryState();
     }
 
-    function hostVerdictOverrideSuccessMessage(result, decision, contestantName = '') {
-      const name = contestantName || 'the selected contestant';
-      if (decision === 'correct') {
-        return `Host override applied. ${name} now receives full credit, so the answer is revealed and buzzers are closed.`;
-      }
-      if (decision === 'partial') {
-        return result.clue.completed
-          ? `Host override applied. ${name} now receives partial credit. All players have attempted, so the answer is revealed.`
-          : `Host override applied. ${name} now receives partial credit. Buzzers are open for another player.`;
-      }
-      return result.clue.completed
-        ? `Host override applied. ${name} is now marked incorrect. All players have attempted, so the answer is revealed.`
-        : `Host override applied. ${name} is now marked incorrect. Buzzers are open for another player.`;
-    }
-
     async function handleHostVerdictOverride({ contestantId, decision }) {
       if (!activeClue || responseCheckInFlight) return;
       const contestantName = contestants.find((contestant) => contestant.id === contestantId)?.name || '';
@@ -4207,7 +4211,7 @@
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName }));
         }
         if (clueFeedback) {
-          clueFeedback.textContent = hostVerdictOverrideSuccessMessage(result, decision, contestantName);
+          clueFeedback.textContent = buildHostVerdictOverrideSuccessMessage({ result, decision, contestantName });
         }
       } catch (error) {
         if (clueFeedback) clueFeedback.textContent = error.message || 'Could not apply that host override.';
@@ -4808,6 +4812,7 @@
     applyHostOverride,
     getClueBoardDisplayState,
     buildCompletedClueReviewPresentation,
+    buildHostVerdictOverrideSuccessMessage,
     shouldAutoCloseAfterAnswerResult,
     truncateLessonContent,
     buildOpenAiMessages,
