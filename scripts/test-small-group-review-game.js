@@ -799,6 +799,21 @@ test('normalizes virtual buzzer state and only enables eligible claimed players'
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[0], uid: 'ada-uid' }), true);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: normalized, claim: normalized.claims[2], uid: 'chloe-uid' }), false);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: { ...normalized, buzz: { ...normalized.buzz, first: { uid: 'ada-uid' } } }, claim: normalized.claims[0], uid: 'ada-uid' }), false);
+
+  const firebaseArrayLockedOutSession = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'open',
+    buzzRound: 3,
+    playerNames: { 0: 'Ada', 1: 'Boaz' },
+    playerClaims: {
+      0: { uid: 'ada-uid', playerName: 'Ada', buzzerNumber: 1 },
+      1: { uid: 'boaz-uid', playerName: 'Boaz', buzzerNumber: 2 },
+    },
+    buzz: { round: 3, open: true, first: null, lockedOutPlayerIndexes: [true] },
+  });
+
+  assert.deepEqual(firebaseArrayLockedOutSession.buzz.lockedOutPlayerIndexes, [0]);
+  assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: firebaseArrayLockedOutSession, claim: firebaseArrayLockedOutSession.claims[0], uid: 'ada-uid' }), false);
+  assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: firebaseArrayLockedOutSession, claim: firebaseArrayLockedOutSession.claims[1], uid: 'boaz-uid' }), true);
 });
 
 test('player phone name list does not auto-select a player before the phone user chooses one', () => {
@@ -1327,7 +1342,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260619-completed-review" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-reopen"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
   assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-remote-buzzer-reopen"><\/script>/);
@@ -1337,6 +1352,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-player-name-selection/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-file-drag-detection/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260619-app-check/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-reopen/);
 });
 
 

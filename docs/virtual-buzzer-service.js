@@ -73,6 +73,12 @@
 
   function normalizeLockedOutPlayerIndexes(value) {
     if (Array.isArray(value)) {
+      const looksLikeFirebaseBooleanList = value.some((entry) => typeof entry === 'boolean' || entry === null);
+      if (looksLikeFirebaseBooleanList) {
+        return value
+          .map((entry, index) => (entry === true ? index : null))
+          .filter((index) => Number.isInteger(index) && index >= 0 && index < 4);
+      }
       return value.map(Number).filter((index) => Number.isInteger(index) && index >= 0 && index < 4);
     }
     if (value && typeof value === 'object') {

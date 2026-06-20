@@ -1,0 +1,12 @@
+# Firebase CLI local output
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Environment and credential files
+.env
+.env.*
+*.local
+
+# Dependency directories
+node_modules/
