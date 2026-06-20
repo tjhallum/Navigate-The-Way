@@ -1345,7 +1345,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-adaptive-scoring"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-no-credit-cents"><\/script>/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-adaptive-scoring/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-override-feedback/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides-fit/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides-fit/);
