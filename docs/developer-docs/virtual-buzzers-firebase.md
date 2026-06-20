@@ -69,7 +69,7 @@ cd docs
 python -m http.server 4173 --bind 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4173/small-group-review-game.html`, choose Virtual, and verify the QR/link opens `?mode=buzz&session=...` in a second browser/device.
+Open `http://127.0.0.1:4173/berean-board.html`, choose Virtual, and verify the QR/link opens `?mode=buzz&session=...` in a second browser/device.
 
 If a production reCAPTCHA Enterprise site key is configured only for `navtheway.com` / `www.navtheway.com`, local Firebase Auth + Realtime Database smoke tests can still run while App Check enforcement is off, but a forced App Check token fetch from `127.0.0.1` can fail with a reCAPTCHA domain error. Fully verify App Check tokens from the deployed registered origin before enabling Realtime Database enforcement.
 
