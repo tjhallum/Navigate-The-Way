@@ -1340,12 +1340,16 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-virtual-buzzer-phone-fit" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260620-host-overrides-fit" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-virtual-buzzer-phone-fit"><\/script>/);
+  assert.match(html, /<script src="small-group-review-game\.js\?v=20260620-host-overrides-fit"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260620-host-overrides"/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-host-overrides"/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260620-virtual-buzzer-phone-fit/);
+  assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-virtual-buzzer-phone-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260619-completed-review/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260620-remote-buzzer-reopen/);
   assert.doesNotMatch(html, /small-group-review-game\.js\?v=20260619-lesson-files/);
@@ -1816,9 +1820,109 @@ test('includes distinct board tile styles for correct partial and missed outcome
   assert.match(cssRule(css, '.clue-review'), /rgba\(255, 206, 72, 0\.07\)/i);
 });
 
+test('provides host override controls for every NTW answer-judgment outcome', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
+
+  assert.match(html, /id="host-override-panel"/);
+  assert.doesNotMatch(html, /NTW can be wrong/i);
+  assert.match(html, /id="host-override-contestant"/);
+  assert.match(html, /id="host-override-decision"/);
+  assert.match(html, /value="correct"[\s\S]*Mark selected answer correct/);
+  assert.match(html, /value="partial"[\s\S]*Mark selected answer partially correct/);
+  assert.match(html, /value="incorrect"[\s\S]*Mark selected answer incorrect/);
+  assert.match(html, /value="no-buzz"[\s\S]*Mark no one buzzed in/);
+  assert.match(html, /value="reopen"[\s\S]*Reopen this clue/);
+  assert.match(html, /id="host-override-points"/);
+  assert.match(html, /id="apply-host-override-button"/);
+  assert.match(css, /\.host-override-panel\s*{/);
+  assert.match(js, /applyHostOverrideButton\?\.addEventListener\('click'/);
+  assert.match(js, /function handleHostOverride\(\)/);
+});
+
+test('host outcome overrides replace NTW automated verdicts and update board state', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const automatedIncorrect = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+
+  assert.equal(automatedIncorrect.contestants[0].score, -100);
+
+  const corrected = game.applyHostOverride({
+    contestants: automatedIncorrect.contestants,
+    clue: automatedIncorrect.clue,
+    decision: 'correct',
+    contestantId: 'contestant-1',
+  });
+
+  assert.equal(corrected.contestants[0].score, 100);
+  assert.equal(corrected.clue.completed, true);
+  assert.equal(corrected.clue.winningContestantId, 'contestant-1');
+  assert.equal(corrected.clue.hostOverrideApplied, true);
+  assert.deepEqual(game.getClueBoardDisplayState({ clue: corrected.clue, value: 100 }), {
+    text: '✓',
+    className: 'game-board__clue is-complete is-correct',
+    disabled: false,
+    ariaLabel: '$100 clue answered correctly. Review result',
+  });
+
+  const noBuzz = game.applyHostOverride({
+    contestants: corrected.contestants,
+    clue: corrected.clue,
+    decision: 'no-buzz',
+  });
+  assert.equal(noBuzz.contestants[0].score, 0);
+  assert.equal(noBuzz.clue.completed, true);
+  assert.equal(noBuzz.clue.noContestantsBuzzed, true);
+  assert.equal(game.getClueBoardDisplayState({ clue: noBuzz.clue, value: 100 }).text, '✕');
+
+  const partialComplete = game.applyHostOverride({
+    contestants: noBuzz.contestants,
+    clue: noBuzz.clue,
+    decision: 'partial',
+    contestantId: 'contestant-2',
+    pointsDelta: 30,
+    complete: true,
+  });
+  assert.equal(partialComplete.contestants[1].score, 30);
+  assert.equal(partialComplete.clue.completed, true);
+  assert.equal(partialComplete.clue.partialCreditAwarded, 30);
+  assert.equal(game.getClueBoardDisplayState({ clue: partialComplete.clue, value: 100 }).text, '⚠');
+
+  const reopened = game.applyHostOverride({
+    contestants: partialComplete.contestants,
+    clue: partialComplete.clue,
+    decision: 'reopen',
+  });
+  assert.equal(reopened.contestants[1].score, 0);
+  assert.equal(reopened.clue.completed, false);
+  assert.deepEqual(reopened.clue.attemptedContestantIds, []);
+  assert.equal(game.getClueBoardDisplayState({ clue: reopened.clue, value: 100 }).text, '$100');
+});
+
+test('host score adjustments let leaders correct points independently from NTW verdict state', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const adjusted = game.applyHostScoreAdjustment({
+    contestants,
+    contestantId: 'contestant-2',
+    pointsDelta: -75,
+  });
+
+  assert.equal(adjusted.contestants[0].score, 0);
+  assert.equal(adjusted.contestants[1].score, -75);
+  assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: '', pointsDelta: 10 }), /Choose a contestant/i);
+  assert.throws(() => game.applyHostScoreAdjustment({ contestants, contestantId: 'contestant-1', pointsDelta: Number.NaN }), /valid point adjustment/i);
+});
+
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'small-group-review-game.js'), 'utf8');
   const panelRule = cssRule(css, '.active-clue-panel');
   const cardRule = cssRule(css, '.active-clue-card');
   const contentRule = cssRule(css, '.active-clue-card__content');
@@ -1832,6 +1936,7 @@ test('keeps the clue modal fitted without an internal gameplay scrollbar', () =>
   assert.match(contentRule, /transform:\s*scale\(var\(--active-clue-scale,\s*1\)\)/i);
   assert.match(contentRule, /transform-origin:\s*top left/i);
   assert.match(contentRule, /width:\s*var\(--active-clue-content-width,\s*100%\)/i);
+  assert.match(js, /window\.setTimeout\(fitActiveClueCard,\s*0\)/);
 });
 
 test('calculates dynamic clue modal scaling to fit oversized content', () => {
