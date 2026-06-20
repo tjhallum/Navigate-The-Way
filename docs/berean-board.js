@@ -1712,10 +1712,12 @@
     });
 
     if (!nextClue.winningContestantId) {
+      const preserveNoBuzzTerminalState = Boolean(clue.completed && clue.noContestantsBuzzed);
       const allContestantsAttempted = nextContestants.length > 0 &&
         nextContestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
-      nextClue.allContestantsMissed = allContestantsAttempted;
-      nextClue.completed = allContestantsAttempted;
+      nextClue.noContestantsBuzzed = preserveNoBuzzTerminalState;
+      nextClue.allContestantsMissed = preserveNoBuzzTerminalState || allContestantsAttempted;
+      nextClue.completed = preserveNoBuzzTerminalState || allContestantsAttempted;
     }
 
     const correctedOutcome = getContestantAnswerOutcome({ clue: nextClue, contestantId: contestantIdText }) || { verdict: normalizedDecision };
