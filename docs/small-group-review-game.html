@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260619-completed-review" />
+  <link rel="stylesheet" href="styles.css?v=20260620-virtual-buzzer-phone-fit" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -156,7 +156,7 @@
       <p id="virtual-buzzer-player-status" class="game-status" aria-live="polite">Loading virtual buzzer session…</p>
       <div id="virtual-buzzer-name-options" class="virtual-buzzer-name-options" role="radiogroup" aria-label="Choose your player name"></div>
       <button id="virtual-buzzer-claim-button" type="button" class="primary-action" disabled>Use This Name</button>
-      <div id="virtual-buzzer-claimed-panel" class="virtual-buzzer-claimed-panel" hidden>
+      <div id="virtual-buzzer-claimed-panel" class="virtual-buzzer-claimed-panel" tabindex="-1" hidden>
         <p id="virtual-buzzer-claimed-name" class="virtual-buzzer-claimed-name"></p>
         <button id="virtual-buzzer-button" type="button" class="virtual-buzzer-button" disabled>BUZZ</button>
         <p id="virtual-buzzer-phone-status" class="virtual-buzzer-phone-status" aria-live="polite">Waiting for the host…</p>
@@ -707,6 +707,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260620-remote-buzzer-lockout-array"></script>
-<script src="small-group-review-game.js?v=20260620-remote-buzzer-reopen"></script>
+<script src="small-group-review-game.js?v=20260620-virtual-buzzer-phone-fit"></script>
 </body>
 </html>
