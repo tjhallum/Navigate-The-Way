@@ -1986,6 +1986,63 @@ test('host verdict overrides complete and reveal only when the corrected state e
   }), /valid host verdict/i);
 });
 
+test('host verdict overrides preserve a prior no-buzz terminal state unless upgraded to full credit', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const partial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  const noBuzzAfterPartial = game.applyNoBuzzForClue({
+    contestants: partial.contestants,
+    clue: partial.clue,
+  });
+
+  assert.equal(noBuzzAfterPartial.clue.completed, true);
+  assert.equal(noBuzzAfterPartial.clue.noContestantsBuzzed, true);
+  assert.equal(noBuzzAfterPartial.clue.attemptedContestantIds.length, 1);
+
+  const downgradedAfterReveal = game.applyHostVerdictOverride({
+    contestants: noBuzzAfterPartial.contestants,
+    clue: noBuzzAfterPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+
+  assert.equal(downgradedAfterReveal.clue.completed, true);
+  assert.equal(downgradedAfterReveal.clue.allContestantsMissed, true);
+  assert.equal(downgradedAfterReveal.clue.noContestantsBuzzed, true);
+  assert.equal(downgradedAfterReveal.answerShouldBeRevealed, true);
+  assert.equal(downgradedAfterReveal.buzzersShouldBeOpen, false);
+  assert.equal(downgradedAfterReveal.contestants[0].score, -100);
+  assert.equal(downgradedAfterReveal.contestants[1].score, 0);
+  assert.equal(downgradedAfterReveal.contestants[2].score, 0);
+  assert.equal(game.getClueBoardDisplayState({ clue: downgradedAfterReveal.clue, value: 100 }).text, '✕');
+  const noBuzzOverrideMessage = game.buildHostVerdictOverrideSuccessMessage({
+    result: downgradedAfterReveal,
+    decision: 'incorrect',
+    contestantName: 'Ada',
+  });
+  assert.match(noBuzzOverrideMessage, /already been revealed because no one else buzzed in/i);
+  assert.doesNotMatch(noBuzzOverrideMessage, /All players have attempted/i);
+
+  const upgradedAfterReveal = game.applyHostVerdictOverride({
+    contestants: noBuzzAfterPartial.contestants,
+    clue: noBuzzAfterPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'correct',
+  });
+  assert.equal(upgradedAfterReveal.clue.completed, true);
+  assert.equal(upgradedAfterReveal.clue.noContestantsBuzzed, false);
+  assert.equal(upgradedAfterReveal.clue.winningContestantId, 'contestant-1');
+  assert.equal(upgradedAfterReveal.answerShouldBeRevealed, true);
+  assert.equal(upgradedAfterReveal.buzzersShouldBeOpen, false);
+  assert.equal(upgradedAfterReveal.contestants[0].score, 100);
+  assert.equal(game.getClueBoardDisplayState({ clue: upgradedAfterReveal.clue, value: 100 }).text, '✓');
+});
+
 test('keeps the clue modal fitted without an internal gameplay scrollbar', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
