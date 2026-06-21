@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">Berean Board scalable icon</title>
+  <desc id="desc">A hard-alpha, no-glow Berean Board token icon: bold B mark, game buzzer accent, and faceted board rim. Built for small-size readability and print scalability.</desc>
+  <defs>
+    <path id="token" d="M16 4H48L60 16V48L48 60H16L4 48V16Z"/>
+    <clipPath id="tokenClip"><use href="#token"/></clipPath>
+    <linearGradient id="markGrad" x1="19" y1="14" x2="49" y2="57" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF7CC"/>
+      <stop offset="0.55" stop-color="#F4E7A8"/>
+      <stop offset="1" stop-color="#E9C85C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Hard-cut exterior. No filter, blur, shadow, or glow. -->
+  <use href="#token" fill="#69D4FF"/>
+  <g clip-path="url(#tokenClip)">
+    <path d="M32 4H60V60H32Z" fill="#8F65E4"/>
+    <path d="M4 48L48 4H60V18L18 60H4Z" fill="#FFD15C"/>
+    <path d="M42 38L60 20V60H24Z" fill="#F43B58"/>
+  </g>
+
+  <!-- Dark inner board/token field. -->
+  <path d="M18.25 8.5H45.75L55.5 18.25V45.75L45.75 55.5H18.25L8.5 45.75V18.25Z" fill="#101832"/>
+
+  <!-- One bold, print-safe mark. The counters are large and intentionally simple. -->
+  <path fill-rule="evenodd" clip-rule="evenodd" fill="url(#markGrad)" d="
+    M18.7 13.5H34.2
+    C42.7 13.5 48.1 18.4 48.1 25.6
+    C48.1 30.1 45.6 33.2 41.3 34.5
+    C46.6 35.7 50.1 39.7 50.1 45.8
+    C50.1 53.4 44.1 58.1 34.5 58.1H18.7V13.5Z
+    M29.1 22.3V31.2H34.0
+    C37.7 31.2 40.1 29.4 40.1 26.8
+    C40.1 24.1 37.7 22.3 34.0 22.3H29.1Z
+    M29.1 40.1V49.2H35.2
+    C39.2 49.2 41.8 47.4 41.8 44.7
+    C41.8 41.9 39.2 40.1 35.2 40.1H29.1Z"/>
+
+  <!-- Game buzzer accent: large enough to survive small sizes. -->
+  <circle cx="23.8" cy="35.0" r="5.15" fill="#F43B58" stroke="#101832" stroke-width="1.45"/>
+</svg>

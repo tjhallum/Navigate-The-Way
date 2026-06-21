@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260621-winner-celebration-scale" />
+  <link rel="stylesheet" href="styles.css?v=20260621-berean-board-icon" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -128,7 +128,7 @@
 <main>
   <section class="page-shell berean-board-page" data-berean-board>
     <section class="page-header">
-      <h1>Berean Board</h1>
+      <h1 class="berean-board-title"><img class="berean-board-title__icon" src="images/berean-board/berean_board_icon_v4.svg" alt="" width="64" height="64" aria-hidden="true" /><span>Berean Board</span></h1>
       <p>Turn your lesson into a trivia-style review game. Powered by NTW✝️, Berean Board automatically creates the game board, checks answers, and keeps score. Perfect for Bible studies, Sunday school classes, and small groups!</p>
     </section>
 
@@ -151,7 +151,10 @@
     </details>
 
     <section id="virtual-buzzer-player-screen" class="virtual-buzzer-player-screen" hidden>
-      <p class="eyebrow">Berean Board</p>
+      <div class="virtual-buzzer-player-brand" aria-label="Berean Board">
+        <img class="virtual-buzzer-player-brand__icon" src="images/berean-board/berean_board_icon_v4.svg" alt="" width="64" height="64" aria-hidden="true" />
+        <p class="virtual-buzzer-player-brand__name">Berean Board</p>
+      </div>
       <h2>Virtual buzzer</h2>
       <p id="virtual-buzzer-player-status" class="game-status" aria-live="polite">Loading virtual buzzer session…</p>
       <div id="virtual-buzzer-name-options" class="virtual-buzzer-name-options" role="radiogroup" aria-label="Choose your player name"></div>
