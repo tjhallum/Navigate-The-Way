@@ -1489,7 +1489,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-question-flow-ui"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-virtual-close-race"><\/script>/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array/);
@@ -1516,6 +1516,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-remote-buzzer-reopen/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-epub-lessons/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-question-flow-ui/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-lesson-files/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-host-buzzer-audio/);
