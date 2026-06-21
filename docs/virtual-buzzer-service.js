@@ -517,10 +517,12 @@
   }
 
   async function selectFirstBuzzForHost({ context, sessionId, playerIndex, playerNames, claim, round, currentClue = null, nowMs = Date.now() }) {
-    const first = buildHostSelectedBuzzValue({ claim, playerIndex, playerNames, round, nowMs });
+    const lockRound = Math.max(0, Math.floor(Number(round) || 0));
+    const first = buildHostSelectedBuzzValue({ claim, playerIndex, playerNames, round: lockRound, nowMs });
     const updateValue = {
       status: 'locked',
       'buzz/open': false,
+      'buzz/lockRound': lockRound,
       'buzz/first': first,
     };
     const normalizedCurrentClue = normalizeCurrentClue(currentClue);
@@ -535,8 +537,9 @@
         val: () => ({
           status: 'locked',
           buzz: {
-            round: Math.max(0, Math.floor(Number(round) || 0)),
+            round: lockRound,
             open: false,
+            lockRound,
             first,
             lockedOutPlayerIndexes: {},
             ...(normalizedCurrentClue ? { currentClue: normalizedCurrentClue } : {}),
