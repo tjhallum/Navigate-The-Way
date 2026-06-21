@@ -1616,6 +1616,7 @@
       hostOverrideApplied: true,
       hostOverrideDecision: decision,
       hostOverrideUpdatedAt: now,
+      hostOverrideAnswerWasAlreadyRevealed: false,
     };
   }
 
@@ -1760,6 +1761,8 @@
     const isDowngradingRevealedCorrect = currentOutcome.verdict === 'correct'
       && normalizedDecision !== 'correct'
       && Boolean(clue.completed);
+    const shouldPreserveRevealedCompletion = isDowngradingRevealedCorrect ||
+      Boolean(clue.completed && clue.hostOverrideAnswerWasAlreadyRevealed);
     const sequence = buildContestantVerdictSequence(clue).map((entry) => (
       entry.contestantId === contestantIdText ? { ...entry, verdict: normalizedDecision } : entry
     ));
@@ -1810,8 +1813,8 @@
         nextContestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
       nextClue.noContestantsBuzzed = preserveNoBuzzTerminalState;
       nextClue.allContestantsMissed = preserveNoBuzzTerminalState || allContestantsAttempted;
-      nextClue.completed = preserveNoBuzzTerminalState || allContestantsAttempted || isDowngradingRevealedCorrect;
-      nextClue.hostOverrideAnswerWasAlreadyRevealed = isDowngradingRevealedCorrect && !preserveNoBuzzTerminalState && !allContestantsAttempted;
+      nextClue.completed = preserveNoBuzzTerminalState || allContestantsAttempted || shouldPreserveRevealedCompletion;
+      nextClue.hostOverrideAnswerWasAlreadyRevealed = shouldPreserveRevealedCompletion && !preserveNoBuzzTerminalState && !allContestantsAttempted;
     }
 
     const correctedOutcome = getContestantAnswerOutcome({ clue: nextClue, contestantId: contestantIdText }) || { verdict: normalizedDecision };
