@@ -1535,7 +1535,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-full-credit-overrides"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-repeat-downgrade-state"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-full-credit-overrides/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-followup-polish/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
