@@ -2512,7 +2512,7 @@ test('extracts readable text from newly supported lesson file formats', async ()
   }
 });
 
-test('extracts readable lesson text from EPUB packages', async () => {
+test('extracts readable lesson text from EPUB packages in OPF spine order', async () => {
   const previousJSZip = globalThis.JSZip;
   globalThis.JSZip = {
     loadAsync: async () => ({
@@ -2523,8 +2523,34 @@ test('extracts readable lesson text from EPUB packages', async () => {
         'META-INF/container.xml': {
           async: async () => '<container><rootfiles><rootfile full-path="OEBPS/content.opf" /></rootfiles></container>',
         },
-        'OEBPS/chapter1.xhtml': {
-          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Assurance from Romans 8</h1><p>Believers are adopted in Christ and cry Abba, Father.</p></body></html>',
+        'OEBPS/content.opf': {
+          async: async () => `
+            <package>
+              <manifest>
+                <item id="later" href="zzz-later.xhtml" media-type="application/xhtml+xml" />
+                <item id="first" href="chapters/002-first.xhtml" media-type="application/xhtml+xml" />
+                <item id="second" href="chapters/001-second.xhtml" media-type="application/xhtml+xml" />
+                <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />
+              </manifest>
+              <spine>
+                <itemref idref="first" />
+                <itemref idref="second" />
+                <itemref idref="later" />
+              </spine>
+            </package>
+          `,
+        },
+        'OEBPS/chapters/001-second.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Second lesson section</h1><p>Believers are adopted in Christ and cry Abba, Father.</p></body></html>',
+        },
+        'OEBPS/chapters/002-first.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>First lesson section</h1><p>Assurance from Romans 8.</p></body></html>',
+        },
+        'OEBPS/zzz-later.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Later lesson section</h1><p>Nothing can separate believers from the love of God in Christ.</p></body></html>',
+        },
+        'OEBPS/nav.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><nav>Auxiliary table of contents should not become lesson text.</nav></body></html>',
         },
       },
     }),
@@ -2535,8 +2561,18 @@ test('extracts readable lesson text from EPUB packages', async () => {
       makeLessonFile('lesson.epub', 'application/epub+zip', 'epub package placeholder'),
     ]);
 
-    assert.match(extracted, /Assurance from Romans 8/);
-    assert.match(extracted, /Believers are adopted in Christ/);
+    assert.match(extracted, /First lesson section/);
+    assert.match(extracted, /Second lesson section/);
+    assert.match(extracted, /Later lesson section/);
+    assert.ok(
+      extracted.indexOf('First lesson section') < extracted.indexOf('Second lesson section'),
+      'EPUB text should follow the OPF spine order instead of filename order'
+    );
+    assert.ok(
+      extracted.indexOf('Second lesson section') < extracted.indexOf('Later lesson section'),
+      'EPUB text should preserve the whole declared spine order'
+    );
+    assert.doesNotMatch(extracted, /Auxiliary table of contents/);
     assert.doesNotMatch(extracted, /<h1>/);
   } finally {
     globalThis.JSZip = previousJSZip;
