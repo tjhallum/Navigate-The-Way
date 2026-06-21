@@ -662,6 +662,15 @@
     return rawScale;
   }
 
+  function calculateWinnerCelebrationScale({ availableWidth, availableHeight, cardWidth, cardHeight } = {}) {
+    return calculateClueModalScale({
+      availableWidth,
+      availableHeight,
+      contentWidth: cardWidth,
+      contentHeight: cardHeight,
+    });
+  }
+
   function formatClueModalScaleForCss(scale) {
     const safeScale = Number(scale);
     if (!Number.isFinite(safeScale) || safeScale <= 0) {
@@ -3224,6 +3233,7 @@
     const noBuzzButton = app.querySelector('#no-buzz-button');
     const closeClueButton = app.querySelector('#close-clue-button');
     const winnerCelebrationModal = app.querySelector('#winner-celebration-modal');
+    const winnerCelebrationCard = app.querySelector('.winner-celebration-card');
     const winnerCelebrationHeading = app.querySelector('#winner-celebration-heading');
     const winnerCelebrationMessage = app.querySelector('#winner-celebration-message');
     const winnerCelebrationScore = app.querySelector('#winner-celebration-score');
@@ -3308,6 +3318,7 @@
     let answerRevealed = false;
     let responseCheckInFlight = false;
     let clueFitFrame = 0;
+    let winnerCelebrationFitFrame = 0;
     let winnerCelebrationShownForGame = false;
 
     const savedEndpoint = safeGetBrowserStorageItem(window, 'ntwReviewGameEndpoint');
@@ -3914,8 +3925,58 @@
       }
     }
 
+    function resetWinnerCelebrationFit() {
+      if (winnerCelebrationFitFrame) {
+        window.cancelAnimationFrame?.(winnerCelebrationFitFrame);
+        window.clearTimeout?.(winnerCelebrationFitFrame);
+        winnerCelebrationFitFrame = 0;
+      }
+      winnerCelebrationCard?.style.removeProperty('--winner-celebration-scale');
+      winnerCelebrationCard?.classList.remove('is-scaled');
+    }
+
+    function getWinnerCelebrationAvailableRect() {
+      if (!winnerCelebrationModal) return { availableWidth: 0, availableHeight: 0 };
+      const styles = window.getComputedStyle(winnerCelebrationModal);
+      const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+      const paddingY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
+      return {
+        availableWidth: Math.max(1, winnerCelebrationModal.clientWidth - paddingX),
+        availableHeight: Math.max(1, winnerCelebrationModal.clientHeight - paddingY),
+      };
+    }
+
+    function fitWinnerCelebrationCard() {
+      winnerCelebrationFitFrame = 0;
+      if (!winnerCelebrationModal || winnerCelebrationModal.hidden || !winnerCelebrationCard) return;
+      winnerCelebrationCard.style.setProperty('--winner-celebration-scale', '1');
+      const available = getWinnerCelebrationAvailableRect();
+      const scale = calculateWinnerCelebrationScale({
+        ...available,
+        cardWidth: winnerCelebrationCard.offsetWidth,
+        cardHeight: winnerCelebrationCard.offsetHeight,
+      });
+      const scaleValue = formatClueModalScaleForCss(scale);
+      const normalizedScale = Number(scaleValue);
+      winnerCelebrationCard.style.setProperty('--winner-celebration-scale', scaleValue);
+      winnerCelebrationCard.classList.toggle('is-scaled', normalizedScale < 0.999);
+    }
+
+    function scheduleWinnerCelebrationFit() {
+      if (!winnerCelebrationModal || winnerCelebrationModal.hidden || !winnerCelebrationCard) return;
+      if (winnerCelebrationFitFrame) {
+        window.cancelAnimationFrame?.(winnerCelebrationFitFrame);
+        window.clearTimeout?.(winnerCelebrationFitFrame);
+      }
+      winnerCelebrationFitFrame = window.setTimeout(() => {
+        fitWinnerCelebrationCard();
+        winnerCelebrationFitFrame = window.requestAnimationFrame?.(fitWinnerCelebrationCard) || window.setTimeout(fitWinnerCelebrationCard, 16);
+      }, 0);
+    }
+
     function closeWinnerCelebrationModal() {
       if (winnerCelebrationModal) winnerCelebrationModal.hidden = true;
+      resetWinnerCelebrationFit();
       document.body?.classList.remove('has-winner-celebration-modal');
     }
 
@@ -3928,7 +3989,9 @@
       }
       winnerCelebrationModal.hidden = false;
       document.body?.classList.add('has-winner-celebration-modal');
+      scheduleWinnerCelebrationFit();
       window.requestAnimationFrame(() => {
+        fitWinnerCelebrationCard();
         winnerCelebrationBackButton?.focus?.();
       });
     }
@@ -5245,6 +5308,7 @@
     });
     window.addEventListener('resize', () => {
       scheduleActiveClueFit();
+      scheduleWinnerCelebrationFit();
     });
     closeClueButton?.addEventListener('click', () => {
       handleCloseActiveClueRequest();
@@ -5357,6 +5421,7 @@
     getClueBoardDisplayState,
     gameHasAllCluesCompleted,
     buildWinnerCelebrationPresentation,
+    calculateWinnerCelebrationScale,
     buildVirtualBuzzerPhoneStatusMessage,
     buildVirtualBuzzerPlayerHeaderMessage,
     getNextPickerNote,
