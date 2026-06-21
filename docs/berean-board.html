@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260621-override-tile-readability" />
+  <link rel="stylesheet" href="styles.css?v=20260621-virtual-host-polish" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -640,23 +640,15 @@
     <section id="game-play-area" class="card review-game-play" hidden>
       <div class="game-play-header">
         <div>
-          <p class="eyebrow">Generated Game</p>
           <h2 id="generated-game-title">Berean Board Lesson Review</h2>
         </div>
         <div class="game-actions">
-          <button id="export-game-json" type="button">Export Game JSON</button>
+          <p id="next-picker-note" class="next-picker-note" aria-live="polite">Host may choose the first question.</p>
           <button id="reset-game-button" type="button">Start Over</button>
         </div>
       </div>
 
       <section aria-label="Scores" id="scoreboard" class="scoreboard"></section>
-      <section id="virtual-buzzer-game-panel" class="virtual-buzzer-game-panel" hidden>
-        <div>
-          <p class="eyebrow">Virtual buzzers</p>
-          <p id="virtual-buzzer-game-status" class="virtual-buzzer-game-status">Buzzers are disabled until a clue opens.</p>
-        </div>
-        <p id="virtual-buzzer-first" class="virtual-buzzer-first" aria-live="polite" hidden></p>
-      </section>
       <section aria-label="Review game board" id="game-board" class="game-board"></section>
 
       <section id="active-clue-panel" class="active-clue-panel" role="dialog" aria-modal="true" aria-labelledby="active-clue-heading" tabindex="-1" hidden>
@@ -706,7 +698,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
-<script src="virtual-buzzer-service.js?v=20260620-remote-buzzer-lockout-array"></script>
-<script src="berean-board.js?v=20260621-clue-close-guard"></script>
+<script src="virtual-buzzer-service.js?v=20260621-host-selected-buzz"></script>
+<script src="berean-board.js?v=20260621-virtual-host-polish"></script>
 </body>
 </html>

@@ -1334,6 +1334,7 @@
             hostOverrideApplied: Boolean(rawClue?.hostOverrideApplied),
             hostOverrideDecision: coerceText(rawClue?.hostOverrideDecision),
             hostOverrideUpdatedAt: coerceText(rawClue?.hostOverrideUpdatedAt),
+            completedAt: coerceText(rawClue?.completedAt),
             partialCreditAwarded: Math.max(0, Number(rawClue?.partialCreditAwarded || 0)),
             partialCreditContestantIds: Array.isArray(rawClue?.partialCreditContestantIds)
               ? [...new Set(rawClue.partialCreditContestantIds.map(String))]
@@ -1608,13 +1609,13 @@
     if (!outcome || outcome.verdict === 'correct') return [];
     if (outcome.verdict === 'partial') {
       return [
-        { decision: 'incorrect', label: 'Downgrade to incorrect', icon: '×' },
+        { decision: 'incorrect', label: 'Downgrade to incorrect', icon: '✕' },
         { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
       ];
     }
     if (outcome.verdict === 'incorrect') {
       return [
-        { decision: 'partial', label: 'Upgrade to partial credit', icon: '½' },
+        { decision: 'partial', label: 'Upgrade to partial credit', icon: '⚠' },
         { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
       ];
     }
@@ -1679,7 +1680,8 @@
       throw new Error('Choose a valid host verdict override for that contestant.');
     }
 
-    const nextClue = baseHostOverrideClue(clue, normalizedDecision, now || new Date().toISOString());
+    const appliedAt = now || new Date().toISOString();
+    const nextClue = baseHostOverrideClue(clue, normalizedDecision, appliedAt);
     const clueValue = Number(clue.value || 0);
     const sequence = buildContestantVerdictSequence(clue).map((entry) => (
       entry.contestantId === contestantIdText ? { ...entry, verdict: normalizedDecision } : entry
@@ -1731,6 +1733,9 @@
     }
 
     const correctedOutcome = getContestantAnswerOutcome({ clue: nextClue, contestantId: contestantIdText }) || { verdict: normalizedDecision };
+    if (nextClue.completed) {
+      nextClue.completedAt = appliedAt;
+    }
     return {
       contestants: nextContestants,
       clue: nextClue,
@@ -1766,7 +1771,7 @@
       : `Host override applied. ${name} is now marked incorrect. Buzzers are open for another player.`;
   }
 
-  function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect, judgment }) {
+  function applyAnswerJudgment({ contestants, clue, contestantId, isCorrect, judgment, now } = {}) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required for scorekeeping.');
     }
@@ -1834,6 +1839,9 @@
       contestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
     nextClue.allContestantsMissed = allContestantsAttempted;
     nextClue.completed = nextClue.completed || allContestantsAttempted;
+    if (nextClue.completed) {
+      nextClue.completedAt = coerceText(now) || new Date().toISOString();
+    }
 
     return {
       contestants: nextContestants,
@@ -1845,7 +1853,7 @@
     };
   }
 
-  function applyNoBuzzForClue({ contestants, clue }) {
+  function applyNoBuzzForClue({ contestants, clue, now } = {}) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required for scorekeeping.');
     }
@@ -1858,6 +1866,7 @@
     const nextClue = {
       ...clue,
       completed: true,
+      completedAt: coerceText(now) || new Date().toISOString(),
       allContestantsMissed: true,
       noContestantsBuzzed: true,
       winningContestantId: '',
@@ -2745,6 +2754,60 @@
     return `$${Number(value || 0)}`;
   }
 
+  function formatCurrentClueDescription(currentClue) {
+    if (!currentClue || typeof currentClue !== 'object') return '';
+    const categoryTitle = coerceText(currentClue.categoryTitle || currentClue.category || currentClue.categoryName);
+    const value = Number(currentClue.value || currentClue.clueValue || 0);
+    if (categoryTitle && Number.isFinite(value) && value > 0) {
+      return `${categoryTitle} for ${formatClueBoardValue(value)}`;
+    }
+    if (categoryTitle) return categoryTitle;
+    if (Number.isFinite(value) && value > 0) return formatClueBoardValue(value);
+    return '';
+  }
+
+  function buildVirtualBuzzerPlayerHeaderMessage({ session, claim } = {}) {
+    const clueDescription = formatCurrentClueDescription(session?.buzz?.currentClue);
+    if (clueDescription) return `Current question: ${clueDescription}.`;
+    return claim
+      ? 'Name claimed. Keep this screen open for the next question.'
+      : 'Choose your player name.';
+  }
+
+  function buildVirtualBuzzerPhoneStatusMessage({ session, claim, uid, nowMs = Date.now() } = {}) {
+    if (!session) return 'Waiting for the host…';
+    const clueDescription = formatCurrentClueDescription(session?.buzz?.currentClue);
+    const cluePhrase = clueDescription ? ` ${clueDescription}` : '';
+    const clueForPhrase = clueDescription ? ` for ${clueDescription}` : '';
+    const first = session?.buzz?.first || null;
+    const playerUid = coerceText(uid);
+    const playerIndex = Number(claim?.playerIndex);
+    const lockedOut = Number.isInteger(playerIndex) && Array.isArray(session?.buzz?.lockedOutPlayerIndexes) &&
+      session.buzz.lockedOutPlayerIndexes.includes(playerIndex);
+
+    if (session.status === 'closed' || (session.expiresAt && Number(session.expiresAt) < Number(nowMs))) {
+      return 'This virtual buzzer session is closed.';
+    }
+    if (!claim) {
+      return 'Choose your player name.';
+    }
+    if (first?.uid === playerUid) {
+      return first.source === 'host'
+        ? `The host selected you${clueForPhrase}. Give your answer now.`
+        : `You buzzed first${clueForPhrase}! Give your answer now.`;
+    }
+    if (first) {
+      return `${first.playerName || 'Another player'} is answering${cluePhrase}. Wait for the host.`;
+    }
+    if (lockedOut) {
+      return `You already answered${cluePhrase}. Wait while another player tries.`;
+    }
+    if (session.status === 'open' && session.buzz?.open) {
+      return `Buzzers are open${clueForPhrase}!`;
+    }
+    return clueDescription ? `Waiting for the host on ${clueDescription}.` : 'Waiting for the host…';
+  }
+
   function clueHasPartialCredit(clue) {
     return Math.max(0, Number(clue?.partialCreditAwarded || 0)) > 0 ||
       (Array.isArray(clue?.partialCreditContestantIds) && clue.partialCreditContestantIds.length > 0);
@@ -2796,6 +2859,34 @@
     };
   }
 
+  function getMostRecentCompletedClue(game) {
+    let latest = null;
+    let fallbackOrder = 0;
+    (game?.categories || []).forEach((category) => {
+      (category?.clues || []).forEach((clue) => {
+        fallbackOrder += 1;
+        if (!clue?.completed) return;
+        const parsedTime = Date.parse(clue.completedAt || clue.hostOverrideUpdatedAt || '');
+        const sortValue = Number.isFinite(parsedTime) ? parsedTime : fallbackOrder;
+        if (!latest || sortValue >= latest.sortValue) {
+          latest = { clue, category, sortValue };
+        }
+      });
+    });
+    return latest;
+  }
+
+  function getNextPickerNote({ game, contestants } = {}) {
+    const latest = getMostRecentCompletedClue(game);
+    if (!latest) return 'Host may choose the first question.';
+    const winningContestantId = coerceText(latest.clue?.winningContestantId);
+    if (winningContestantId) {
+      const winner = (Array.isArray(contestants) ? contestants : []).find((contestant) => contestant?.id === winningContestantId);
+      return `${winner?.name || 'The full-credit player'} should pick the next question.`;
+    }
+    return 'No full-credit answer last time; host may choose the next question.';
+  }
+
   function shouldSubmitResponseFromKeydown(event) {
     return event?.key === 'Enter' &&
       !event.shiftKey &&
@@ -2831,7 +2922,7 @@
     const scoreboard = app.querySelector('#scoreboard');
     const board = app.querySelector('#game-board');
     const gameTitle = app.querySelector('#generated-game-title');
-    const exportButton = app.querySelector('#export-game-json');
+    const nextPickerNote = app.querySelector('#next-picker-note');
     const resetButton = app.querySelector('#reset-game-button');
     const cluePanel = app.querySelector('#active-clue-panel');
     const clueCard = app.querySelector('.active-clue-card');
@@ -2894,9 +2985,6 @@
     const virtualBuzzerJoinCopy = app.querySelector('#virtual-buzzer-join-copy');
     const virtualBuzzerJoinLink = app.querySelector('#virtual-buzzer-join-link');
     const virtualBuzzerPlayerList = app.querySelector('#virtual-buzzer-player-list');
-    const virtualBuzzerGamePanel = app.querySelector('#virtual-buzzer-game-panel');
-    const virtualBuzzerGameStatus = app.querySelector('#virtual-buzzer-game-status');
-    const virtualBuzzerFirst = app.querySelector('#virtual-buzzer-first');
     const virtualBuzzerPlayerScreen = app.querySelector('#virtual-buzzer-player-screen');
     const virtualBuzzerPlayerStatus = app.querySelector('#virtual-buzzer-player-status');
     const virtualBuzzerNameOptions = app.querySelector('#virtual-buzzer-name-options');
@@ -3114,7 +3202,6 @@
       if (lessonSetupStatus) lessonSetupStatus.textContent = '';
       if (difficultySetupStatus) difficultySetupStatus.textContent = '';
       if (virtualBuzzerHostPanel) virtualBuzzerHostPanel.hidden = true;
-      if (virtualBuzzerGamePanel) virtualBuzzerGamePanel.hidden = true;
       updateDifficultySetupControls();
       applySetupStepStage('group');
     }
@@ -3214,32 +3301,8 @@
     }
 
     function updateVirtualBuzzerGamePanel() {
-      if (!virtualBuzzerGamePanel) return;
-      virtualBuzzerGamePanel.hidden = !isVirtualBuzzerMode() || !virtualBuzzerSessionId;
-      if (!isVirtualBuzzerMode() || !virtualBuzzerSessionId) return;
-      const first = virtualBuzzerSession?.buzz?.first || null;
-      if (virtualBuzzerGameStatus) {
-        if (first) {
-          virtualBuzzerGameStatus.textContent = 'Buzzers are locked after the first buzz.';
-        } else if (!allVirtualPlayersConnected()) {
-          const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
-          virtualBuzzerGameStatus.textContent = `Waiting for virtual buzzers: ${getVirtualBuzzerConnectedCount()} of ${expectedCount} players connected.`;
-        } else if (virtualBuzzerSession?.buzz?.open) {
-          virtualBuzzerGameStatus.textContent = 'Buzzers are open!';
-        } else {
-          virtualBuzzerGameStatus.textContent = 'Buzzers are disabled until a clue opens.';
-        }
-      }
-      if (virtualBuzzerFirst) {
-        if (first) {
-          const color = getBuzzerColorForPlayerIndex(Number(first.playerIndex));
-          virtualBuzzerFirst.style.setProperty('--virtual-buzzer-player-color', color.value);
-          virtualBuzzerFirst.innerHTML = `<strong>${escapeHtml(first.playerName)}</strong> buzzed first`;
-          virtualBuzzerFirst.hidden = false;
-        } else {
-          virtualBuzzerFirst.textContent = '';
-          virtualBuzzerFirst.hidden = true;
-        }
+      if (nextPickerNote) {
+        nextPickerNote.textContent = getNextPickerNote({ game: gameData, contestants });
       }
     }
 
@@ -3275,7 +3338,9 @@
       const key = `${activeClue.id}:${firstBuzz.round}:${firstBuzz.uid}`;
       if (virtualBuzzerFirstHandledKey === key) return;
       virtualBuzzerFirstHandledKey = key;
-      hostBuzzerAudio.play();
+      if (firstBuzz.source !== 'host') {
+        hostBuzzerAudio.play();
+      }
       const contestantId = getContestantIdForPlayerIndex(Number(firstBuzz.playerIndex));
       if (contestantChoices && contestantId) {
         const input = contestantChoices.querySelector(`input[name="active-contestant"][value="${contestantId}"]`);
@@ -3290,6 +3355,44 @@
       }
       updateVirtualBuzzerGamePanel();
       disableVirtualBuzzersForHost(firstBuzz.round);
+    }
+
+    async function handleHostSelectedVirtualContestant() {
+      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed || responseCheckInFlight) return;
+      if (!virtualBuzzerService?.selectFirstBuzzForHost) return;
+      const contestant = selectedContestant();
+      if (!contestant) return;
+      const playerIndex = getPlayerIndexForContestantId(contestant.id);
+      if (playerIndex < 0) return;
+      const claim = virtualBuzzerSession?.claims?.[playerIndex] || null;
+      if (!claim?.uid) {
+        if (clueFeedback) {
+          clueFeedback.textContent = `${contestant.name} has not connected a phone buzzer yet. You can still type the answer here, but their phone cannot be disabled remotely.`;
+        }
+        return;
+      }
+      const currentFirst = virtualBuzzerSession?.buzz?.first || null;
+      if (currentFirst?.uid === claim.uid) return;
+      try {
+        const result = await virtualBuzzerService.selectFirstBuzzForHost({
+          context: virtualBuzzerContext,
+          sessionId: virtualBuzzerSessionId,
+          playerIndex,
+          playerNames: virtualBuzzerSession?.playerNames?.length ? virtualBuzzerSession.playerNames : selectedPlayerNames,
+          claim,
+          round: virtualBuzzerSession?.buzz?.round ?? virtualBuzzerSession?.buzzRound ?? 0,
+          currentClue: getCurrentClueVirtualBuzzerPayload(),
+        });
+        const snapshotValue = result?.snapshot?.val?.();
+        if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
+        if (clueFeedback) {
+          clueFeedback.textContent = `${contestant.name} was selected by the host. Type that player's response below.`;
+        }
+      } catch (error) {
+        if (clueFeedback) {
+          clueFeedback.textContent = error.message || 'Could not update that player’s phone buzzer.';
+        }
+      }
     }
 
     function handleVirtualBuzzerBuzzUpdate(rawBuzz) {
@@ -3422,6 +3525,15 @@
       return attempted.map(getPlayerIndexForContestantId).filter((index) => index >= 0);
     }
 
+    function getCurrentClueVirtualBuzzerPayload() {
+      if (!activeClue) return null;
+      const found = activeClue.id ? findClue(activeClue.id) : null;
+      return {
+        categoryTitle: found?.category?.title || '',
+        value: Number(activeClue.value || 0),
+      };
+    }
+
     async function resetVirtualBuzzersForNextAttempt() {
       if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
       try {
@@ -3430,6 +3542,7 @@
           sessionId: virtualBuzzerSessionId,
           open: true,
           lockedOutPlayerIndexes: getAttemptedPlayerIndexesForActiveClue(),
+          currentClue: getCurrentClueVirtualBuzzerPayload(),
         });
         const snapshotValue = result?.snapshot?.val?.();
         if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
@@ -3441,8 +3554,6 @@
     async function openVirtualBuzzersForActiveClue() {
       if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
       virtualBuzzerFirstHandledKey = '';
-      if (virtualBuzzerFirst) virtualBuzzerFirst.hidden = true;
-      if (virtualBuzzerGameStatus) virtualBuzzerGameStatus.textContent = 'Opening buzzers…';
       await resetVirtualBuzzersForNextAttempt();
     }
 
@@ -3512,20 +3623,22 @@
         }
       }
       if (virtualBuzzerPhoneStatus && session) {
-        const first = session.buzz?.first || null;
-        if (first?.uid === uid) {
-          virtualBuzzerPhoneStatus.textContent = 'You buzzed first!';
-        } else if (first) {
-          virtualBuzzerPhoneStatus.textContent = `${first.playerName} buzzed first.`;
-        } else if (session.status === 'open' && session.buzz?.open) {
-          virtualBuzzerPhoneStatus.textContent = 'Buzzers are open!';
-        } else if (session.status === 'closed' || (session.expiresAt && session.expiresAt < Date.now())) {
-          virtualBuzzerPhoneStatus.textContent = 'This virtual buzzer session is closed.';
-          if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
+        virtualBuzzerPhoneStatus.textContent = buildVirtualBuzzerPhoneStatusMessage({
+          session,
+          claim: virtualBuzzerPlayerClaim,
+          uid,
+        });
+        if (sessionClosed && virtualBuzzerButton) {
+          virtualBuzzerButton.disabled = true;
           void playerWakeLock.release();
-        } else {
-          virtualBuzzerPhoneStatus.textContent = 'Waiting for the host…';
         }
+      }
+      if (virtualBuzzerPlayerStatus && session) {
+        const statusType = virtualBuzzerPlayerClaim ? 'success' : 'info';
+        renderStatus(virtualBuzzerPlayerStatus, buildVirtualBuzzerPlayerHeaderMessage({
+          session,
+          claim: virtualBuzzerPlayerClaim,
+        }), statusType);
       }
     }
 
@@ -4076,6 +4189,7 @@
         `;
       }).join('')).join('');
       board.innerHTML = headers + clueRows;
+      updateVirtualBuzzerGamePanel();
     }
 
     function findClue(clueId) {
@@ -4295,6 +4409,25 @@
       scheduleActiveClueFit();
     }
 
+    function updateContestantPromptForCompletedClue() {
+      if (!activeClue) return;
+      const hasVerdictOverrideOptions = clueHasHostVerdictOverrideOptions(activeClue, contestants);
+      const promptHeading = contestantPromptSection?.querySelector('h3');
+      if (promptHeading) promptHeading.textContent = hasVerdictOverrideOptions ? 'Answer history' : 'Who buzzed in?';
+      if (contestantPromptSection) contestantPromptSection.hidden = !hasVerdictOverrideOptions;
+      if (hasVerdictOverrideOptions) {
+        renderContestantChoices();
+      } else if (contestantChoices) {
+        contestantChoices.innerHTML = '';
+      }
+      if (responseSection) responseSection.hidden = true;
+      if (responseInput) responseInput.disabled = true;
+      if (checkResponseButton) checkResponseButton.disabled = true;
+      if (noBuzzButton) noBuzzButton.disabled = true;
+      updateActiveClueNavigationState();
+      scheduleActiveClueFit();
+    }
+
     function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
@@ -4459,8 +4592,7 @@
         if (result.judgment.verdict === 'correct') {
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
-          if (responseSection) responseSection.hidden = true;
-          if (contestantPromptSection) contestantPromptSection.hidden = true;
+          updateContestantPromptForCompletedClue();
           if (clueFeedback) {
             clueFeedback.textContent = 'The correct answer is shown below.';
           }
@@ -4471,8 +4603,7 @@
         if (result.allContestantsAttempted) {
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName: contestant.name }));
           showAnswer();
-          if (responseSection) responseSection.hidden = true;
-          if (contestantPromptSection) contestantPromptSection.hidden = true;
+          updateContestantPromptForCompletedClue();
           if (clueFeedback) {
             clueFeedback.textContent = 'All contestants have attempted this clue. The correct answer is shown below.';
           }
@@ -4696,11 +4827,8 @@
       const found = findClue(clueId);
       if (!found) return;
       if (!found.clue.completed && isVirtualBuzzerMode() && !allVirtualPlayersConnected()) {
-        updateVirtualBuzzerGamePanel();
-        if (virtualBuzzerGameStatus) {
-          const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
-          virtualBuzzerGameStatus.textContent = `Wait for every player to connect before opening a clue (${getVirtualBuzzerConnectedCount()} of ${expectedCount} connected).`;
-        }
+        const expectedCount = virtualBuzzerSession?.playerNames?.length || selectedPlayerNames.length;
+        renderStatus(setupStatus, `Wait for every player to connect before opening a clue (${getVirtualBuzzerConnectedCount()} of ${expectedCount} connected).`, 'error');
         return;
       }
       openClue(clueId);
@@ -4719,6 +4847,7 @@
     contestantChoices?.addEventListener('change', () => {
       if (responseInput) responseInput.value = '';
       updateResponseEntryState();
+      void handleHostSelectedVirtualContestant();
     });
     checkResponseButton?.addEventListener('click', () => {
       handleResponseCheck();
@@ -4761,16 +4890,6 @@
       updateLessonSetupControls();
       updateDifficultySetupControls();
       renderStatus(setupStatus, 'Ready to build a new game.', 'info');
-    });
-    exportButton?.addEventListener('click', () => {
-      if (!gameData) return;
-      const blob = new Blob([JSON.stringify({ contestants, game: gameData }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'ntw-berean-board-game.json';
-      link.click();
-      URL.revokeObjectURL(url);
     });
   }
 
@@ -4851,6 +4970,9 @@
     applyHostVerdictOverride,
     applyHostOverride,
     getClueBoardDisplayState,
+    buildVirtualBuzzerPhoneStatusMessage,
+    buildVirtualBuzzerPlayerHeaderMessage,
+    getNextPickerNote,
     buildCompletedClueReviewPresentation,
     buildHostVerdictOverrideSuccessMessage,
     shouldAutoCloseAfterAnswerResult,
