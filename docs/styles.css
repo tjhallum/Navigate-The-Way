@@ -1741,6 +1741,19 @@ footer {
   min-width: 0;
 }
 
+.berean-board-title {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.55rem, 1.8vw, 0.9rem);
+}
+
+.berean-board-title__icon {
+  width: clamp(2.65rem, 6vw, 4.35rem);
+  height: auto;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+}
+
 .review-game-intro summary,
 .review-game-setup h2,
 .review-game-play h2,
@@ -2112,11 +2125,11 @@ body.virtual-buzzer-player-route .virtual-buzzer-player-screen {
   margin: 0 auto;
   align-content: stretch;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
-  gap: clamp(0.42rem, 1.35dvh, 0.78rem);
+  gap: clamp(0.34rem, 1dvh, 0.62rem);
   overflow: hidden;
 }
 
-body.virtual-buzzer-player-route .virtual-buzzer-player-screen .eyebrow,
+body.virtual-buzzer-player-route .virtual-buzzer-player-brand,
 body.virtual-buzzer-player-route .virtual-buzzer-player-screen h2,
 body.virtual-buzzer-player-route #virtual-buzzer-player-status,
 body.virtual-buzzer-player-route .virtual-buzzer-phone-status,
@@ -2124,14 +2137,31 @@ body.virtual-buzzer-player-route .virtual-buzzer-claimed-name {
   text-align: center;
 }
 
-body.virtual-buzzer-player-route .virtual-buzzer-player-screen .eyebrow {
-  font-size: clamp(0.68rem, 2.2vw, 0.82rem);
-  line-height: 1.1;
+body.virtual-buzzer-player-route .virtual-buzzer-player-brand {
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.16rem, 0.55dvh, 0.3rem);
+  min-height: 0;
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-brand__icon {
+  width: clamp(2.65rem, 14vw, 4.4rem);
+  height: auto;
+  filter: drop-shadow(0 9px 20px rgba(0, 0, 0, 0.34));
+}
+
+body.virtual-buzzer-player-route .virtual-buzzer-player-brand__name {
+  margin: 0;
+  color: #f3f8ff;
+  font-size: clamp(1.45rem, 7vw, 2.55rem);
+  font-weight: 950;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
 }
 
 body.virtual-buzzer-player-route .virtual-buzzer-player-screen h2 {
   margin: 0;
-  font-size: clamp(1.55rem, 7.5vw, 3rem);
+  font-size: clamp(1.18rem, 5.35vw, 2.05rem);
   line-height: 1;
 }
 
@@ -2179,7 +2209,7 @@ body.virtual-buzzer-player-route--claimed .virtual-buzzer-player-screen {
 }
 
 body.virtual-buzzer-player-route--claimed .virtual-buzzer-player-screen h2 {
-  font-size: clamp(1.25rem, 5.5vw, 2.15rem);
+  font-size: clamp(1rem, 4.2vw, 1.65rem);
 }
 
 body.virtual-buzzer-player-route .virtual-buzzer-claimed-panel {
@@ -2203,9 +2233,9 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 0.15rem 0.2rem;
+  padding: 0.1rem 0.2rem;
   border-radius: clamp(22px, 7vw, 38px) !important;
-  font-size: clamp(3.1rem, 18vw, 7rem);
+  font-size: clamp(2.85rem, 16vw, 6.25rem);
   line-height: 1;
   touch-action: manipulation;
   user-select: none;
