@@ -1273,6 +1273,7 @@ test('host manual virtual selections write a host-sourced first buzz without tou
     {
       status: 'locked',
       'buzz/open': false,
+      'buzz/lockRound': 7,
       'buzz/first': {
         uid: 'ted-phone',
         playerIndex: 1,
@@ -1288,6 +1289,7 @@ test('host manual virtual selections write a host-sourced first buzz without tou
   assert.equal(result.committed, true);
   assert.equal(result.snapshot.val().status, 'locked');
   assert.equal(result.snapshot.val().buzz.first.source, 'host');
+  assert.equal(result.snapshot.val().buzz.lockRound, 7);
 });
 
 test('host buzzer disables are round-guarded so stale locks cannot close a reopened attempt', async () => {
@@ -1482,7 +1484,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-virtual-host-polish" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-host-selected-buzz"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-host-selected-lock-round"><\/script>/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
   assert.match(html, /<script src="berean-board\.js\?v=20260621-virtual-host-polish"><\/script>/);
