@@ -3169,6 +3169,7 @@
     let virtualBuzzerSession = null;
     let virtualBuzzerUnsubscribe = null;
     let virtualBuzzerFirstHandledKey = '';
+    let virtualBuzzerOpenRequestId = 0;
     let virtualBuzzerPlayerClaim = null;
     let virtualBuzzerPlayerSessionId = '';
     let virtualBuzzerPlayerContext = null;
@@ -3576,6 +3577,7 @@
     async function closeVirtualSession() {
       const context = virtualBuzzerContext;
       const sessionId = virtualBuzzerSessionId;
+      virtualBuzzerOpenRequestId += 1;
       virtualBuzzerUnsubscribe?.();
       virtualBuzzerUnsubscribe = null;
       virtualBuzzerSessionId = '';
@@ -3678,32 +3680,50 @@
       }
     }
 
-    function getAttemptedPlayerIndexesForActiveClue() {
-      const attempted = Array.isArray(activeClue?.attemptedContestantIds) ? activeClue.attemptedContestantIds : [];
+    function getAttemptedPlayerIndexesForClue(clue = activeClue) {
+      const attempted = Array.isArray(clue?.attemptedContestantIds) ? clue.attemptedContestantIds : [];
       return attempted.map(getPlayerIndexForContestantId).filter((index) => index >= 0);
     }
 
-    function getCurrentClueVirtualBuzzerPayload() {
-      if (!activeClue) return null;
-      const found = activeClue.id ? findClue(activeClue.id) : null;
+    function getCurrentClueVirtualBuzzerPayload(clue = activeClue) {
+      if (!clue) return null;
+      const found = clue.id ? findClue(clue.id) : null;
       return {
         categoryTitle: found?.category?.title || '',
-        value: Number(activeClue.value || 0),
+        value: Number(clue.value || 0),
       };
     }
 
-    async function resetVirtualBuzzersForNextAttempt() {
-      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
+    function isCurrentVirtualBuzzerOpenRequest({ requestId, clueId, sessionId, context }) {
+      return requestId === virtualBuzzerOpenRequestId
+        && context === virtualBuzzerContext
+        && sessionId === virtualBuzzerSessionId
+        && Boolean(activeClue)
+        && activeClue.id === clueId
+        && !activeClue.completed
+        && !cluePanel?.hidden;
+    }
+
+    async function resetVirtualBuzzersForNextAttempt({ clue = activeClue, requestId = virtualBuzzerOpenRequestId } = {}) {
+      const context = virtualBuzzerContext;
+      const sessionId = virtualBuzzerSessionId;
+      const clueId = clue?.id || '';
+      if (!isVirtualBuzzerMode() || !context || !sessionId || !clue || clue.completed) return;
       try {
         const result = await virtualBuzzerService.resetBuzzersForHost({
-          context: virtualBuzzerContext,
-          sessionId: virtualBuzzerSessionId,
+          context,
+          sessionId,
           open: true,
-          lockedOutPlayerIndexes: getAttemptedPlayerIndexesForActiveClue(),
-          currentClue: getCurrentClueVirtualBuzzerPayload(),
+          lockedOutPlayerIndexes: getAttemptedPlayerIndexesForClue(clue),
+          currentClue: getCurrentClueVirtualBuzzerPayload(clue),
         });
         const snapshotValue = result?.snapshot?.val?.();
-        if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
+        if (isCurrentVirtualBuzzerOpenRequest({ requestId, clueId, sessionId, context })) {
+          if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
+        } else {
+          const staleRound = snapshotValue?.buzz?.round ?? snapshotValue?.buzzRound ?? null;
+          await disableVirtualBuzzersForHost(staleRound, sessionId, context);
+        }
       } catch (_error) {
         // Keep the leader-facing in-person controls usable even if Firebase fails mid-round.
       }
@@ -3711,20 +3731,23 @@
 
     async function openVirtualBuzzersForActiveClue() {
       if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId || !activeClue || activeClue.completed) return;
+      const clue = activeClue;
+      const requestId = ++virtualBuzzerOpenRequestId;
       virtualBuzzerFirstHandledKey = '';
-      await resetVirtualBuzzersForNextAttempt();
+      await resetVirtualBuzzersForNextAttempt({ clue, requestId });
     }
 
-    async function disableVirtualBuzzersForHost(expectedRound = virtualBuzzerSession?.buzz?.round ?? virtualBuzzerSession?.buzzRound) {
-      if (!isVirtualBuzzerMode() || !virtualBuzzerContext || !virtualBuzzerSessionId) return;
+    async function disableVirtualBuzzersForHost(expectedRound = virtualBuzzerSession?.buzz?.round ?? virtualBuzzerSession?.buzzRound, sessionId = virtualBuzzerSessionId, context = virtualBuzzerContext) {
+      if (!context || !sessionId) return;
+      if (!isVirtualBuzzerMode() && sessionId === virtualBuzzerSessionId) return;
       try {
         const result = await virtualBuzzerService.disableBuzzersForHost({
-          context: virtualBuzzerContext,
-          sessionId: virtualBuzzerSessionId,
+          context,
+          sessionId,
           expectedRound,
         });
         const snapshotValue = result?.snapshot?.val?.() || {};
-        if (result?.committed) {
+        if (result?.committed && context === virtualBuzzerContext && sessionId === virtualBuzzerSessionId) {
           mergeVirtualBuzzerSession({
             buzz: {
               ...(virtualBuzzerSession?.buzz || {}),
@@ -4365,7 +4388,8 @@
 
     function closeActiveClue() {
       responseCheckInFlight = false;
-      disableVirtualBuzzersForHost();
+      virtualBuzzerOpenRequestId += 1;
+      void disableVirtualBuzzersForHost();
       resetActiveClueFit();
       if (cluePanel) cluePanel.hidden = true;
       document.body?.classList.remove('has-active-clue-modal');
