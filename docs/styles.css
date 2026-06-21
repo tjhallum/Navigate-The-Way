@@ -3026,6 +3026,140 @@ body.has-active-clue-modal {
   font: inherit;
 }
 
+.winner-celebration-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: clamp(1rem, 4vw, 2rem);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 206, 72, 0.28), transparent 34rem),
+    rgba(2, 6, 18, 0.82);
+  backdrop-filter: blur(5px);
+}
+
+.winner-celebration-modal[hidden] {
+  display: none;
+}
+
+.winner-celebration-card {
+  position: relative;
+  width: min(760px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 206, 72, 0.62);
+  border-radius: 24px;
+  padding: clamp(1.7rem, 4vw, 3rem);
+  text-align: center;
+  background:
+    linear-gradient(135deg, rgba(255, 206, 72, 0.18), rgba(122, 168, 255, 0.1)),
+    rgba(5, 11, 30, 0.98);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.52), 0 0 70px rgba(255, 206, 72, 0.18);
+}
+
+.winner-celebration-card::before,
+.winner-celebration-card::after {
+  content: '';
+  position: absolute;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 999px;
+  background: rgba(255, 206, 72, 0.12);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.winner-celebration-card::before {
+  top: -5rem;
+  left: -4rem;
+}
+
+.winner-celebration-card::after {
+  right: -4.5rem;
+  bottom: -5.5rem;
+  background: rgba(122, 168, 255, 0.14);
+}
+
+.winner-celebration-burst {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: clamp(4rem, 12vw, 6rem);
+  height: clamp(4rem, 12vw, 6rem);
+  margin-bottom: 0.75rem;
+  font-size: clamp(4rem, 12vw, 6rem);
+  line-height: 1;
+  filter: drop-shadow(0 0 28px rgba(255, 206, 72, 0.42));
+}
+
+.winner-celebration-heading {
+  position: relative;
+  z-index: 1;
+  margin: 0.35rem 0 0.8rem;
+  color: #fff6d2;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1.02;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+
+.winner-celebration-message {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+  margin: 0 auto 1rem;
+  color: #f3f8ff;
+  font-size: clamp(1.1rem, 2.3vw, 1.55rem);
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.winner-celebration-score {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.25rem;
+  width: fit-content;
+  min-width: min(18rem, 100%);
+  margin: 0 auto 1.35rem;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid rgba(255, 206, 72, 0.38);
+  border-radius: 18px;
+  background: rgba(255, 206, 72, 0.1);
+}
+
+.winner-celebration-score span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.winner-celebration-score strong {
+  color: #ffce48;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  line-height: 1;
+}
+
+.winner-celebration-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.winner-celebration-back-button {
+  min-width: min(18rem, 100%);
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+body.has-winner-celebration-modal {
+  overflow: hidden;
+}
+
 @media (max-width: 760px) {
   .game-board {
     gap: 0.25rem;

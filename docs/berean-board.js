@@ -3121,6 +3121,52 @@
     return 0.76;
   }
 
+  function gameHasAllCluesCompleted(game) {
+    const categories = Array.isArray(game?.categories) ? game.categories : [];
+    if (categories.length === 0) return false;
+    let clueCount = 0;
+    const allComplete = categories.every((category) => {
+      const clues = Array.isArray(category?.clues) ? category.clues : [];
+      if (clues.length === 0) return false;
+      clueCount += clues.length;
+      return clues.every((clue) => Boolean(clue?.completed));
+    });
+    return clueCount > 0 && allComplete;
+  }
+
+  function buildWinnerCelebrationPresentation({ game, contestants } = {}) {
+    if (!gameHasAllCluesCompleted(game)) return { isComplete: false };
+    const players = (Array.isArray(contestants) ? contestants : [])
+      .map((contestant) => ({
+        name: coerceText(contestant?.name),
+        score: Number(contestant?.score || 0),
+      }))
+      .filter((contestant) => contestant.name);
+    if (players.length === 0) return { isComplete: false };
+    const winnerScore = Math.max(...players.map((contestant) => (
+      Number.isFinite(contestant.score) ? contestant.score : 0
+    )));
+    const winnerNames = players
+      .filter((contestant) => (Number.isFinite(contestant.score) ? contestant.score : 0) === winnerScore)
+      .map((contestant) => contestant.name);
+    const winnerNameText = formatContestantNames(winnerNames);
+    const scoreText = formatScore(winnerScore);
+    const isTie = winnerNames.length > 1;
+
+    return {
+      isComplete: true,
+      isTie,
+      heading: `Congratulations, ${winnerNameText}!`,
+      message: isTie
+        ? `${winnerNameText} tied for the Berean Board win with ${scoreText}.`
+        : `${winnerNameText} wins Berean Board with ${scoreText}.`,
+      scoreLabel: isTie ? 'Tied score' : 'Winning score',
+      scoreText,
+      winnerNames,
+      winnerScore,
+    };
+  }
+
   function shouldSubmitResponseFromKeydown(event) {
     return event?.key === 'Enter' &&
       !event.shiftKey &&
@@ -3177,6 +3223,11 @@
     const clueFeedback = app.querySelector('#clue-feedback');
     const noBuzzButton = app.querySelector('#no-buzz-button');
     const closeClueButton = app.querySelector('#close-clue-button');
+    const winnerCelebrationModal = app.querySelector('#winner-celebration-modal');
+    const winnerCelebrationHeading = app.querySelector('#winner-celebration-heading');
+    const winnerCelebrationMessage = app.querySelector('#winner-celebration-message');
+    const winnerCelebrationScore = app.querySelector('#winner-celebration-score');
+    const winnerCelebrationBackButton = app.querySelector('#winner-celebration-back-button');
     const groupEditor = app.querySelector('#group-member-editor');
     const groupMemberTextarea = app.querySelector('#group-member-names');
     const saveGroupMembersButton = app.querySelector('#save-group-members-button');
@@ -3257,6 +3308,7 @@
     let answerRevealed = false;
     let responseCheckInFlight = false;
     let clueFitFrame = 0;
+    let winnerCelebrationShownForGame = false;
 
     const savedEndpoint = safeGetBrowserStorageItem(window, 'ntwReviewGameEndpoint');
     const savedModel = safeGetBrowserStorageItem(window, 'ntwReviewGameModel');
@@ -3419,6 +3471,8 @@
     function resetCurrentGameAfterPlayerChange() {
       contestants = [];
       gameData = null;
+      winnerCelebrationShownForGame = false;
+      closeWinnerCelebrationModal();
       closeActiveClue();
       if (gameArea) gameArea.hidden = true;
     }
@@ -3860,10 +3914,37 @@
       }
     }
 
+    function closeWinnerCelebrationModal() {
+      if (winnerCelebrationModal) winnerCelebrationModal.hidden = true;
+      document.body?.classList.remove('has-winner-celebration-modal');
+    }
+
+    function showWinnerCelebrationModal(presentation) {
+      if (!presentation?.isComplete || !winnerCelebrationModal) return;
+      if (winnerCelebrationHeading) winnerCelebrationHeading.textContent = presentation.heading;
+      if (winnerCelebrationMessage) winnerCelebrationMessage.textContent = presentation.message;
+      if (winnerCelebrationScore) {
+        winnerCelebrationScore.innerHTML = `<span>${escapeHtml(presentation.scoreLabel)}</span><strong>${escapeHtml(presentation.scoreText)}</strong>`;
+      }
+      winnerCelebrationModal.hidden = false;
+      document.body?.classList.add('has-winner-celebration-modal');
+      window.requestAnimationFrame(() => {
+        winnerCelebrationBackButton?.focus?.();
+      });
+    }
+
+    function maybeShowWinnerCelebrationWhenGameComplete() {
+      const presentation = buildWinnerCelebrationPresentation({ game: gameData, contestants });
+      if (!presentation.isComplete) return false;
+      if (winnerCelebrationShownForGame) return false;
+      winnerCelebrationShownForGame = true;
+      showWinnerCelebrationModal(presentation);
+      return true;
+    }
+
     function maybeCloseVirtualSessionWhenGameComplete() {
-      if (!gameData) return;
-      const allComplete = gameData.categories.every((category) => category.clues.every((clue) => clue.completed));
-      if (allComplete) closeVirtualSession();
+      if (!gameHasAllCluesCompleted(gameData)) return;
+      closeVirtualSession();
     }
 
     function renderPlayerPhoneSession() {
@@ -3964,6 +4045,8 @@
       updateDifficultySetupControls();
       if (wasComplete && selectedPlayerNames.length > 0) {
         gameData = null;
+        winnerCelebrationShownForGame = false;
+        closeWinnerCelebrationModal();
         closeActiveClue();
         if (gameArea) gameArea.hidden = true;
         applySetupStepStage('difficulty');
@@ -3980,6 +4063,8 @@
       updateDifficultySetupControls();
       if (wasComplete && selectedPlayerNames.length > 0) {
         gameData = null;
+        winnerCelebrationShownForGame = false;
+        closeWinnerCelebrationModal();
         closeActiveClue();
         if (gameArea) gameArea.hidden = true;
         if (difficultySetupStatus) difficultySetupStatus.textContent = '';
@@ -4646,6 +4731,7 @@
           await disableVirtualBuzzersForHost();
         }
         openClue(result.clue.id);
+        maybeShowWinnerCelebrationWhenGameComplete();
         if (!result.clue.completed) {
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName }));
         }
@@ -4800,6 +4886,7 @@
       renderBoard();
       renderContestantChoices();
       maybeCloseVirtualSessionWhenGameComplete();
+      maybeShowWinnerCelebrationWhenGameComplete();
     }
 
     function handleNoBuzz() {
@@ -5057,6 +5144,8 @@
           throw new Error(selection.message || 'Select one to four players before generating the game board.');
         }
         selectedPlayerNames = selection.playerNames;
+        winnerCelebrationShownForGame = false;
+        closeWinnerCelebrationModal();
         contestants = createContestants(selectedPlayerNames);
         renderSelectedPlayersSummary();
         if (!buzzerSetupComplete) {
@@ -5160,10 +5249,16 @@
     closeClueButton?.addEventListener('click', () => {
       handleCloseActiveClueRequest();
     });
+    winnerCelebrationBackButton?.addEventListener('click', () => {
+      closeWinnerCelebrationModal();
+      closeActiveClue();
+    });
     resetButton?.addEventListener('click', () => {
       if (!window.confirm('Start over and clear the current game board?')) return;
       contestants = [];
       gameData = null;
+      winnerCelebrationShownForGame = false;
+      closeWinnerCelebrationModal();
       buzzerSetupComplete = false;
       selectedBuzzerMode = DEFAULT_BUZZER_MODE;
       buzzerModeInputs.forEach((input) => { input.checked = input.value === DEFAULT_BUZZER_MODE; });
@@ -5260,6 +5355,8 @@
     applyHostVerdictOverride,
     applyHostOverride,
     getClueBoardDisplayState,
+    gameHasAllCluesCompleted,
+    buildWinnerCelebrationPresentation,
     buildVirtualBuzzerPhoneStatusMessage,
     buildVirtualBuzzerPlayerHeaderMessage,
     getNextPickerNote,

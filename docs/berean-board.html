@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260621-followup-polish" />
+  <link rel="stylesheet" href="styles.css?v=20260621-winner-celebration-emoji" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -683,6 +683,19 @@
           </div>
         </div>
       </section>
+
+      <section id="winner-celebration-modal" class="winner-celebration-modal" role="dialog" aria-modal="true" aria-labelledby="winner-celebration-heading" tabindex="-1" hidden>
+        <div class="winner-celebration-card">
+          <div class="winner-celebration-burst" aria-hidden="true">🎉</div>
+          <p class="eyebrow">Game complete</p>
+          <h2 id="winner-celebration-heading" class="winner-celebration-heading">Congratulations!</h2>
+          <p id="winner-celebration-message" class="winner-celebration-message" aria-live="polite"></p>
+          <p id="winner-celebration-score" class="winner-celebration-score"></p>
+          <div class="winner-celebration-actions">
+            <button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board</button>
+          </div>
+        </div>
+      </section>
     </section>
   </section>
 </main>
@@ -700,6 +713,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260621-current-clue-contract"></script>
-<script src="berean-board.js?v=20260621-repeat-downgrade-state"></script>
+<script src="berean-board.js?v=20260621-winner-celebration"></script>
 </body>
 </html>
