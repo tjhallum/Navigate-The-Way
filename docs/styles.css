@@ -3038,6 +3038,7 @@ body.has-active-clue-modal {
     radial-gradient(circle at 50% 20%, rgba(255, 206, 72, 0.28), transparent 34rem),
     rgba(2, 6, 18, 0.82);
   backdrop-filter: blur(5px);
+  overflow: hidden;
 }
 
 .winner-celebration-modal[hidden] {
@@ -3056,6 +3057,8 @@ body.has-active-clue-modal {
     linear-gradient(135deg, rgba(255, 206, 72, 0.18), rgba(122, 168, 255, 0.1)),
     rgba(5, 11, 30, 0.98);
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.52), 0 0 70px rgba(255, 206, 72, 0.18);
+  transform: scale(var(--winner-celebration-scale, 1));
+  transform-origin: center;
 }
 
 .winner-celebration-card::before,

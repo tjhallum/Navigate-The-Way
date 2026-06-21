@@ -1537,15 +1537,17 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-winner-celebration-emoji" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-winner-celebration-scale" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-winner-celebration"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-winner-celebration-scale"><\/script>/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-followup-polish/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260621-winner-celebration-emoji/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-winner-celebration"/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-winner-celebration"/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-repeat-downgrade-state/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-full-credit-overrides/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-followup-polish/);
@@ -1726,9 +1728,14 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.next-picker-note'), /font-size:\s*calc\(1rem \* var\(--next-picker-note-scale, 1\)\)/i);
   assert.match(cssRule(css, '.winner-celebration-modal'), /position:\s*fixed/i);
   assert.match(cssRule(css, '.winner-celebration-modal'), /z-index:\s*1100/i);
+  assert.match(cssRule(css, '.winner-celebration-modal'), /overflow:\s*hidden/i);
+  assert.doesNotMatch(cssRule(css, '.winner-celebration-modal'), /overflow-y:\s*(auto|scroll)/i);
   assert.match(cssRule(css, '.winner-celebration-card'), /width:\s*min\(760px, 100%\)/i);
   assert.match(cssRule(css, '.winner-celebration-card'), /text-align:\s*center/i);
   assert.match(cssRule(css, '.winner-celebration-card'), /border:\s*1px solid rgba\(255, 206, 72, 0\.62\)/i);
+  assert.match(cssRule(css, '.winner-celebration-card'), /transform:\s*scale\(var\(--winner-celebration-scale,\s*1\)\)/i);
+  assert.match(cssRule(css, '.winner-celebration-card'), /transform-origin:\s*center/i);
+  assert.doesNotMatch(cssRule(css, '.winner-celebration-card'), /overflow-y:\s*(auto|scroll)/i);
   assert.match(cssRule(css, '.winner-celebration-burst'), /width:\s*clamp\(4rem, 12vw, 6rem\)/i);
   assert.match(cssRule(css, '.winner-celebration-burst'), /height:\s*clamp\(4rem, 12vw, 6rem\)/i);
   assert.match(cssRule(css, '.winner-celebration-burst'), /font-size:\s*clamp\(4rem, 12vw, 6rem\)/i);
@@ -1739,9 +1746,14 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.winner-celebration-back-button'), /min-width:\s*min\(18rem, 100%\)/i);
   assert.match(js, /function gameHasAllCluesCompleted\(game\)/);
   assert.match(js, /function buildWinnerCelebrationPresentation\(\{ game, contestants \} = \{\}\)/);
+  assert.match(js, /function calculateWinnerCelebrationScale\(\{ availableWidth, availableHeight, cardWidth, cardHeight \} = \{\}\)/);
+  assert.match(js, /function resetWinnerCelebrationFit\(\)/);
+  assert.match(js, /function fitWinnerCelebrationCard\(\)/);
+  assert.match(js, /function scheduleWinnerCelebrationFit\(\)/);
   assert.match(js, /function maybeShowWinnerCelebrationWhenGameComplete\(\)/);
   assert.match(js, /winnerCelebrationBackButton\?\.addEventListener\('click', \(\) => \{[\s\S]*closeWinnerCelebrationModal\(\);[\s\S]*closeActiveClue\(\);/);
   assert.match(js, /replaceActiveClue\(updatedClue\)[\s\S]*maybeShowWinnerCelebrationWhenGameComplete\(\);/);
+  assert.match(js, /window\.addEventListener\('resize', \(\) => \{[\s\S]*scheduleActiveClueFit\(\);[\s\S]*scheduleWinnerCelebrationFit\(\);[\s\S]*\}\);/);
   assert.match(js, /winnerCelebrationShownForGame = false;/);
   assert.match(js, /function getNextPickerNoteScale\(note\)/);
   assert.match(js, /function applyNextPickerNote\(note\)/);
@@ -2166,6 +2178,36 @@ test('builds end-game winner celebration presentation after every clue is comple
     game: { ...normalizedGame, categories: [] },
     contestants,
   }), { isComplete: false });
+});
+
+test('calculates dynamic winner celebration scaling without scrollbars', () => {
+  assert.equal(game.calculateWinnerCelebrationScale({
+    availableWidth: 760,
+    availableHeight: 560,
+    cardWidth: 760,
+    cardHeight: 540,
+  }), 1);
+
+  assert.equal(game.calculateWinnerCelebrationScale({
+    availableWidth: 760,
+    availableHeight: 320,
+    cardWidth: 760,
+    cardHeight: 640,
+  }), 0.5);
+
+  assert.equal(game.calculateWinnerCelebrationScale({
+    availableWidth: 360,
+    availableHeight: 500,
+    cardWidth: 720,
+    cardHeight: 500,
+  }), 0.5);
+
+  assert.equal(game.calculateWinnerCelebrationScale({
+    availableWidth: 360,
+    availableHeight: 260,
+    cardWidth: 720,
+    cardHeight: 650,
+  }), 0.4);
 });
 
 test('renders answer-history score lines from each contestant’s points on that clue', () => {
