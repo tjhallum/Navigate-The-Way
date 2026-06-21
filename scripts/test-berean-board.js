@@ -1472,6 +1472,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<div id="active-clue-review" class="answer-box clue-review" hidden><\/div>/);
+  assert.match(html, /<p class="eyebrow">Powered by Navigate The Way ✝️<\/p>/);
   assert.match(html, /<p id="next-picker-note" class="next-picker-note" aria-live="polite">Host may choose the first question\.<\/p>/);
   assert.doesNotMatch(html, /Generated Game/);
   assert.doesNotMatch(html, /Export Game JSON|id="export-game-json"/);
