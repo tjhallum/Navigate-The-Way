@@ -86,7 +86,7 @@
     '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf', '.xml', '.yaml', '.yml', '.tex'
   ]);
   const SUPPORTED_BINARY_EXTENSIONS = new Set([
-    '.pdf', '.doc', '.docx', '.odt', '.pages', '.ppt', '.pptx', '.odp', '.key', '.xlsx', '.xls', '.ods'
+    '.pdf', '.epub', '.doc', '.docx', '.odt', '.pages', '.ppt', '.pptx', '.odp', '.key', '.xlsx', '.xls', '.ods'
   ]);
   const TEXT_MIME_PREFIXES = ['text/'];
   const TEXT_MIME_TYPES = new Set([
@@ -137,6 +137,7 @@
     'application/vnd.oasis.opendocument.spreadsheet'
   ]);
   const PDF_MIME_TYPES = new Set(['application/pdf']);
+  const EPUB_MIME_TYPES = new Set(['application/epub+zip']);
   const GAME_RESPONSE_JSON_SCHEMA = {
     name: 'ntw_berean_board',
     strict: true,
@@ -507,6 +508,7 @@
     const extension = getFileExtension(file?.name);
     return isTextLikeFile(file) ||
       PDF_MIME_TYPES.has(type) || extension === '.pdf' ||
+      EPUB_MIME_TYPES.has(type) || extension === '.epub' ||
       DOCX_MIME_TYPES.has(type) || extension === '.docx' ||
       LEGACY_WORD_MIME_TYPES.has(type) || extension === '.doc' ||
       OPEN_DOCUMENT_TEXT_MIME_TYPES.has(type) || extension === '.odt' ||
@@ -2460,7 +2462,7 @@
     const sections = [];
     for (const path of entries) {
       const raw = await zip.files[path].async('string');
-      const text = /\.(xml|plist)$/i.test(path) ? xmlTextToPlainText(raw) : normalizeLongFormText(raw);
+      const text = /\.(xml|plist|xhtml|html|htm)$/i.test(path) ? xmlTextToPlainText(raw) : normalizeLongFormText(raw);
       if (text) {
         sections.push(text);
       }
@@ -2478,6 +2480,32 @@
       preferredPathPattern: /(^|\/)content\.xml$/i,
       fallbackPathPattern: /\.(xml|txt|rtf)$/i,
     });
+  }
+
+  async function extractEpubText(file) {
+    if (!ROOT.JSZip) {
+      throw new Error('EPUB support did not load. Check the JSZip CDN connection or export the ebook to TXT or PDF.');
+    }
+    const zip = await ROOT.JSZip.loadAsync(await file.arrayBuffer());
+    const paths = Object.keys(zip.files || {})
+      .filter((path) => {
+        const entry = zip.files[path];
+        if (!entry || entry.dir || /(^|\/)__MACOSX\//i.test(path)) return false;
+        if (!/\.(xhtml|html|htm)$/i.test(path)) return false;
+        return !/(^|\/)(nav|toc|cover|titlepage)\.(xhtml|html|htm)$/i.test(path);
+      })
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    const sections = [];
+    for (const path of paths) {
+      const text = xmlTextToPlainText(await zip.files[path].async('string'));
+      if (text) sections.push(text);
+    }
+    const uniqueSections = [...new Set(sections.map((section) => normalizeLongFormText(section)).filter(Boolean))];
+    if (uniqueSections.length === 0) {
+      throw new Error(`${file?.name || 'This EPUB file'} did not contain browser-readable lesson text. Export it to TXT, PDF, DOCX, or HTML and try again.`);
+    }
+    return uniqueSections.join('\n\n');
   }
 
   async function extractReadableBinaryEntryText(entry) {
@@ -2645,6 +2673,9 @@
     if (extension === '.pdf' || PDF_MIME_TYPES.has(type)) {
       return await extractPdfText(file);
     }
+    if (extension === '.epub' || EPUB_MIME_TYPES.has(type)) {
+      return await extractEpubText(file);
+    }
     if (extension === '.docx' || DOCX_MIME_TYPES.has(type)) {
       return await extractDocxText(file);
     }
@@ -2672,7 +2703,7 @@
     if (['.xlsx', '.xls', '.ods'].includes(extension) || SPREADSHEET_MIME_TYPES.has(type)) {
       return await extractSpreadsheetText(file);
     }
-    throw new Error(`${file?.name || 'This file'} could not be read. Convert it to TXT, PDF, DOCX, PPTX, CSV, or another supported browser-readable format.`);
+    throw new Error(`${file?.name || 'This file'} could not be read. Convert it to TXT, PDF, EPUB, DOCX, PPTX, CSV, or another supported browser-readable format.`);
   }
 
   async function extractLessonTextFromFiles(files) {
