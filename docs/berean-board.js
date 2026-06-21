@@ -1644,7 +1644,7 @@
 
   function getHostOverrideOptionsForContestant({ clue, contestantId } = {}) {
     const outcome = getContestantAnswerOutcome({ clue, contestantId });
-    if (!outcome || outcome.verdict === 'correct') return [];
+    if (!outcome) return [];
     const correctAward = getCorrectHostOverrideAward({ clue, contestantId });
     const clueValue = Math.max(0, Number(clue?.value || 0));
     const correctOption = correctAward > 0
@@ -1668,6 +1668,12 @@
         { decision: 'partial', label: 'Upgrade to partial credit', icon: '⚠' },
         correctOption,
       ].filter(Boolean);
+    }
+    if (outcome.verdict === 'correct') {
+      return [
+        { decision: 'partial', label: 'Downgrade to partial credit', icon: '⚠' },
+        { decision: 'incorrect', label: 'Downgrade to incorrect', icon: '✕' },
+      ];
     }
     return [];
   }
@@ -1739,9 +1745,6 @@
     if (!currentOutcome) {
       throw new Error('That contestant has not answered this clue yet.');
     }
-    if (currentOutcome.verdict === 'correct') {
-      throw new Error('Full-credit answers cannot be downgraded after the correct response is revealed.');
-    }
     if (currentOutcome.verdict === normalizedDecision) {
       throw new Error(`That contestant is already marked ${currentOutcome.label.toLowerCase()}.`);
     }
@@ -1754,6 +1757,9 @@
     const appliedAt = now || new Date().toISOString();
     const nextClue = baseHostOverrideClue(clue, normalizedDecision, appliedAt);
     const clueValue = Number(clue.value || 0);
+    const isDowngradingRevealedCorrect = currentOutcome.verdict === 'correct'
+      && normalizedDecision !== 'correct'
+      && Boolean(clue.completed);
     const sequence = buildContestantVerdictSequence(clue).map((entry) => (
       entry.contestantId === contestantIdText ? { ...entry, verdict: normalizedDecision } : entry
     ));
@@ -1804,7 +1810,8 @@
         nextContestants.every((contestant) => nextClue.attemptedContestantIds.includes(contestant.id));
       nextClue.noContestantsBuzzed = preserveNoBuzzTerminalState;
       nextClue.allContestantsMissed = preserveNoBuzzTerminalState || allContestantsAttempted;
-      nextClue.completed = preserveNoBuzzTerminalState || allContestantsAttempted;
+      nextClue.completed = preserveNoBuzzTerminalState || allContestantsAttempted || isDowngradingRevealedCorrect;
+      nextClue.hostOverrideAnswerWasAlreadyRevealed = isDowngradingRevealedCorrect && !preserveNoBuzzTerminalState && !allContestantsAttempted;
     }
 
     const correctedOutcome = getContestantAnswerOutcome({ clue: nextClue, contestantId: contestantIdText }) || { verdict: normalizedDecision };
@@ -1832,6 +1839,8 @@
     const clue = result?.clue || {};
     const completedReason = clue.noContestantsBuzzed
       ? 'The clue had already been revealed because no one else buzzed in.'
+      : clue.hostOverrideAnswerWasAlreadyRevealed
+        ? 'The answer was already revealed, so buzzers remain closed.'
       : 'All players have attempted, so the answer is revealed.';
     if (decision === 'correct') {
       const awardedPoints = Math.max(0, Number(result?.awardedPoints || 0));
