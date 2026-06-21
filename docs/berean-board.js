@@ -2505,8 +2505,20 @@
     return Object.keys(zip.files || {}).find((candidate) => normalizeZipPath(candidate).toLowerCase() === normalizedLower) || '';
   }
 
-  function resolveZipRelativePath(basePath, href) {
+  function decodeZipHrefPath(href) {
     const cleanHref = decodeBasicXmlEntities(String(href || '').split('#')[0]);
+    return cleanHref.split('/').map((segment) => {
+      const slashSafeSegment = segment.replace(/%(2f|5c)/gi, (_match, hex) => `%25${hex}`);
+      try {
+        return decodeURIComponent(slashSafeSegment);
+      } catch (_error) {
+        return segment;
+      }
+    }).join('/');
+  }
+
+  function resolveZipRelativePath(basePath, href) {
+    const cleanHref = decodeZipHrefPath(href);
     if (!cleanHref) return '';
     const baseDirectory = String(basePath || '').replace(/[^/]*$/, '');
     return normalizeZipPath(`${baseDirectory}${cleanHref}`);
@@ -2556,13 +2568,18 @@
     });
 
     const spinePaths = [];
+    let unresolvedLinearItem = false;
     (packageXml.match(/<itemref\b[^>]*>/gi) || []).forEach((tag) => {
       const attributes = parseXmlTagAttributes(tag);
       if (String(attributes.linear || '').toLowerCase() === 'no') return;
       const path = manifestItems.get(attributes.idref);
-      if (path && !spinePaths.includes(path)) spinePaths.push(path);
+      if (path) {
+        if (!spinePaths.includes(path)) spinePaths.push(path);
+      } else {
+        unresolvedLinearItem = true;
+      }
     });
-    return spinePaths;
+    return unresolvedLinearItem ? [] : spinePaths;
   }
 
   function getFallbackEpubContentPaths(zip) {

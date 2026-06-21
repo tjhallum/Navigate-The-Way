@@ -2530,11 +2530,13 @@ test('extracts readable lesson text from EPUB packages in OPF spine order', asyn
                 <item id="later" href="zzz-later.xhtml" media-type="application/xhtml+xml" />
                 <item id="first" href="chapters/002-first.xhtml" media-type="application/xhtml+xml" />
                 <item id="second" href="chapters/001-second.xhtml" media-type="application/xhtml+xml" />
+                <item id="escaped" href="chapter%202.xhtml" media-type="application/xhtml+xml" />
                 <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />
               </manifest>
               <spine>
                 <itemref idref="first" />
                 <itemref idref="second" />
+                <itemref idref="escaped" />
                 <itemref idref="later" />
               </spine>
             </package>
@@ -2545,6 +2547,9 @@ test('extracts readable lesson text from EPUB packages in OPF spine order', asyn
         },
         'OEBPS/chapters/002-first.xhtml': {
           async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>First lesson section</h1><p>Assurance from Romans 8.</p></body></html>',
+        },
+        'OEBPS/chapter 2.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Escaped lesson section</h1><p>Percent-escaped EPUB manifest hrefs should resolve to ZIP entries with spaces.</p></body></html>',
         },
         'OEBPS/zzz-later.xhtml': {
           async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Later lesson section</h1><p>Nothing can separate believers from the love of God in Christ.</p></body></html>',
@@ -2563,14 +2568,19 @@ test('extracts readable lesson text from EPUB packages in OPF spine order', asyn
 
     assert.match(extracted, /First lesson section/);
     assert.match(extracted, /Second lesson section/);
+    assert.match(extracted, /Escaped lesson section/);
     assert.match(extracted, /Later lesson section/);
     assert.ok(
       extracted.indexOf('First lesson section') < extracted.indexOf('Second lesson section'),
       'EPUB text should follow the OPF spine order instead of filename order'
     );
     assert.ok(
-      extracted.indexOf('Second lesson section') < extracted.indexOf('Later lesson section'),
+      extracted.indexOf('Second lesson section') < extracted.indexOf('Escaped lesson section'),
       'EPUB text should preserve the whole declared spine order'
+    );
+    assert.ok(
+      extracted.indexOf('Escaped lesson section') < extracted.indexOf('Later lesson section'),
+      'EPUB text should include percent-escaped manifest hrefs before later spine items'
     );
     assert.doesNotMatch(extracted, /Auxiliary table of contents/);
     assert.doesNotMatch(extracted, /<h1>/);
