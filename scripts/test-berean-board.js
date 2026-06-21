@@ -1585,8 +1585,13 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /selectFirstBuzzForHost/);
   assert.match(js, /function resetVirtualBuzzersForNextAttempt/);
   assert.match(js, /function closeVirtualSession/);
+  assert.match(js, /let virtualBuzzerOpenRequestId = 0;/);
+  assert.match(js, /function isCurrentVirtualBuzzerOpenRequest/);
+  assert.match(js, /const requestId = \+\+virtualBuzzerOpenRequestId;[\s\S]*await resetVirtualBuzzersForNextAttempt\(\{ clue, requestId \}\);/);
+  assert.match(js, /currentClue:\s*getCurrentClueVirtualBuzzerPayload\(clue\)/);
+  assert.match(js, /await disableVirtualBuzzersForHost\(staleRound, sessionId, context\);/);
+  assert.match(js, /function closeActiveClue\(\) \{[\s\S]*virtualBuzzerOpenRequestId \+= 1;[\s\S]*void disableVirtualBuzzersForHost\(\);/);
   assert.match(js, /cluePanel\.hidden = false;[\s\S]*document\.body\?\.classList\.add\('has-active-clue-modal'\);[\s\S]*void openVirtualBuzzersForActiveClue\(\);/);
-  assert.match(js, /currentClue:\s*getCurrentClueVirtualBuzzerPayload\(\)/);
   assert.match(js, /renderPlayerPhoneSession\(\);/);
   assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
   assert.match(js, /document\.body\?\.classList\.add\('virtual-buzzer-player-route'\)/);
