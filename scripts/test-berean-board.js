@@ -1191,6 +1191,52 @@ test('initializes Firebase App Check with reCAPTCHA Enterprise before Firebase s
   ]);
 });
 
+test('virtual buzzer current clue metadata is normalized to the RTDB rule contract before writes', () => {
+  assert.deepEqual(
+    virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 100 }),
+    { categoryTitle: 'People and Sin', value: 100 }
+  );
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: '', value: 100 }), null);
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 2000 }), null);
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 0 }), null);
+  const longTitle = 'A'.repeat(90);
+  assert.deepEqual(
+    virtualBuzzers.normalizeCurrentClue({ categoryTitle: longTitle, value: 100 }),
+    { categoryTitle: 'A'.repeat(80), value: 100 }
+  );
+});
+
+test('host buzzer reset omits invalid current clue metadata instead of writing rule-rejected values', async () => {
+  const writes = [];
+  const context = {
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async runTransaction(reference, updater) {
+          const nextValue = updater(2);
+          return { committed: true, snapshot: { val: () => nextValue } };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  await virtualBuzzers.resetBuzzersForHost({
+    context,
+    sessionId: 'session123456',
+    open: true,
+    lockedOutPlayerIndexes: [1],
+    currentClue: { categoryTitle: '', value: 100 },
+  });
+
+  assert.equal(Object.hasOwn(writes[0][2].buzz, 'currentClue'), false);
+});
+
 test('host buzzer resets use scoped writes so existing player claims are not revalidated as host data', async () => {
   const writes = [];
   const context = {
@@ -1483,13 +1529,13 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-question-flow-ui" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-followup-polish" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-host-selected-lock-round"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-virtual-close-race"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-followup-polish"><\/script>/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array/);
@@ -1517,6 +1563,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /styles\.css\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-epub-lessons/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-question-flow-ui/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-close-race/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-lock-round/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-lesson-files/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-host-buzzer-audio/);
@@ -1589,7 +1637,9 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /let virtualBuzzerOpenRequestId = 0;/);
   assert.match(js, /function isCurrentVirtualBuzzerOpenRequest/);
   assert.match(js, /const requestId = \+\+virtualBuzzerOpenRequestId;[\s\S]*await resetVirtualBuzzersForNextAttempt\(\{ clue, requestId \}\);/);
-  assert.match(js, /currentClue:\s*getCurrentClueVirtualBuzzerPayload\(clue\)/);
+  assert.match(js, /const currentCluePayload = getCurrentClueVirtualBuzzerPayload\(clue\);/);
+  assert.match(js, /currentClue:\s*currentCluePayload/);
+  assert.match(js, /catch \(primaryError\) \{[\s\S]*if \(currentCluePayload\) \{[\s\S]*currentClue:\s*null/);
   assert.match(js, /await disableVirtualBuzzersForHost\(staleRound, sessionId, context\);/);
   assert.match(js, /function closeActiveClue\(\) \{[\s\S]*virtualBuzzerOpenRequestId \+= 1;[\s\S]*void disableVirtualBuzzersForHost\(\);/);
   assert.match(js, /cluePanel\.hidden = false;[\s\S]*document\.body\?\.classList\.add\('has-active-clue-modal'\);[\s\S]*void openVirtualBuzzersForActiveClue\(\);/);
@@ -1640,6 +1690,7 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
 
 test('styles setup steps as expandable/collapsible panels', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'docs', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(cssRule(css, '.setup-step'), /border:\s*1px solid rgba\(122, 168, 255, 0\.24\)/);
   assert.match(cssRule(css, '.setup-step-toggle'), /justify-content:\s*space-between/);
@@ -1648,13 +1699,21 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 260px\), 1fr\)\)/);
+  assert.match(cssRule(css, '.game-play-header'), /flex-wrap:\s*nowrap/i);
   assert.match(cssRule(css, '.game-actions'), /align-items:\s*center/i);
   assert.match(cssRule(css, '.game-actions'), /justify-content:\s*flex-end/i);
   assert.match(cssRule(css, '.game-actions'), /gap:\s*0\.8rem/i);
-  assert.match(cssRule(css, '.next-picker-note'), /max-width:\s*26rem/);
+  assert.match(cssRule(css, '.game-actions'), /flex-wrap:\s*nowrap/i);
+  assert.match(cssRule(css, '.game-actions'), /min-width:\s*0/i);
+  assert.match(cssRule(css, '.next-picker-note'), /max-width:\s*min\(42vw, 34rem\)/);
   assert.match(cssRule(css, '.next-picker-note'), /text-align:\s*right/);
   assert.match(cssRule(css, '.next-picker-note'), /align-self:\s*center/i);
   assert.match(cssRule(css, '.next-picker-note'), /margin-inline-end:\s*0\.1rem/i);
+  assert.match(cssRule(css, '.next-picker-note'), /white-space:\s*nowrap/i);
+  assert.match(cssRule(css, '.next-picker-note'), /font-size:\s*calc\(1rem \* var\(--next-picker-note-scale, 1\)\)/i);
+  assert.match(js, /function getNextPickerNoteScale\(note\)/);
+  assert.match(js, /function applyNextPickerNote\(note\)/);
+  assert.match(js, /nextPickerNote\.style\.setProperty\('--next-picker-note-scale'/);
   assert.doesNotMatch(css, /\.virtual-buzzer-game-panel\b/);
   assert.doesNotMatch(css, /\.virtual-buzzer-first\b/);
   assert.match(cssRule(css, '.virtual-buzzer-button'), /min-height:\s*12rem/);
@@ -2319,6 +2378,95 @@ test('host verdict overrides complete and reveal only when the corrected state e
   }), /valid host verdict/i);
 });
 
+test('host verdict override full-credit upgrades after another player partial only award remaining value', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const adaIncorrect = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+  const bothIncorrect = game.applyAnswerJudgment({
+    contestants: adaIncorrect.contestants,
+    clue: adaIncorrect.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'incorrect' },
+  });
+  const adaPartial = game.applyHostVerdictOverride({
+    contestants: bothIncorrect.contestants,
+    clue: bothIncorrect.clue,
+    contestantId: 'contestant-1',
+    decision: 'partial',
+  });
+  const boazOptions = game.getHostOverrideOptionsForContestant({
+    clue: adaPartial.clue,
+    contestantId: 'contestant-2',
+  });
+  const correctOption = boazOptions.find((option) => option.decision === 'correct');
+
+  assert.equal(adaPartial.contestants[0].score, 33.33);
+  assert.equal(adaPartial.contestants[1].score, -100);
+  assert.equal(correctOption.awardPoints, 66.67);
+  assert.match(correctOption.label, /remaining credit/i);
+
+  const boazCorrect = game.applyHostVerdictOverride({
+    contestants: adaPartial.contestants,
+    clue: adaPartial.clue,
+    contestantId: 'contestant-2',
+    decision: 'correct',
+  });
+
+  assert.equal(boazCorrect.contestants[0].score, 33.33);
+  assert.equal(boazCorrect.contestants[1].score, 66.67);
+  assert.equal(boazCorrect.clue.partialCreditAwarded, 33.33);
+  assert.equal(boazCorrect.clue.winningAwardPoints, 66.67);
+  assert.equal(boazCorrect.clue.completed, true);
+  assert.equal(boazCorrect.awardedPoints, 66.67);
+});
+
+test('host verdict override full-credit upgrades for earlier wrong answers still preserve later partial credit', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const adaIncorrect = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+  const boazPartial = game.applyAnswerJudgment({
+    contestants: adaIncorrect.contestants,
+    clue: adaIncorrect.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const adaOptions = game.getHostOverrideOptionsForContestant({
+    clue: boazPartial.clue,
+    contestantId: 'contestant-1',
+  });
+  const correctOption = adaOptions.find((option) => option.decision === 'correct');
+
+  assert.equal(boazPartial.contestants[0].score, -100);
+  assert.equal(boazPartial.contestants[1].score, 33.33);
+  assert.equal(correctOption.awardPoints, 66.67);
+  assert.match(correctOption.label, /remaining credit/i);
+
+  const adaCorrect = game.applyHostVerdictOverride({
+    contestants: boazPartial.contestants,
+    clue: boazPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'correct',
+  });
+
+  assert.equal(adaCorrect.contestants[0].score, 66.67);
+  assert.equal(adaCorrect.contestants[1].score, 33.33);
+  assert.equal(adaCorrect.clue.partialCreditAwarded, 33.33);
+  assert.deepEqual(adaCorrect.clue.partialCreditAwards, [{ contestantId: 'contestant-2', points: 33.33 }]);
+  assert.equal(adaCorrect.clue.winningContestantId, 'contestant-1');
+  assert.equal(adaCorrect.clue.winningAwardPoints, 66.67);
+  assert.equal(adaCorrect.awardedPoints, 66.67);
+});
+
 test('host verdict overrides preserve a prior no-buzz terminal state unless upgraded to full credit', () => {
   const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
@@ -2966,7 +3114,10 @@ test('explains who should pick the next question from the most recent completed 
     now: '2026-06-21T01:01:00.000Z',
   });
   generated.categories[1].clues[0] = missed.clue;
-  assert.equal(game.getNextPickerNote({ game: generated, contestants: missed.contestants }), 'No full-credit answer last time; host may choose the next question.');
+  const longNote = game.getNextPickerNote({ game: generated, contestants: missed.contestants });
+  assert.equal(longNote, 'No full-credit answer last time; host may choose the next question.');
+  assert.equal(game.getNextPickerNoteScale('Host may choose the first question.'), 1);
+  assert.ok(game.getNextPickerNoteScale(longNote) < 1);
 });
 
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material and selected difficulty', () => {

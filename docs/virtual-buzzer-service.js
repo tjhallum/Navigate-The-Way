@@ -98,9 +98,10 @@
 
   function normalizeCurrentClue(value) {
     if (!value || typeof value !== 'object') return null;
-    const categoryTitle = coerceText(value.categoryTitle || value.category || value.categoryName);
-    const clueValue = Math.max(0, Math.floor(Number(value.value || value.clueValue || 0)));
-    if (!categoryTitle && !clueValue) return null;
+    const categoryTitle = coerceText(value.categoryTitle || value.category || value.categoryName).slice(0, 80);
+    const rawClueValue = Number(value.value || value.clueValue || 0);
+    const clueValue = Number.isFinite(rawClueValue) ? Math.floor(rawClueValue) : 0;
+    if (!categoryTitle || clueValue <= 0 || clueValue > 1000) return null;
     return {
       categoryTitle,
       value: clueValue,
