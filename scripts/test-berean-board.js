@@ -1191,6 +1191,52 @@ test('initializes Firebase App Check with reCAPTCHA Enterprise before Firebase s
   ]);
 });
 
+test('virtual buzzer current clue metadata is normalized to the RTDB rule contract before writes', () => {
+  assert.deepEqual(
+    virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 100 }),
+    { categoryTitle: 'People and Sin', value: 100 }
+  );
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: '', value: 100 }), null);
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 2000 }), null);
+  assert.equal(virtualBuzzers.normalizeCurrentClue({ categoryTitle: 'People and Sin', value: 0 }), null);
+  const longTitle = 'A'.repeat(90);
+  assert.deepEqual(
+    virtualBuzzers.normalizeCurrentClue({ categoryTitle: longTitle, value: 100 }),
+    { categoryTitle: 'A'.repeat(80), value: 100 }
+  );
+});
+
+test('host buzzer reset omits invalid current clue metadata instead of writing rule-rejected values', async () => {
+  const writes = [];
+  const context = {
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async runTransaction(reference, updater) {
+          const nextValue = updater(2);
+          return { committed: true, snapshot: { val: () => nextValue } };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  await virtualBuzzers.resetBuzzersForHost({
+    context,
+    sessionId: 'session123456',
+    open: true,
+    lockedOutPlayerIndexes: [1],
+    currentClue: { categoryTitle: '', value: 100 },
+  });
+
+  assert.equal(Object.hasOwn(writes[0][2].buzz, 'currentClue'), false);
+});
+
 test('host buzzer resets use scoped writes so existing player claims are not revalidated as host data', async () => {
   const writes = [];
   const context = {
@@ -1485,7 +1531,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-followup-polish" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-host-selected-lock-round"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
@@ -1518,6 +1564,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-epub-lessons/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-question-flow-ui/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-close-race/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-lock-round/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-lesson-files/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-partial-awards/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260619-host-buzzer-audio/);
