@@ -2327,6 +2327,24 @@ test('host verdict overrides downgrade revealed full-credit answers without reop
   assert.equal(downgradedToIncorrect.buzzersShouldBeOpen, false);
   assert.equal(game.getClueBoardDisplayState({ clue: downgradedToIncorrect.clue, value: 100 }).text, '✕');
 
+  const repeatedDowngradeToIncorrect = game.applyHostVerdictOverride({
+    contestants: downgradedToPartial.contestants,
+    clue: downgradedToPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+  assert.equal(repeatedDowngradeToIncorrect.contestants[0].score, -100);
+  assert.equal(repeatedDowngradeToIncorrect.clue.completed, true);
+  assert.equal(repeatedDowngradeToIncorrect.clue.hostOverrideAnswerWasAlreadyRevealed, true);
+  assert.equal(repeatedDowngradeToIncorrect.answerShouldBeRevealed, true);
+  assert.equal(repeatedDowngradeToIncorrect.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: repeatedDowngradeToIncorrect.clue, value: 100 }).text, '✕');
+  assert.match(game.buildHostVerdictOverrideSuccessMessage({
+    result: repeatedDowngradeToIncorrect,
+    decision: 'incorrect',
+    contestantName: 'Ada',
+  }), /answer was already revealed/i);
+
   const boazPartial = game.applyAnswerJudgment({
     contestants,
     clue,
