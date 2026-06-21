@@ -156,6 +156,7 @@ function createFakeAudioRoot(log) {
 test('supports common lesson upload file types used by small groups', () => {
   const supported = [
     ['lesson.pdf', 'application/pdf'],
+    ['lesson.epub', 'application/epub+zip'],
     ['notes.txt', 'text/plain'],
     ['outline.md', 'text/markdown'],
     ['lesson.csv', 'text/csv'],
@@ -255,11 +256,11 @@ test('renders removable lesson file controls and sticky drag-drop protection', (
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(html, /<ul id="lesson-file-list" class="lesson-file-list" aria-label="Selected lesson files" hidden><\/ul>/);
-  assert.match(html, /Supported: \.txt, \.md, \.markdown, \.rtf, \.html, \.htm, \.json, \.xml, \.yaml, \.yml, \.tex, \.pdf, \.doc, \.docx, \.odt, \.pages, \.ppt, \.pptx, \.odp, \.key, \.csv, \.xls, \.xlsx, \.ods/);
-  ['.doc', '.docx', '.odt', '.pages', '.ppt', '.pptx', '.odp', '.key', '.csv', '.xls', '.xlsx', '.ods', '.xml', '.yaml', '.yml', '.tex'].forEach((extension) => {
+  assert.match(html, /Supported: \.txt, \.md, \.markdown, \.rtf, \.html, \.htm, \.json, \.xml, \.yaml, \.yml, \.tex, \.pdf, \.epub, \.doc, \.docx, \.odt, \.pages, \.ppt, \.pptx, \.odp, \.key, \.csv, \.xls, \.xlsx, \.ods/);
+  ['.doc', '.docx', '.odt', '.pages', '.epub', '.ppt', '.pptx', '.odp', '.key', '.csv', '.xls', '.xlsx', '.ods', '.xml', '.yaml', '.yml', '.tex'].forEach((extension) => {
     assert.match(html, new RegExp(extension.replace('.', '\\.')));
   });
-  assert.match(html, /accept="[^"]*\.txt[^"]*\.md[^"]*\.markdown[^"]*\.rtf[^"]*\.html[^"]*\.htm[^"]*\.json[^"]*\.xml[^"]*\.yaml[^"]*\.yml[^"]*\.tex[^"]*\.pdf[^"]*\.doc[^"]*\.docx[^"]*\.odt[^"]*\.pages[^"]*\.ppt[^"]*\.pptx[^"]*\.odp[^"]*\.key[^"]*\.csv[^"]*\.xls[^"]*\.xlsx[^"]*\.ods/);
+  assert.match(html, /accept="[^"]*\.txt[^"]*\.md[^"]*\.markdown[^"]*\.rtf[^"]*\.html[^"]*\.htm[^"]*\.json[^"]*\.xml[^"]*\.yaml[^"]*\.yml[^"]*\.tex[^"]*\.pdf[^"]*\.epub[^"]*\.doc[^"]*\.docx[^"]*\.odt[^"]*\.pages[^"]*\.ppt[^"]*\.pptx[^"]*\.odp[^"]*\.key[^"]*\.csv[^"]*\.xls[^"]*\.xlsx[^"]*\.ods/);
   assert.match(cssRule(css, '.lesson-drop-zone > *'), /pointer-events:\s*none/);
   assert.match(css, /\.lesson-file-list\s*{/);
   assert.match(js, /document\.addEventListener\('dragover', handleDocumentLessonFileDragover\)/);
@@ -1488,8 +1489,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-virtual-host-polish"><\/script>/);
-  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-clue-close-guard/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-epub-lessons"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-bottom-override-icons/);
@@ -2508,6 +2509,37 @@ test('extracts readable text from newly supported lesson file formats', async ()
   } finally {
     globalThis.JSZip = previousJSZip;
     globalThis.XLSX = previousXLSX;
+  }
+});
+
+test('extracts readable lesson text from EPUB packages', async () => {
+  const previousJSZip = globalThis.JSZip;
+  globalThis.JSZip = {
+    loadAsync: async () => ({
+      files: {
+        mimetype: {
+          async: async () => 'application/epub+zip',
+        },
+        'META-INF/container.xml': {
+          async: async () => '<container><rootfiles><rootfile full-path="OEBPS/content.opf" /></rootfiles></container>',
+        },
+        'OEBPS/chapter1.xhtml': {
+          async: async () => '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Assurance from Romans 8</h1><p>Believers are adopted in Christ and cry Abba, Father.</p></body></html>',
+        },
+      },
+    }),
+  };
+
+  try {
+    const extracted = await game.extractLessonTextFromFiles([
+      makeLessonFile('lesson.epub', 'application/epub+zip', 'epub package placeholder'),
+    ]);
+
+    assert.match(extracted, /Assurance from Romans 8/);
+    assert.match(extracted, /Believers are adopted in Christ/);
+    assert.doesNotMatch(extracted, /<h1>/);
+  } finally {
+    globalThis.JSZip = previousJSZip;
   }
 });
 
