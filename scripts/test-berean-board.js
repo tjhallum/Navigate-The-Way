@@ -1528,14 +1528,25 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /id="virtual-buzzer-game-panel"|id="virtual-buzzer-game-status"|id="virtual-buzzer-first"/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
+  assert.match(html, /<section id="winner-celebration-modal" class="winner-celebration-modal" role="dialog" aria-modal="true" aria-labelledby="winner-celebration-heading" tabindex="-1" hidden>/);
+  assert.match(html, /<div class="winner-celebration-burst" aria-hidden="true">🎉<\/div>/);
+  assert.doesNotMatch(html, /<div class="winner-celebration-burst" aria-hidden="true">✦<\/div>/);
+  assert.match(html, /<p class="eyebrow">Game complete<\/p>/);
+  assert.match(html, /<h2 id="winner-celebration-heading" class="winner-celebration-heading">Congratulations!<\/h2>/);
+  assert.match(html, /<p id="winner-celebration-message" class="winner-celebration-message" aria-live="polite"><\/p>/);
+  assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
+  assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-followup-polish" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-winner-celebration-emoji" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-repeat-downgrade-state"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-winner-celebration"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260621-followup-polish/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260621-winner-celebration"/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-repeat-downgrade-state/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-full-credit-overrides/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-followup-polish/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
@@ -1713,6 +1724,25 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.next-picker-note'), /margin-inline-end:\s*0\.1rem/i);
   assert.match(cssRule(css, '.next-picker-note'), /white-space:\s*nowrap/i);
   assert.match(cssRule(css, '.next-picker-note'), /font-size:\s*calc\(1rem \* var\(--next-picker-note-scale, 1\)\)/i);
+  assert.match(cssRule(css, '.winner-celebration-modal'), /position:\s*fixed/i);
+  assert.match(cssRule(css, '.winner-celebration-modal'), /z-index:\s*1100/i);
+  assert.match(cssRule(css, '.winner-celebration-card'), /width:\s*min\(760px, 100%\)/i);
+  assert.match(cssRule(css, '.winner-celebration-card'), /text-align:\s*center/i);
+  assert.match(cssRule(css, '.winner-celebration-card'), /border:\s*1px solid rgba\(255, 206, 72, 0\.62\)/i);
+  assert.match(cssRule(css, '.winner-celebration-burst'), /width:\s*clamp\(4rem, 12vw, 6rem\)/i);
+  assert.match(cssRule(css, '.winner-celebration-burst'), /height:\s*clamp\(4rem, 12vw, 6rem\)/i);
+  assert.match(cssRule(css, '.winner-celebration-burst'), /font-size:\s*clamp\(4rem, 12vw, 6rem\)/i);
+  assert.match(cssRule(css, '.winner-celebration-burst'), /line-height:\s*1/i);
+  assert.doesNotMatch(cssRule(css, '.winner-celebration-burst'), /radial-gradient\(circle, #fff6d2/i);
+  assert.match(cssRule(css, '.winner-celebration-heading'), /font-size:\s*clamp\(2rem, 6vw, 4rem\)/i);
+  assert.match(cssRule(css, '.winner-celebration-actions'), /justify-content:\s*center/i);
+  assert.match(cssRule(css, '.winner-celebration-back-button'), /min-width:\s*min\(18rem, 100%\)/i);
+  assert.match(js, /function gameHasAllCluesCompleted\(game\)/);
+  assert.match(js, /function buildWinnerCelebrationPresentation\(\{ game, contestants \} = \{\}\)/);
+  assert.match(js, /function maybeShowWinnerCelebrationWhenGameComplete\(\)/);
+  assert.match(js, /winnerCelebrationBackButton\?\.addEventListener\('click', \(\) => \{[\s\S]*closeWinnerCelebrationModal\(\);[\s\S]*closeActiveClue\(\);/);
+  assert.match(js, /replaceActiveClue\(updatedClue\)[\s\S]*maybeShowWinnerCelebrationWhenGameComplete\(\);/);
+  assert.match(js, /winnerCelebrationShownForGame = false;/);
   assert.match(js, /function getNextPickerNoteScale\(note\)/);
   assert.match(js, /function applyNextPickerNote\(note\)/);
   assert.match(js, /nextPickerNote\.style\.setProperty\('--next-picker-note-scale'/);
@@ -2078,6 +2108,64 @@ test('builds completed clue review summaries for credit and no-credit outcomes',
   assert.equal(noBuzzReview.className, 'clue-verdict clue-verdict--incorrect');
   assert.match(noBuzzReview.message, /No credit awarded/i);
   assert.match(noBuzzReview.creditSummary, /No one buzzed in\. No credit was awarded\./);
+});
+
+test('builds end-game winner celebration presentation after every clue is complete', () => {
+  const normalizedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
+  normalizedGame.categories.forEach((category) => {
+    category.clues.forEach((clue) => {
+      clue.completed = true;
+    });
+  });
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+  contestants[0].score = 900;
+  contestants[1].score = 500;
+  contestants[2].score = -100;
+
+  assert.equal(game.gameHasAllCluesCompleted(normalizedGame), true);
+  assert.equal(game.gameHasAllCluesCompleted({
+    ...normalizedGame,
+    categories: normalizedGame.categories.map((category, categoryIndex) => ({
+      ...category,
+      clues: category.clues.map((clue, clueIndex) => (
+        categoryIndex === 0 && clueIndex === 0 ? { ...clue, completed: false } : clue
+      )),
+    })),
+  }), false);
+
+  assert.deepEqual(game.buildWinnerCelebrationPresentation({
+    game: normalizedGame,
+    contestants,
+  }), {
+    isComplete: true,
+    isTie: false,
+    heading: 'Congratulations, Ada!',
+    message: 'Ada wins Berean Board with $900.',
+    scoreLabel: 'Winning score',
+    scoreText: '$900',
+    winnerNames: ['Ada'],
+    winnerScore: 900,
+  });
+
+  contestants[1].score = 900;
+  assert.deepEqual(game.buildWinnerCelebrationPresentation({
+    game: normalizedGame,
+    contestants,
+  }), {
+    isComplete: true,
+    isTie: true,
+    heading: 'Congratulations, Ada and Boaz!',
+    message: 'Ada and Boaz tied for the Berean Board win with $900.',
+    scoreLabel: 'Tied score',
+    scoreText: '$900',
+    winnerNames: ['Ada', 'Boaz'],
+    winnerScore: 900,
+  });
+
+  assert.deepEqual(game.buildWinnerCelebrationPresentation({
+    game: { ...normalizedGame, categories: [] },
+    contestants,
+  }), { isComplete: false });
 });
 
 test('renders answer-history score lines from each contestant’s points on that clue', () => {
