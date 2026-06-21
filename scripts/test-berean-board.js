@@ -1535,7 +1535,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-followup-polish"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-full-credit-overrides"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-followup-polish/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260621-virtual-host-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array/);
@@ -2229,8 +2230,8 @@ test('hides host override controls until a contestant has an answer verdict', ()
   assert.doesNotMatch(js, /hostOverridePoints|hostOverrideComplete|applyHostScoreAdjustment/);
 });
 
-test('offers only verdict-safe host override options on attempted player tiles', () => {
-  const contestants = game.createContestants(['Ada', 'Boaz']);
+test('offers host override options on every attempted player tile including revealed full-credit answers', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
 
   assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue, contestantId: 'contestant-1' }), []);
@@ -2263,7 +2264,114 @@ test('offers only verdict-safe host override options on attempted player tiles',
     contestantId: 'contestant-1',
     judgment: { verdict: 'correct' },
   });
-  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: correct.clue, contestantId: 'contestant-1' }), []);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: correct.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['partial', 'incorrect']);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: correct.clue, contestantId: 'contestant-1' }).map((option) => option.icon), ['⚠', '✕']);
+
+  const boazPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const adaCorrectAfterPartial = game.applyAnswerJudgment({
+    contestants: boazPartial.contestants,
+    clue: boazPartial.clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: adaCorrectAfterPartial.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['partial', 'incorrect']);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: adaCorrectAfterPartial.clue, contestantId: 'contestant-2' }).map((option) => option.decision), ['incorrect', 'correct']);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: adaCorrectAfterPartial.clue, contestantId: 'contestant-3' }), []);
+});
+
+test('host verdict overrides downgrade revealed full-credit answers without reopening exposed clues', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+
+  const firstAttemptCorrect = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+
+  const downgradedToPartial = game.applyHostVerdictOverride({
+    contestants: firstAttemptCorrect.contestants,
+    clue: firstAttemptCorrect.clue,
+    contestantId: 'contestant-1',
+    decision: 'partial',
+  });
+
+  assert.equal(downgradedToPartial.contestants[0].score, 25);
+  assert.equal(downgradedToPartial.clue.completed, true);
+  assert.equal(downgradedToPartial.clue.winningContestantId, '');
+  assert.deepEqual(downgradedToPartial.clue.partialCreditAwards, [{ contestantId: 'contestant-1', points: 25 }]);
+  assert.equal(downgradedToPartial.answerShouldBeRevealed, true);
+  assert.equal(downgradedToPartial.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: downgradedToPartial.clue, value: 100 }).text, '⚠');
+  assert.match(game.buildHostVerdictOverrideSuccessMessage({
+    result: downgradedToPartial,
+    decision: 'partial',
+    contestantName: 'Ada',
+  }), /answer was already revealed/i);
+
+  const downgradedToIncorrect = game.applyHostVerdictOverride({
+    contestants: firstAttemptCorrect.contestants,
+    clue: firstAttemptCorrect.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+  assert.equal(downgradedToIncorrect.contestants[0].score, -100);
+  assert.equal(downgradedToIncorrect.clue.completed, true);
+  assert.equal(downgradedToIncorrect.answerShouldBeRevealed, true);
+  assert.equal(downgradedToIncorrect.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: downgradedToIncorrect.clue, value: 100 }).text, '✕');
+
+  const boazPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'partial' },
+  });
+  const adaCorrectAfterPartial = game.applyAnswerJudgment({
+    contestants: boazPartial.contestants,
+    clue: boazPartial.clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+
+  const adaDowngradedToIncorrect = game.applyHostVerdictOverride({
+    contestants: adaCorrectAfterPartial.contestants,
+    clue: adaCorrectAfterPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'incorrect',
+  });
+  assert.equal(adaDowngradedToIncorrect.contestants[0].score, -100);
+  assert.equal(adaDowngradedToIncorrect.contestants[1].score, 25);
+  assert.equal(adaDowngradedToIncorrect.clue.completed, true);
+  assert.deepEqual(adaDowngradedToIncorrect.clue.partialCreditAwards, [{ contestantId: 'contestant-2', points: 25 }]);
+  assert.equal(adaDowngradedToIncorrect.clue.winningContestantId, '');
+  assert.equal(adaDowngradedToIncorrect.answerShouldBeRevealed, true);
+  assert.equal(adaDowngradedToIncorrect.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: adaDowngradedToIncorrect.clue, value: 100 }).text, '⚠');
+
+  const adaDowngradedToPartial = game.applyHostVerdictOverride({
+    contestants: adaCorrectAfterPartial.contestants,
+    clue: adaCorrectAfterPartial.clue,
+    contestantId: 'contestant-1',
+    decision: 'partial',
+  });
+  assert.equal(adaDowngradedToPartial.contestants[0].score, 25);
+  assert.equal(adaDowngradedToPartial.contestants[1].score, 25);
+  assert.equal(adaDowngradedToPartial.clue.completed, true);
+  assert.deepEqual(adaDowngradedToPartial.clue.partialCreditAwards, [
+    { contestantId: 'contestant-2', points: 25 },
+    { contestantId: 'contestant-1', points: 25 },
+  ]);
+  assert.equal(adaDowngradedToPartial.clue.winningContestantId, '');
+  assert.equal(adaDowngradedToPartial.answerShouldBeRevealed, true);
+  assert.equal(adaDowngradedToPartial.buzzersShouldBeOpen, false);
+  assert.equal(game.getClueBoardDisplayState({ clue: adaDowngradedToPartial.clue, value: 100 }).text, '⚠');
 });
 
 test('host verdict overrides use normal scoring and derive reveal and buzzer state from the corrected outcome', () => {
