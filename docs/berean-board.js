@@ -626,6 +626,16 @@
     return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
   }
 
+  function canCloseActiveClue({ activeClue, responseCheckInFlight }) {
+    return Boolean(activeClue?.completed && !responseCheckInFlight);
+  }
+
+  function getActiveClueNavigationControlState({ activeClue, responseCheckInFlight }) {
+    return {
+      closeClueButtonDisabled: !canCloseActiveClue({ activeClue, responseCheckInFlight }),
+    };
+  }
+
   function calculateClueModalScale({ availableWidth, availableHeight, contentWidth, contentHeight }) {
     const safeAvailableWidth = Number(availableWidth);
     const safeAvailableHeight = Number(availableHeight);
@@ -4100,6 +4110,7 @@
       if (contestantChoices) contestantChoices.innerHTML = '';
       if (checkResponseButton) checkResponseButton.disabled = false;
       if (noBuzzButton) noBuzzButton.disabled = false;
+      updateActiveClueNavigationState();
     }
 
     function selectedContestantId() {
@@ -4109,6 +4120,28 @@
     function selectedContestant() {
       const id = selectedContestantId();
       return contestants.find((contestant) => contestant.id === id) || null;
+    }
+
+    function updateActiveClueNavigationState() {
+      const navigationState = getActiveClueNavigationControlState({
+        activeClue,
+        responseCheckInFlight,
+      });
+      if (closeClueButton) {
+        closeClueButton.disabled = navigationState.closeClueButtonDisabled;
+      }
+    }
+
+    function handleCloseActiveClueRequest() {
+      if (!canCloseActiveClue({ activeClue, responseCheckInFlight })) {
+        updateActiveClueNavigationState();
+        if (clueFeedback && activeClue && !activeClue.completed) {
+          clueFeedback.textContent = 'Finish the clue first: accept a correct answer, let every player attempt, or use “No one buzzed in.”';
+          scheduleActiveClueFit();
+        }
+        return;
+      }
+      closeActiveClue();
     }
 
     function updateResponseEntryState() {
@@ -4135,6 +4168,7 @@
       if (noBuzzButton) {
         noBuzzButton.disabled = controlState.noBuzzButtonDisabled;
       }
+      updateActiveClueNavigationState();
       scheduleActiveClueFit();
     }
 
@@ -4293,6 +4327,7 @@
         activeClueReview.hidden = true;
       }
       clearContestantChoiceSelection(contestantChoices?.querySelectorAll('input[name="active-contestant"]'));
+      updateActiveClueNavigationState();
 
       if (activeClue.completed) {
         const hasVerdictOverrideOptions = clueHasHostVerdictOverrideOptions(activeClue, contestants);
@@ -4699,14 +4734,14 @@
     });
     cluePanel?.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        closeActiveClue();
+        handleCloseActiveClueRequest();
       }
     });
     window.addEventListener('resize', () => {
       scheduleActiveClueFit();
     });
     closeClueButton?.addEventListener('click', () => {
-      closeActiveClue();
+      handleCloseActiveClueRequest();
     });
     resetButton?.addEventListener('click', () => {
       if (!window.confirm('Start over and clear the current game board?')) return;
@@ -4775,6 +4810,8 @@
     configureContestantNameInputs,
     getResponseEntryControlState,
     canHandleNoBuzz,
+    canCloseActiveClue,
+    getActiveClueNavigationControlState,
     calculateClueModalScale,
     formatClueModalScaleForCss,
     getContestantChoiceRenderState,

@@ -1338,14 +1338,15 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<div id="active-clue-review" class="answer-box clue-review" hidden><\/div>/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
-  assert.match(html, /<button id="close-clue-button" type="button">Back to Board<\/button>/);
+  assert.match(html, /<button id="close-clue-button" type="button" disabled>Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-override-tile-readability" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260620-bottom-override-icons"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-clue-close-guard"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260620-bottom-override-icons/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-bottom-override-icons/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-override-label-space/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-override-label-space/);
@@ -1553,6 +1554,49 @@ test('keeps no-buzz, contestant choices, and response controls disabled while an
   assert.equal(readyState.noBuzzButtonDisabled, false);
   assert.equal(readyState.contestantChoicesDisabled, false);
   assert.equal(game.canHandleNoBuzz({ activeClue: { completed: false }, responseCheckInFlight: false }), true);
+});
+
+test('keeps Back to Board disabled until the active clue is resolved', () => {
+  const contestants = game.createContestants(['Ada', 'Boaz']);
+  const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
+  const firstMiss = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'incorrect' },
+  });
+
+  assert.equal(firstMiss.clue.completed, false);
+  assert.equal(game.canCloseActiveClue({ activeClue: firstMiss.clue, responseCheckInFlight: false }), false);
+  assert.deepEqual(game.getActiveClueNavigationControlState({
+    activeClue: firstMiss.clue,
+    responseCheckInFlight: false,
+  }), { closeClueButtonDisabled: true });
+
+  const allMissed = game.applyAnswerJudgment({
+    contestants: firstMiss.contestants,
+    clue: firstMiss.clue,
+    contestantId: 'contestant-2',
+    judgment: { verdict: 'incorrect' },
+  });
+  assert.equal(allMissed.clue.completed, true);
+  assert.equal(game.canCloseActiveClue({ activeClue: allMissed.clue, responseCheckInFlight: false }), true);
+  assert.deepEqual(game.getActiveClueNavigationControlState({
+    activeClue: allMissed.clue,
+    responseCheckInFlight: false,
+  }), { closeClueButtonDisabled: false });
+
+  const correct = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+  });
+  assert.equal(game.canCloseActiveClue({ activeClue: correct.clue, responseCheckInFlight: false }), true);
+
+  const noBuzz = game.applyNoBuzzForClue({ contestants, clue });
+  assert.equal(game.canCloseActiveClue({ activeClue: noBuzz.clue, responseCheckInFlight: false }), true);
+  assert.equal(game.canCloseActiveClue({ activeClue: noBuzz.clue, responseCheckInFlight: true }), false);
 });
 
 test('preserves selected contestant while pending checks disable the radio group', () => {
