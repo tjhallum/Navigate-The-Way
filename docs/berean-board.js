@@ -79,7 +79,7 @@
     { type: 'triangle', gain: 0.18, startFrequency: 1320, midFrequency: 880, endFrequency: 440, detune: 8 },
   ]);
   const LEGACY_PARTIAL_CREDIT_FRACTION = 0.2;
-  const CLUE_MODAL_FIT_TOLERANCE_PX = 2;
+  const CLUE_MODAL_FIT_TOLERANCE_PX = 10;
   const GROUP_MEMBERS_COOKIE_NAME = 'ntwBereanBoardGroupMembers';
   const GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS = 31536000;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
@@ -628,13 +628,19 @@
     return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
   }
 
-  function canCloseActiveClue({ activeClue, responseCheckInFlight }) {
-    return Boolean(activeClue?.completed && !responseCheckInFlight);
+  function activeClueHasAttempts(activeClue) {
+    return Array.isArray(activeClue?.attemptedContestantIds) && activeClue.attemptedContestantIds.length > 0;
   }
 
-  function getActiveClueNavigationControlState({ activeClue, responseCheckInFlight }) {
+  function canCloseActiveClue({ activeClue, responseCheckInFlight, hasSelectedContestant = false } = {}) {
+    if (!activeClue || responseCheckInFlight) return false;
+    if (activeClue.completed) return true;
+    return !hasSelectedContestant && !activeClueHasAttempts(activeClue);
+  }
+
+  function getActiveClueNavigationControlState({ activeClue, responseCheckInFlight, hasSelectedContestant = false } = {}) {
     return {
-      closeClueButtonDisabled: !canCloseActiveClue({ activeClue, responseCheckInFlight }),
+      closeClueButtonDisabled: !canCloseActiveClue({ activeClue, responseCheckInFlight, hasSelectedContestant }),
     };
   }
 
@@ -1546,6 +1552,21 @@
     return deltas;
   }
 
+  function getContestantClueAward({ clue, contestantId } = {}) {
+    const id = String(contestantId || '').trim();
+    if (!id || !clue) return 0;
+    return getClueScoreDeltas(clue).get(id) || 0;
+  }
+
+  function buildContestantChoiceScoreLine({ clue, contestant } = {}) {
+    const contestantId = String(contestant?.id || '').trim();
+    const outcome = getContestantAnswerOutcome({ clue, contestantId });
+    if (outcome) {
+      return `${formatScore(getContestantClueAward({ clue, contestantId }))} · ${outcome.label}`;
+    }
+    return formatScore(contestant?.score || 0);
+  }
+
   function removeClueScoreDeltas(contestants, clue) {
     const nextContestants = cloneContestants(contestants);
     const deltas = getClueScoreDeltas(clue);
@@ -1815,6 +1836,7 @@
       applyContestantScoreDelta(nextContestants[contestantIndex], awardedPoints);
       nextClue.completed = true;
       nextClue.winningContestantId = contestantIdText;
+      nextClue.winningAwardPoints = awardedPoints;
     } else if (normalizedJudgment.verdict === 'partial') {
       awardedPoints = getPartialCreditAward({ clue: nextClue, contestantCount: contestants.length });
       if (awardedPoints > 0) {
@@ -4236,7 +4258,10 @@
         window.cancelAnimationFrame?.(clueFitFrame);
         window.clearTimeout?.(clueFitFrame);
       }
-      clueFitFrame = window.setTimeout(fitActiveClueCard, 0);
+      clueFitFrame = window.setTimeout(() => {
+        fitActiveClueCard();
+        clueFitFrame = window.requestAnimationFrame?.(fitActiveClueCard) || window.setTimeout(fitActiveClueCard, 16);
+      }, 0);
     }
 
     function addSelectedFiles(files) {
@@ -4376,6 +4401,7 @@
       const navigationState = getActiveClueNavigationControlState({
         activeClue,
         responseCheckInFlight,
+        hasSelectedContestant: Boolean(selectedContestant()),
       });
       if (closeClueButton) {
         closeClueButton.disabled = navigationState.closeClueButtonDisabled;
@@ -4383,7 +4409,11 @@
     }
 
     function handleCloseActiveClueRequest() {
-      if (!canCloseActiveClue({ activeClue, responseCheckInFlight })) {
+      if (!canCloseActiveClue({
+        activeClue,
+        responseCheckInFlight,
+        hasSelectedContestant: Boolean(selectedContestant()),
+      })) {
         updateActiveClueNavigationState();
         if (clueFeedback && activeClue && !activeClue.completed) {
           clueFeedback.textContent = 'Finish the clue first: accept a correct answer, let every player attempt, or use “No one buzzed in.”';
@@ -4454,7 +4484,6 @@
           clueIsComplete: Boolean(activeClue.completed),
           responseCheckInFlight,
         });
-        const outcomeNote = outcome ? ` · ${outcome.label}` : (renderState.attempted ? ' · already tried' : '');
         const hostOverrideButtons = renderHostVerdictOverrideButtons(contestant);
         return `
           <article class="contestant-choice${renderState.attempted || outcome ? ' contestant-choice--attempted' : ''}${renderState.choicesDisabled ? ' contestant-choice--disabled' : ''}${hostOverrideButtons ? ' contestant-choice--has-host-overrides' : ''}">
@@ -4462,7 +4491,7 @@
               <input type="radio" name="active-contestant" value="${contestant.id}" ${renderState.checked ? 'checked' : ''} ${renderState.disabled ? 'disabled' : ''} />
               <span class="contestant-choice__body">
                 <span class="contestant-choice__name">${escapeHtml(contestant.name)}</span>
-                <small>${formatScore(contestant.score)}${escapeHtml(outcomeNote)}</small>
+                <small>${escapeHtml(buildContestantChoiceScoreLine({ clue: activeClue, contestant }))}</small>
               </span>
             </label>
             ${hostOverrideButtons}
@@ -4638,7 +4667,7 @@
       window.requestAnimationFrame(() => {
         cluePanel?.focus();
       });
-      openVirtualBuzzersForActiveClue();
+      void openVirtualBuzzersForActiveClue();
     }
 
     function replaceActiveClue(updatedClue) {
@@ -5102,6 +5131,8 @@
     applyAnswerJudgment,
     applyNoBuzzForClue,
     getContestantAnswerOutcome,
+    getContestantClueAward,
+    buildContestantChoiceScoreLine,
     getHostOverrideOptionsForContestant,
     applyHostVerdictOverride,
     applyHostOverride,
