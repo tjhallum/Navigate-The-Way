@@ -1509,6 +1509,21 @@
     return centsToScore(Math.max(0, clueCents - alreadyAwardedCents));
   }
 
+  function getOtherContestantsPartialCreditAwardPoints(clue, contestantId) {
+    const contestantIdText = String(contestantId || '').trim();
+    return normalizePartialCreditAwards(clue)
+      .filter((award) => String(award.contestantId || '') !== contestantIdText)
+      .reduce((total, award) => addScoreValues(total, award.points), 0);
+  }
+
+  function getCorrectHostOverrideAward({ clue, contestantId } = {}) {
+    const contestantIdText = String(contestantId || '').trim();
+    if (!clue || !contestantIdText) return 0;
+    const clueCents = Math.max(0, scoreToCents(clue.value));
+    const otherPartialCreditCents = Math.max(0, scoreToCents(getOtherContestantsPartialCreditAwardPoints(clue, contestantIdText)));
+    return centsToScore(Math.max(0, clueCents - otherPartialCreditCents));
+  }
+
   function getWinningCreditAward(clue) {
     const explicitAward = clue?.winningAwardPoints;
     if (explicitAward !== null && explicitAward !== undefined && explicitAward !== '') {
@@ -1630,17 +1645,29 @@
   function getHostOverrideOptionsForContestant({ clue, contestantId } = {}) {
     const outcome = getContestantAnswerOutcome({ clue, contestantId });
     if (!outcome || outcome.verdict === 'correct') return [];
+    const correctAward = getCorrectHostOverrideAward({ clue, contestantId });
+    const clueValue = Math.max(0, Number(clue?.value || 0));
+    const correctOption = correctAward > 0
+      ? {
+        decision: 'correct',
+        label: correctAward < clueValue
+          ? `Award remaining credit (${formatScore(correctAward)})`
+          : 'Upgrade to full credit',
+        icon: '✓',
+        awardPoints: correctAward,
+      }
+      : null;
     if (outcome.verdict === 'partial') {
       return [
         { decision: 'incorrect', label: 'Downgrade to incorrect', icon: '✕' },
-        { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
-      ];
+        correctOption,
+      ].filter(Boolean);
     }
     if (outcome.verdict === 'incorrect') {
       return [
         { decision: 'partial', label: 'Upgrade to partial credit', icon: '⚠' },
-        { decision: 'correct', label: 'Upgrade to full credit', icon: '✓' },
-      ];
+        correctOption,
+      ].filter(Boolean);
     }
     return [];
   }
@@ -1677,6 +1704,27 @@
     return { contestantIdText, contestantIndex };
   }
 
+  function preserveOtherPartialCreditAwards({ nextContestants, nextClue, clue, excludedContestantId } = {}) {
+    const excludedId = String(excludedContestantId || '').trim();
+    const preservedIds = new Set();
+    normalizePartialCreditAwards(clue).forEach((award) => {
+      const contestantId = String(award.contestantId || '').trim();
+      const points = Math.max(0, Number(award.points || 0));
+      if (!contestantId || contestantId === excludedId || points <= 0 || preservedIds.has(contestantId)) return;
+      const contestantIndex = nextContestants.findIndex((contestant) => contestant.id === contestantId);
+      if (contestantIndex < 0) return;
+      if (!nextClue.attemptedContestantIds.includes(contestantId)) {
+        nextClue.attemptedContestantIds.push(contestantId);
+      }
+      applyContestantScoreDelta(nextContestants[contestantIndex], points);
+      nextClue.partialCreditAwarded = addScoreValues(nextClue.partialCreditAwarded, points);
+      nextClue.partialCreditContestantIds.push(contestantId);
+      nextClue.partialCreditAwards.push({ contestantId, points });
+      preservedIds.add(contestantId);
+    });
+    return preservedIds;
+  }
+
   function applyHostVerdictOverride({ contestants, clue, decision, contestantId, now } = {}) {
     if (!Array.isArray(contestants)) {
       throw new Error('Contestants are required before applying a host override.');
@@ -1709,6 +1757,9 @@
     const sequence = buildContestantVerdictSequence(clue).map((entry) => (
       entry.contestantId === contestantIdText ? { ...entry, verdict: normalizedDecision } : entry
     ));
+    const preservedPartialCreditIds = normalizedDecision === 'correct'
+      ? preserveOtherPartialCreditAwards({ nextContestants, nextClue, clue, excludedContestantId: contestantIdText })
+      : new Set();
     let awardedPoints = 0;
 
     sequence.some((entry) => {
@@ -1727,6 +1778,7 @@
         nextClue.attemptedContestantIds.push(entry.contestantId);
       }
       if (entry.verdict === 'partial') {
+        if (preservedPartialCreditIds.has(entry.contestantId)) return false;
         const award = getPartialCreditAward({ clue: nextClue, contestantCount: nextContestants.length });
         if (award > 0) {
           applyContestantScoreDelta(nextContestants[contestantIndex], award);
@@ -1782,7 +1834,12 @@
       ? 'The clue had already been revealed because no one else buzzed in.'
       : 'All players have attempted, so the answer is revealed.';
     if (decision === 'correct') {
-      return `Host override applied. ${name} now receives full credit, so the answer is revealed and buzzers are closed.`;
+      const awardedPoints = Math.max(0, Number(result?.awardedPoints || 0));
+      const clueValue = Math.max(0, Number(clue?.value || 0));
+      const creditPhrase = awardedPoints > 0 && awardedPoints < clueValue
+        ? `the remaining ${formatScore(awardedPoints)} credit`
+        : 'full credit';
+      return `Host override applied. ${name} now receives ${creditPhrase}, so the answer is revealed and buzzers are closed.`;
     }
     if (decision === 'partial') {
       return clue.completed
@@ -3045,6 +3102,13 @@
     return 'No full-credit answer last time; host may choose the next question.';
   }
 
+  function getNextPickerNoteScale(note) {
+    const length = coerceText(note).length;
+    if (length <= 42) return 1;
+    if (length <= 58) return 0.88;
+    return 0.76;
+  }
+
   function shouldSubmitResponseFromKeydown(event) {
     return event?.key === 'Enter' &&
       !event.shiftKey &&
@@ -3460,9 +3524,15 @@
     }
 
     function updateVirtualBuzzerGamePanel() {
-      if (nextPickerNote) {
-        nextPickerNote.textContent = getNextPickerNote({ game: gameData, contestants });
-      }
+      applyNextPickerNote(getNextPickerNote({ game: gameData, contestants }));
+    }
+
+    function applyNextPickerNote(note) {
+      if (!nextPickerNote) return;
+      const noteText = coerceText(note, 'Host may choose the first question.');
+      nextPickerNote.textContent = noteText;
+      nextPickerNote.title = noteText;
+      nextPickerNote.style.setProperty('--next-picker-note-scale', String(getNextPickerNoteScale(noteText)));
     }
 
     function mergeVirtualBuzzerSession(partial) {
@@ -3709,14 +3779,31 @@
       const sessionId = virtualBuzzerSessionId;
       const clueId = clue?.id || '';
       if (!isVirtualBuzzerMode() || !context || !sessionId || !clue || clue.completed) return;
+      const lockedOutPlayerIndexes = getAttemptedPlayerIndexesForClue(clue);
+      const currentCluePayload = getCurrentClueVirtualBuzzerPayload(clue);
       try {
-        const result = await virtualBuzzerService.resetBuzzersForHost({
-          context,
-          sessionId,
-          open: true,
-          lockedOutPlayerIndexes: getAttemptedPlayerIndexesForClue(clue),
-          currentClue: getCurrentClueVirtualBuzzerPayload(clue),
-        });
+        let result;
+        try {
+          result = await virtualBuzzerService.resetBuzzersForHost({
+            context,
+            sessionId,
+            open: true,
+            lockedOutPlayerIndexes,
+            currentClue: currentCluePayload,
+          });
+        } catch (primaryError) {
+          if (currentCluePayload) {
+            result = await virtualBuzzerService.resetBuzzersForHost({
+              context,
+              sessionId,
+              open: true,
+              lockedOutPlayerIndexes,
+              currentClue: null,
+            });
+          } else {
+            throw primaryError;
+          }
+        }
         const snapshotValue = result?.snapshot?.val?.();
         if (isCurrentVirtualBuzzerOpenRequest({ requestId, clueId, sessionId, context })) {
           if (snapshotValue) mergeVirtualBuzzerSession(snapshotValue);
@@ -5164,6 +5251,7 @@
     buildVirtualBuzzerPhoneStatusMessage,
     buildVirtualBuzzerPlayerHeaderMessage,
     getNextPickerNote,
+    getNextPickerNoteScale,
     buildCompletedClueReviewPresentation,
     buildHostVerdictOverrideSuccessMessage,
     shouldAutoCloseAfterAnswerResult,

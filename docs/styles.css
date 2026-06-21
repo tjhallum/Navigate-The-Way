@@ -2579,7 +2579,7 @@ button.primary-action {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-bottom: 1rem;
 }
 
@@ -2608,6 +2608,8 @@ button.primary-action {
   align-items: center;
   justify-content: flex-end;
   gap: 0.8rem;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .clue-actions {
@@ -2615,13 +2617,18 @@ button.primary-action {
 }
 
 .next-picker-note {
-  max-width: 26rem;
+  max-width: min(42vw, 34rem);
   color: #dbe7ff;
   text-align: right;
   font-weight: 700;
+  font-size: calc(1rem * var(--next-picker-note-scale, 1));
   line-height: 1.35;
   align-self: center;
   margin-inline-end: 0.1rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scoreboard {
