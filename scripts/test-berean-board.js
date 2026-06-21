@@ -773,6 +773,22 @@ test('builds virtual buzzer session records, join URLs, claims, and first-buzz p
     round: 3,
     buzzedAt: 67890,
   });
+
+  assert.deepEqual(virtualBuzzers.buildHostSelectedBuzzValue({
+    claim: { uid: 'boaz-phone', playerName: 'Boaz', buzzerNumber: 2 },
+    playerIndex: 1,
+    playerNames: ['Ada', 'Boaz'],
+    round: 4,
+    nowMs: 98765,
+  }), {
+    uid: 'boaz-phone',
+    playerIndex: 1,
+    playerName: 'Boaz',
+    buzzerNumber: 2,
+    round: 4,
+    buzzedAt: 98765,
+    source: 'host',
+  });
 });
 
 test('normalizes virtual buzzer state and only enables eligible claimed players', () => {
@@ -814,6 +830,71 @@ test('normalizes virtual buzzer state and only enables eligible claimed players'
   assert.deepEqual(firebaseArrayLockedOutSession.buzz.lockedOutPlayerIndexes, [0]);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: firebaseArrayLockedOutSession, claim: firebaseArrayLockedOutSession.claims[0], uid: 'ada-uid' }), false);
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: firebaseArrayLockedOutSession, claim: firebaseArrayLockedOutSession.claims[1], uid: 'boaz-uid' }), true);
+});
+
+test('builds helpful player-phone buzzer messages from clue and lockout state', () => {
+  const session = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'open',
+    buzzRound: 5,
+    playerNames: { 0: 'Madison', 1: 'Ted' },
+    playerClaims: {
+      0: { uid: 'madison-phone', playerName: 'Madison', buzzerNumber: 1 },
+      1: { uid: 'ted-phone', playerName: 'Ted', buzzerNumber: 2 },
+    },
+    buzz: {
+      round: 5,
+      open: true,
+      first: null,
+      lockedOutPlayerIndexes: { 0: true },
+      currentClue: { categoryTitle: 'People and Sin', value: 100 },
+    },
+  });
+
+  assert.equal(
+    game.buildVirtualBuzzerPhoneStatusMessage({ session, claim: session.claims[0], uid: 'madison-phone' }),
+    'You already answered People and Sin for $100. Wait while another player tries.'
+  );
+  assert.equal(
+    game.buildVirtualBuzzerPhoneStatusMessage({ session, claim: session.claims[1], uid: 'ted-phone' }),
+    'Buzzers are open for People and Sin for $100!'
+  );
+  assert.equal(
+    game.buildVirtualBuzzerPlayerHeaderMessage({ session, claim: session.claims[0] }),
+    'Current question: People and Sin for $100.'
+  );
+
+  const hostSelected = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'locked',
+    buzzRound: 5,
+    playerNames: { 0: 'Madison', 1: 'Ted' },
+    playerClaims: {
+      0: { uid: 'madison-phone', playerName: 'Madison', buzzerNumber: 1 },
+      1: { uid: 'ted-phone', playerName: 'Ted', buzzerNumber: 2 },
+    },
+    buzz: {
+      round: 5,
+      open: false,
+      lockedOutPlayerIndexes: { 0: true },
+      currentClue: { categoryTitle: 'People and Sin', value: 100 },
+      first: {
+        uid: 'madison-phone',
+        playerIndex: 0,
+        playerName: 'Madison',
+        buzzerNumber: 1,
+        round: 5,
+        buzzedAt: 123,
+        source: 'host',
+      },
+    },
+  });
+  assert.equal(
+    game.buildVirtualBuzzerPhoneStatusMessage({ session: hostSelected, claim: hostSelected.claims[0], uid: 'madison-phone' }),
+    'The host selected you for People and Sin for $100. Give your answer now.'
+  );
+  assert.equal(
+    game.buildVirtualBuzzerPhoneStatusMessage({ session: hostSelected, claim: hostSelected.claims[1], uid: 'ted-phone' }),
+    'Madison is answering People and Sin for $100. Wait for the host.'
+  );
 });
 
 test('player phone name list does not auto-select a player before the phone user chooses one', () => {
@@ -1135,6 +1216,7 @@ test('host buzzer resets use scoped writes so existing player claims are not rev
     sessionId: 'session123456',
     open: true,
     lockedOutPlayerIndexes: [1],
+    currentClue: { categoryTitle: 'People and Sin', value: 100 },
   });
 
   assert.deepEqual(writes[0], ['transaction', 'sessions/session123456/buzzRound']);
@@ -1147,12 +1229,65 @@ test('host buzzer resets use scoped writes so existing player claims are not rev
       open: true,
       first: null,
       lockedOutPlayerIndexes: { 1: true },
+      currentClue: { categoryTitle: 'People and Sin', value: 100 },
     },
   });
 
   assert.equal(result.committed, true);
   assert.equal(result.snapshot.val().buzzRound, 3);
   assert.equal(result.snapshot.val().buzz.round, 3);
+  assert.deepEqual(result.snapshot.val().buzz.currentClue, { categoryTitle: 'People and Sin', value: 100 });
+});
+
+test('host manual virtual selections write a host-sourced first buzz without touching player claims', async () => {
+  const writes = [];
+  const context = {
+    uid: 'host-uid',
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, pathName) {
+          return { pathName };
+        },
+        async update(reference, value) {
+          writes.push(['update', reference.pathName, value]);
+        },
+      },
+    },
+  };
+
+  const result = await virtualBuzzers.selectFirstBuzzForHost({
+    context,
+    sessionId: 'session123456',
+    playerIndex: 1,
+    playerNames: ['Madison', 'Ted'],
+    claim: { uid: 'ted-phone', playerName: 'Ted', buzzerNumber: 2 },
+    round: 7,
+    currentClue: { categoryTitle: 'About Jesus', value: 300 },
+    nowMs: 24680,
+  });
+
+  assert.deepEqual(writes, [[
+    'update',
+    'sessions/session123456',
+    {
+      status: 'locked',
+      'buzz/open': false,
+      'buzz/first': {
+        uid: 'ted-phone',
+        playerIndex: 1,
+        playerName: 'Ted',
+        buzzerNumber: 2,
+        round: 7,
+        buzzedAt: 24680,
+        source: 'host',
+      },
+      'buzz/currentClue': { categoryTitle: 'About Jesus', value: 300 },
+    },
+  ]]);
+  assert.equal(result.committed, true);
+  assert.equal(result.snapshot.val().status, 'locked');
+  assert.equal(result.snapshot.val().buzz.first.source, 'host');
 });
 
 test('host buzzer disables are round-guarded so stale locks cannot close a reopened attempt', async () => {
@@ -1337,15 +1472,23 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
   assert.match(html, /<div id="active-clue-review" class="answer-box clue-review" hidden><\/div>/);
+  assert.match(html, /<p class="eyebrow">Powered by Navigate The Way ✝️<\/p>/);
+  assert.match(html, /<p id="next-picker-note" class="next-picker-note" aria-live="polite">Host may choose the first question\.<\/p>/);
+  assert.doesNotMatch(html, /Generated Game/);
+  assert.doesNotMatch(html, /Export Game JSON|id="export-game-json"/);
+  assert.doesNotMatch(html, /id="virtual-buzzer-game-panel"|id="virtual-buzzer-game-status"|id="virtual-buzzer-first"/);
   assert.match(html, /<button id="no-buzz-button" type="button">No one buzzed in<\/button>/);
   assert.match(html, /<button id="close-clue-button" type="button" disabled>Back to Board<\/button>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-override-tile-readability" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-virtual-host-polish" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-host-selected-buzz"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-clue-close-guard"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260621-virtual-host-polish"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-clue-close-guard/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260621-override-tile-readability/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260620-remote-buzzer-lockout-array/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260620-bottom-override-icons/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-bottom-override-icons/);
   assert.doesNotMatch(html, /styles\.css\?v=20260620-override-label-space/);
@@ -1398,6 +1541,11 @@ test('documents developer-only Firebase setup and database rules for virtual buz
   assert.equal(Object.hasOwn(parsedRules.playerNames, '$playerIndex'), false);
   assert.equal(Object.hasOwn(parsedRules.playerClaims, '$playerIndex'), false);
   assert.equal(Object.hasOwn(parsedRules.buzz.lockedOutPlayerIndexes, '$playerIndex'), false);
+  assert.equal(typeof parsedRules.buzz.currentClue.categoryTitle['.validate'], 'string');
+  assert.equal(typeof parsedRules.buzz.currentClue.value['.validate'], 'string');
+  assert.match(parsedRules.buzz.first['.write'], /source'\)\.val\(\) === 'host'/);
+  assert.equal(typeof parsedRules.buzz.first.source['.validate'], 'string');
+  assert.match(parsedRules.buzz.first.source['.validate'], /host|player/);
   assert.match(parsedRules.buzz.round['.validate'], /newData\.parent\(\)\.parent\(\)\.child\('buzzRound'\)\.val\(\)/);
   assert.match(parsedRules.buzz.open['.validate'], /child\('lockRound'\)\.isNumber\(\)/);
   assert.match(parsedRules.buzz.open['.validate'], /child\('status'\)\.val\(\) === 'closed'/);
@@ -1420,13 +1568,15 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
 
   assert.match(html, /<section id="virtual-buzzer-player-screen" class="virtual-buzzer-player-screen" hidden>/);
   assert.match(html, /<button id="virtual-buzzer-button" type="button" class="virtual-buzzer-button" disabled>BUZZ<\/button>/);
-  assert.match(html, /<section id="virtual-buzzer-game-panel" class="virtual-buzzer-game-panel" hidden>/);
-  assert.match(html, /<p id="virtual-buzzer-first" class="virtual-buzzer-first" aria-live="polite" hidden><\/p>/);
+  assert.doesNotMatch(html, /<section id="virtual-buzzer-game-panel"/);
+  assert.doesNotMatch(html, /<p id="virtual-buzzer-first"/);
   assert.match(js, /const virtualBuzzerService = ROOT\.NTWVirtualBuzzerService/);
   assert.match(js, /function initializeVirtualBuzzerPlayerScreen/);
   assert.match(js, /function createVirtualBuzzerHostSession/);
   assert.match(js, /function openVirtualBuzzersForActiveClue/);
   assert.match(js, /function handleVirtualFirstBuzz/);
+  assert.match(js, /function handleHostSelectedVirtualContestant/);
+  assert.match(js, /selectFirstBuzzForHost/);
   assert.match(js, /function resetVirtualBuzzersForNextAttempt/);
   assert.match(js, /function closeVirtualSession/);
   assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
@@ -1483,7 +1633,10 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 260px\), 1fr\)\)/);
-  assert.match(cssRule(css, '.virtual-buzzer-first strong'), /color:\s*var\(--virtual-buzzer-player-color, #ffce48\)/);
+  assert.match(cssRule(css, '.next-picker-note'), /max-width:\s*26rem/);
+  assert.match(cssRule(css, '.next-picker-note'), /text-align:\s*right/);
+  assert.doesNotMatch(css, /\.virtual-buzzer-game-panel\b/);
+  assert.doesNotMatch(css, /\.virtual-buzzer-first\b/);
   assert.match(cssRule(css, '.virtual-buzzer-button'), /min-height:\s*12rem/);
   assert.match(css, /html:has\(body\.virtual-buzzer-player-route\)\s*\{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /body\.virtual-buzzer-player-route header,[\s\S]*body\.virtual-buzzer-player-route footer,[\s\S]*body\.virtual-buzzer-player-route \.page-header,[\s\S]*body\.virtual-buzzer-player-route \.review-game-intro,[\s\S]*display:\s*none !important;/);
@@ -1903,9 +2056,17 @@ test('hides host override controls until a contestant has an answer verdict', ()
   assert.doesNotMatch(cssRule(css, '.contestant-choice__host-overrides'), /transform:\s*translateX/i);
   assert.doesNotMatch(cssRule(css, '.contestant-choice__host-overrides'), /justify-self:\s*end/i);
   assert.match(css, /\.contestant-choice__host-override-button\s*{/);
-  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /width:\s*1\.4rem/i);
-  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /height:\s*1\.4rem/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /width:\s*1\.5rem/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /height:\s*1\.5rem/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /font-size:\s*1\.02rem/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button'), /line-height:\s*1/i);
   assert.match(cssRule(css, '.contestant-choice__host-override-button'), /padding:\s*0/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="correct"]'), /color:\s*#9df0b1/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="correct"]'), /background:\s*rgba\(9, 30, 20, 0\.8\)/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="partial"]'), /color:\s*#ffdf72/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="partial"]'), /background:\s*rgba\(126, 92, 13, 0\.32\)/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="incorrect"]'), /color:\s*#ff9d9d/i);
+  assert.match(cssRule(css, '.contestant-choice__host-override-button[data-host-verdict-override="incorrect"]'), /background:\s*rgba\(132, 22, 32, 0\.34\)/i);
   assert.match(css, /data-host-verdict-override="correct"/);
   assert.doesNotMatch(css, /padding-inline-end:\s*3\.85rem/i);
   assert.match(cssRule(css, '.contestant-choice__body'), /min-width:\s*0/i);
@@ -1926,6 +2087,8 @@ test('hides host override controls until a contestant has an answer verdict', ()
   assert.match(js, /contestant-choice__host-override-icon/);
   assert.doesNotMatch(js, /<span>\$\{escapeHtml\(option\.label\)\}<\/span>/);
   assert.match(js, /function handleHostVerdictOverride\(/);
+  assert.match(js, /function updateContestantPromptForCompletedClue\(/);
+  assert.match(js, /showAnswer\(\);\s+updateContestantPromptForCompletedClue\(\);\s+if \(clueFeedback\) \{\s+clueFeedback\.textContent = 'The correct answer is shown below\.'/);
   assert.match(js, /contestantChoices\?\.addEventListener\('click'/);
   assert.doesNotMatch(js, /hostOverridePoints|hostOverrideComplete|applyHostScoreAdjustment/);
 });
@@ -1947,6 +2110,7 @@ test('offers only verdict-safe host override options on attempted player tiles',
     label: 'Partial credit',
   });
   assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: partial.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['incorrect', 'correct']);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: partial.clue, contestantId: 'contestant-1' }).map((option) => option.icon), ['✕', '✓']);
 
   const incorrect = game.applyAnswerJudgment({
     contestants,
@@ -1955,6 +2119,7 @@ test('offers only verdict-safe host override options on attempted player tiles',
     judgment: { verdict: 'incorrect' },
   });
   assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: incorrect.clue, contestantId: 'contestant-1' }).map((option) => option.decision), ['partial', 'correct']);
+  assert.deepEqual(game.getHostOverrideOptionsForContestant({ clue: incorrect.clue, contestantId: 'contestant-1' }).map((option) => option.icon), ['⚠', '✓']);
 
   const correct = game.applyAnswerJudgment({
     contestants,
@@ -2620,6 +2785,33 @@ test('completes a two-player clue once both players have attempted without the e
   assert.equal(secondMiss.clue.allContestantsMissed, true);
   assert.equal(secondMiss.answerShouldBeRevealed, true);
   assert.equal(game.shouldAutoCloseAfterAnswerResult(secondMiss), false);
+});
+
+test('explains who should pick the next question from the most recent completed outcome', () => {
+  const contestants = game.createContestants(['Madison', 'Ted']);
+  const generated = game.normalizeGeneratedGame(sampleGeneratedGame());
+  const firstClue = generated.categories[0].clues[0];
+  const secondClue = generated.categories[1].clues[0];
+
+  assert.equal(game.getNextPickerNote({ game: generated, contestants }), 'Host may choose the first question.');
+
+  const correct = game.applyAnswerJudgment({
+    contestants,
+    clue: firstClue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'correct' },
+    now: '2026-06-21T01:00:00.000Z',
+  });
+  generated.categories[0].clues[0] = correct.clue;
+  assert.equal(game.getNextPickerNote({ game: generated, contestants: correct.contestants }), 'Madison should pick the next question.');
+
+  const missed = game.applyNoBuzzForClue({
+    contestants: correct.contestants,
+    clue: secondClue,
+    now: '2026-06-21T01:01:00.000Z',
+  });
+  generated.categories[1].clues[0] = missed.clue;
+  assert.equal(game.getNextPickerNote({ game: generated, contestants: missed.contestants }), 'No full-credit answer last time; host may choose the next question.');
 });
 
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material and selected difficulty', () => {

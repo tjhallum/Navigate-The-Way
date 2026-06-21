@@ -96,6 +96,25 @@
     }, {});
   }
 
+  function normalizeCurrentClue(value) {
+    if (!value || typeof value !== 'object') return null;
+    const categoryTitle = coerceText(value.categoryTitle || value.category || value.categoryName);
+    const clueValue = Math.max(0, Math.floor(Number(value.value || value.clueValue || 0)));
+    if (!categoryTitle && !clueValue) return null;
+    return {
+      categoryTitle,
+      value: clueValue,
+    };
+  }
+
+  function mergeOptionalCurrentClue(target, currentClue) {
+    const normalized = normalizeCurrentClue(currentClue);
+    if (normalized) {
+      target.currentClue = normalized;
+    }
+    return target;
+  }
+
   function buildVirtualBuzzerSessionRecord({ hostUid, playerNames, nowMs = Date.now(), ttlMs = DEFAULT_SESSION_TTL_MS }) {
     const uid = coerceText(hostUid);
     if (!uid) throw new Error('A host Firebase auth uid is required before creating a virtual buzzer session.');
@@ -153,6 +172,16 @@
     };
   }
 
+  function buildHostSelectedBuzzValue({ claim, playerIndex, playerNames, round, nowMs = Date.now() }) {
+    const playerClaim = claim && typeof claim === 'object' ? claim : {};
+    const uid = coerceText(playerClaim.uid);
+    if (!uid) throw new Error('That virtual player has not claimed a phone buzzer yet.');
+    return {
+      ...buildFirstBuzzValue({ uid, playerIndex, playerNames, round, nowMs }),
+      source: 'host',
+    };
+  }
+
   function normalizeVirtualBuzzerSession(session) {
     const source = session && typeof session === 'object' ? session : {};
     const playerNames = normalizeIndexedList(source.playerNames);
@@ -180,6 +209,7 @@
         buzzerNumber: Number(rawBuzz.first.buzzerNumber) || getBuzzerNumberForPlayerIndex(rawBuzz.first.playerIndex),
         round: Number(rawBuzz.first.round) || Number(source.buzzRound) || 0,
         buzzedAt: Number(rawBuzz.first.buzzedAt) || 0,
+        source: coerceText(rawBuzz.first.source, 'player') === 'host' ? 'host' : 'player',
       }
       : null;
     return {
@@ -195,6 +225,7 @@
         open: Boolean(rawBuzz.open),
         first,
         lockedOutPlayerIndexes,
+        currentClue: normalizeCurrentClue(rawBuzz.currentClue),
       },
     };
   }
@@ -455,7 +486,7 @@
     });
   }
 
-  async function resetBuzzersForHost({ context, sessionId, open = true, lockedOutPlayerIndexes = [] }) {
+  async function resetBuzzersForHost({ context, sessionId, open = true, lockedOutPlayerIndexes = [], currentClue = null }) {
     const sessionRef = context.sdk.database.ref(context.database, sessionRefPath(sessionId));
     const buzzRoundRef = context.sdk.database.ref(context.database, `${sessionRefPath(sessionId)}/buzzRound`);
     const roundResult = await context.sdk.database.runTransaction(buzzRoundRef, (currentRound) => {
@@ -466,12 +497,12 @@
       return { committed: false, snapshot: roundResult.snapshot };
     }
     const nextRound = Number(roundResult.snapshot?.val?.()) || 0;
-    const buzz = {
+    const buzz = mergeOptionalCurrentClue({
       round: nextRound,
       open: Boolean(open),
       first: null,
       lockedOutPlayerIndexes: objectFromLockedOutPlayerIndexes(lockedOutPlayerIndexes),
-    };
+    }, currentClue);
     const status = open ? 'open' : 'locked';
     await context.sdk.database.update(sessionRef, {
       status,
@@ -481,6 +512,36 @@
       committed: true,
       snapshot: {
         val: () => ({ status, buzzRound: nextRound, buzz }),
+      },
+    };
+  }
+
+  async function selectFirstBuzzForHost({ context, sessionId, playerIndex, playerNames, claim, round, currentClue = null, nowMs = Date.now() }) {
+    const first = buildHostSelectedBuzzValue({ claim, playerIndex, playerNames, round, nowMs });
+    const updateValue = {
+      status: 'locked',
+      'buzz/open': false,
+      'buzz/first': first,
+    };
+    const normalizedCurrentClue = normalizeCurrentClue(currentClue);
+    if (normalizedCurrentClue) {
+      updateValue['buzz/currentClue'] = normalizedCurrentClue;
+    }
+    const sessionRef = context.sdk.database.ref(context.database, sessionRefPath(sessionId));
+    await context.sdk.database.update(sessionRef, updateValue);
+    return {
+      committed: true,
+      snapshot: {
+        val: () => ({
+          status: 'locked',
+          buzz: {
+            round: Math.max(0, Math.floor(Number(round) || 0)),
+            open: false,
+            first,
+            lockedOutPlayerIndexes: {},
+            ...(normalizedCurrentClue ? { currentClue: normalizedCurrentClue } : {}),
+          },
+        }),
       },
     };
   }
@@ -555,12 +616,14 @@
     isVirtualBuzzerSessionClosed,
     normalizeLockedOutPlayerIndexes,
     objectFromLockedOutPlayerIndexes,
+    normalizeCurrentClue,
     getPlayerClaimOptions,
     canSubmitVirtualBuzz,
     buildVirtualBuzzerSessionRecord,
     buildVirtualBuzzerJoinUrl,
     buildPlayerClaimValue,
     buildFirstBuzzValue,
+    buildHostSelectedBuzzValue,
     loadFirebaseSdk,
     waitForInitialAuthUser,
     initializeFirebaseContext,
@@ -570,6 +633,7 @@
     claimPlayerSlot,
     submitFirstBuzz,
     resetBuzzersForHost,
+    selectFirstBuzzForHost,
     setHostStatus,
     disableBuzzersForHost,
     closeVirtualBuzzerSession,
