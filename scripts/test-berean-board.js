@@ -321,21 +321,53 @@ test('defaults checked group members to players until more than four are present
   assert.equal(defaultSelection.needsPlayerPick, false);
   assert.equal(defaultSelection.canContinue, true);
 
-  const needsFourPicked = game.resolvePlayerSelection({
-    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve'],
+  const needsPlayersPicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve', 'Faith'],
     chosenPlayerNames: [],
   });
-  assert.equal(needsFourPicked.needsPlayerPick, true);
-  assert.equal(needsFourPicked.canContinue, false);
-  assert.deepEqual(needsFourPicked.playerNames, []);
+  assert.equal(needsPlayersPicked.needsPlayerPick, true);
+  assert.equal(needsPlayersPicked.canContinue, false);
+  assert.deepEqual(needsPlayersPicked.playerNames, []);
+  assert.match(needsPlayersPicked.message, /Pick two to four players/i);
 
-  const manuallyPicked = game.resolvePlayerSelection({
-    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve'],
+  const onePicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve', 'Faith'],
+    chosenPlayerNames: ['Ada'],
+  });
+  assert.equal(onePicked.canContinue, false);
+  assert.deepEqual(onePicked.playerNames, []);
+
+  const twoPicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve', 'Faith'],
+    chosenPlayerNames: ['Eve', 'Boaz'],
+  });
+  assert.equal(twoPicked.needsPlayerPick, true);
+  assert.equal(twoPicked.canContinue, true);
+  assert.deepEqual(twoPicked.playerNames, ['Eve', 'Boaz']);
+  assert.match(twoPicked.message, /2 players are selected/i);
+
+  const threePicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve', 'Faith'],
+    chosenPlayerNames: ['Eve', 'Boaz', 'Ada'],
+  });
+  assert.equal(threePicked.canContinue, true);
+  assert.deepEqual(threePicked.playerNames, ['Eve', 'Boaz', 'Ada']);
+
+  const fourPicked = game.resolvePlayerSelection({
+    attendingNames: ['Ada', 'Boaz', 'Chloe', 'Daniel', 'Eve', 'Faith'],
     chosenPlayerNames: ['Eve', 'Boaz', 'Ada', 'Daniel'],
   });
-  assert.equal(manuallyPicked.needsPlayerPick, true);
-  assert.equal(manuallyPicked.canContinue, true);
-  assert.deepEqual(manuallyPicked.playerNames, ['Eve', 'Boaz', 'Ada', 'Daniel']);
+  assert.equal(fourPicked.needsPlayerPick, true);
+  assert.equal(fourPicked.canContinue, true);
+  assert.deepEqual(fourPicked.playerNames, ['Eve', 'Boaz', 'Ada', 'Daniel']);
+});
+
+test('explains that larger present groups may choose two to four players', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
+
+  assert.match(html, /<h3 id="player-picker-title">Choose two to four players<\/h3>/);
+  assert.match(html, /Pick two to four players, or let Berean Board randomly select four from the checked names\./);
+  assert.doesNotMatch(html, /Pick exactly four players/);
 });
 
 test('randomly selects four players from checked group members', () => {
@@ -1591,7 +1623,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260625-claim-error-status"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260625-two-to-four-picker"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260625-claim-error-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-fluid-clue-fit/);
