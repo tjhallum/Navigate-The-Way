@@ -2774,13 +2774,21 @@ button.primary-action {
   max-height: calc(100dvh - clamp(1rem, 4vw, 3rem));
   overflow: hidden;
   box-sizing: border-box;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   border: 1px solid rgba(255, 206, 72, 0.42);
   border-radius: 16px;
   background: rgba(5, 11, 30, 0.96);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
 }
 
-.active-clue-card__content {
+.active-clue-card__body {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.active-clue-card__fit-content {
   box-sizing: border-box;
   width: var(--active-clue-content-width, 100%);
   min-width: 0;
@@ -2789,6 +2797,18 @@ button.primary-action {
   padding: clamp(0.72rem, 1.6vw, 1rem);
   transform: scale(var(--active-clue-scale, 1));
   transform-origin: top left;
+}
+
+.active-clue-card__footer {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  padding: 0.68rem clamp(0.72rem, 1.6vw, 1rem) clamp(0.72rem, 1.6vw, 1rem);
+  border-top: 1px solid rgba(122, 168, 255, 0.18);
+  background: linear-gradient(180deg, rgba(5, 11, 30, 0.78), rgba(5, 11, 30, 0.98));
 }
 
 body.has-active-clue-modal {

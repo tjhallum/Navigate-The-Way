@@ -80,6 +80,9 @@
   ]);
   const LEGACY_PARTIAL_CREDIT_FRACTION = 0.2;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 10;
+  const CLUE_MODAL_FIT_MAX_ITERATIONS = 14;
+  const CLUE_MODAL_FIT_MIN_SCALE = 0.001;
+  const CLUE_MODAL_FIT_VERIFY_BUFFER_PX = 2;
   const GROUP_MEMBERS_COOKIE_NAME = 'ntwBereanBoardGroupMembers';
   const GROUP_MEMBERS_COOKIE_MAX_AGE_SECONDS = 31536000;
   const SUPPORTED_TEXT_EXTENSIONS = new Set([
@@ -681,6 +684,218 @@
       ? String(Math.floor(boundedScale * 1000) / 1000)
       : boundedScale.toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
     return formatted && formatted !== '0' ? formatted : '0.000000000001';
+  }
+
+  function readCssLength(value) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function getElementBoxChrome(element, root = ROOT) {
+    if (!element || typeof root.getComputedStyle !== 'function') {
+      return { inline: 0, block: 0 };
+    }
+    const styles = root.getComputedStyle(element);
+    return {
+      inline: readCssLength(styles.borderLeftWidth) + readCssLength(styles.borderRightWidth) +
+        readCssLength(styles.paddingLeft) + readCssLength(styles.paddingRight),
+      block: readCssLength(styles.borderTopWidth) + readCssLength(styles.borderBottomWidth) +
+        readCssLength(styles.paddingTop) + readCssLength(styles.paddingBottom),
+    };
+  }
+
+  function getPaddedElementContentSize(element, root = ROOT) {
+    if (!element || typeof root.getComputedStyle !== 'function') {
+      return { width: 0, height: 0 };
+    }
+    const styles = root.getComputedStyle(element);
+    return {
+      width: Math.max(1, element.clientWidth - readCssLength(styles.paddingLeft) - readCssLength(styles.paddingRight)),
+      height: Math.max(1, element.clientHeight - readCssLength(styles.paddingTop) - readCssLength(styles.paddingBottom)),
+    };
+  }
+
+  function verifyActiveClueFit({ panel, card, body, content, footer, buffer = CLUE_MODAL_FIT_VERIFY_BUFFER_PX } = {}) {
+    if (!panel || !card || !body || !content || !footer || panel.hidden) {
+      return { fits: true, panelContainsCard: true, bodyContainsContent: true, footerVisible: true };
+    }
+    const panelRect = panel.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    const panelContainsCard = cardRect.top >= panelRect.top - buffer &&
+      cardRect.left >= panelRect.left - buffer &&
+      cardRect.right <= panelRect.right + buffer &&
+      cardRect.bottom <= panelRect.bottom + buffer;
+    const bodyContainsContent = contentRect.top >= bodyRect.top - buffer &&
+      contentRect.left >= bodyRect.left - buffer &&
+      contentRect.right <= bodyRect.right + buffer &&
+      contentRect.bottom <= bodyRect.bottom + buffer;
+    const footerVisible = footerRect.top >= cardRect.top - buffer &&
+      footerRect.bottom <= cardRect.bottom + buffer &&
+      footerRect.left >= cardRect.left - buffer &&
+      footerRect.right <= cardRect.right + buffer &&
+      footerRect.bottom <= panelRect.bottom + buffer;
+    return {
+      fits: panelContainsCard && bodyContainsContent && footerVisible,
+      panelContainsCard,
+      bodyContainsContent,
+      footerVisible,
+      panelRect,
+      cardRect,
+      bodyRect,
+      contentRect,
+      footerRect,
+    };
+  }
+
+  function createCluePanelFitController({ root = ROOT, panel, card, body, content, footer } = {}) {
+    let fitTimeout = 0;
+    let fitFrame = 0;
+    let verifyFrame = 0;
+    let resizeObserver = null;
+    let mutationObserver = null;
+
+    function cancelScheduledFit() {
+      if (fitTimeout) {
+        root.clearTimeout?.(fitTimeout);
+        fitTimeout = 0;
+      }
+      if (fitFrame) {
+        root.cancelAnimationFrame?.(fitFrame);
+        fitFrame = 0;
+      }
+      if (verifyFrame) {
+        root.cancelAnimationFrame?.(verifyFrame);
+        verifyFrame = 0;
+      }
+    }
+
+    function reset() {
+      cancelScheduledFit();
+      card?.style.removeProperty('--active-clue-scale');
+      card?.style.removeProperty('--active-clue-card-height');
+      card?.style.removeProperty('--active-clue-content-width');
+      card?.classList.remove('is-scaled');
+    }
+
+    function panelIsVisible() {
+      return Boolean(panel && !panel.hidden && card && body && content && footer && panel.getClientRects?.().length);
+    }
+
+    function applyScale(scale, cardHeight = null) {
+      if (!card || !content) return;
+      const scaleValue = formatClueModalScaleForCss(scale);
+      const normalizedScale = Math.max(CLUE_MODAL_FIT_MIN_SCALE, Number(scaleValue) || 1);
+      card.style.setProperty('--active-clue-scale', scaleValue);
+      card.style.setProperty('--active-clue-content-width', `${100 / normalizedScale}%`);
+      if (cardHeight != null && Number.isFinite(Number(cardHeight))) {
+        card.style.setProperty('--active-clue-card-height', `${Math.max(1, Math.ceil(Number(cardHeight)))}px`);
+      }
+      card.classList.toggle('is-scaled', normalizedScale < 0.999);
+    }
+
+    function candidateFits(scale, availableCardHeight) {
+      applyScale(scale, availableCardHeight);
+      const bodyWidth = Math.max(1, body.clientWidth);
+      const bodyHeight = Math.max(1, body.clientHeight - CLUE_MODAL_FIT_VERIFY_BUFFER_PX);
+      return (content.scrollWidth * scale) <= (bodyWidth + CLUE_MODAL_FIT_VERIFY_BUFFER_PX) &&
+        (content.scrollHeight * scale) <= bodyHeight;
+    }
+
+    function applyFinalFit(scale, availableCardHeight, cardChromeBlock) {
+      applyScale(scale, availableCardHeight);
+      const scaledContentHeight = Math.ceil(content.scrollHeight * scale);
+      const footerHeight = footer.offsetHeight || 0;
+      const desiredHeight = scaledContentHeight + footerHeight + cardChromeBlock + CLUE_MODAL_FIT_TOLERANCE_PX;
+      applyScale(scale, Math.min(availableCardHeight, desiredHeight));
+    }
+
+    function fit() {
+      fitTimeout = 0;
+      fitFrame = 0;
+      if (!panelIsVisible()) return;
+      card?.style.removeProperty('--active-clue-scale');
+      card?.style.removeProperty('--active-clue-content-width');
+      card?.style.removeProperty('--active-clue-card-height');
+      card?.classList.remove('is-scaled');
+
+      const available = getPaddedElementContentSize(panel, root);
+      const cardChrome = getElementBoxChrome(card, root);
+      const maxCardHeight = Math.max(1, available.height);
+      card.style.setProperty('--active-clue-card-height', `${Math.ceil(maxCardHeight)}px`);
+
+      let low = CLUE_MODAL_FIT_MIN_SCALE;
+      let high = 1;
+      if (candidateFits(high, maxCardHeight)) {
+        low = 1;
+      } else {
+        for (let iteration = 0; iteration < CLUE_MODAL_FIT_MAX_ITERATIONS; iteration += 1) {
+          const midpoint = (low + high) / 2;
+          if (candidateFits(midpoint, maxCardHeight)) {
+            low = midpoint;
+          } else {
+            high = midpoint;
+          }
+        }
+      }
+
+      applyFinalFit(low, maxCardHeight, cardChrome.block);
+      verifyFrame = root.requestAnimationFrame?.(() => {
+        verifyFrame = 0;
+        const verification = verifyActiveClueFit({ panel, card, body, content, footer });
+        if (!verification.fits) {
+          const currentScale = Math.max(CLUE_MODAL_FIT_MIN_SCALE, Number(card.style.getPropertyValue('--active-clue-scale')) || low);
+          applyFinalFit(Math.max(CLUE_MODAL_FIT_MIN_SCALE, currentScale * 0.96), maxCardHeight, cardChrome.block);
+        }
+      }) || 0;
+    }
+
+    function requestFit() {
+      if (!panelIsVisible()) return;
+      if (fitTimeout) root.clearTimeout?.(fitTimeout);
+      if (fitFrame) root.cancelAnimationFrame?.(fitFrame);
+      fitTimeout = root.setTimeout?.(() => {
+        fitTimeout = 0;
+        fitFrame = root.requestAnimationFrame?.(fit) || root.setTimeout?.(fit, 16) || 0;
+      }, 0) || 0;
+    }
+
+    function observe() {
+      if (typeof ResizeObserver === 'function') {
+        resizeObserver = new ResizeObserver(() => requestFit());
+        [panel, card, body, footer].filter(Boolean).forEach((element) => resizeObserver.observe(element));
+      }
+      if (typeof MutationObserver === 'function') {
+        mutationObserver = new MutationObserver(() => requestFit());
+        [content, footer].filter(Boolean).forEach((element) => mutationObserver.observe(element, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: ['class', 'hidden', 'aria-hidden', 'disabled'],
+        }));
+      }
+      const visualViewport = root.visualViewport;
+      visualViewport?.addEventListener('resize', requestFit);
+      const document = root.document;
+      if (document?.fonts?.ready) {
+        document.fonts.ready.then(requestFit).catch?.(() => {});
+      }
+    }
+
+    function disconnect() {
+      cancelScheduledFit();
+      resizeObserver?.disconnect?.();
+      mutationObserver?.disconnect?.();
+      const visualViewport = root.visualViewport;
+      visualViewport?.removeEventListener?.('resize', requestFit);
+    }
+
+    observe();
+
+    return { reset, fit, requestFit, disconnect };
   }
 
   function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
@@ -3215,7 +3430,9 @@
     const resetButton = app.querySelector('#reset-game-button');
     const cluePanel = app.querySelector('#active-clue-panel');
     const clueCard = app.querySelector('.active-clue-card');
-    const clueCardContent = app.querySelector('.active-clue-card__content');
+    const clueCardBody = app.querySelector('.active-clue-card__body');
+    const clueCardContent = app.querySelector('.active-clue-card__fit-content');
+    const clueCardFooter = app.querySelector('.active-clue-card__footer');
     const clueHeading = app.querySelector('#active-clue-heading');
     const clueText = app.querySelector('#active-clue-text');
     const clueVerdict = app.querySelector('#clue-verdict');
@@ -3317,9 +3534,17 @@
     let activeClue = null;
     let answerRevealed = false;
     let responseCheckInFlight = false;
-    let clueFitFrame = 0;
     let winnerCelebrationFitFrame = 0;
     let winnerCelebrationShownForGame = false;
+
+    const cluePanelFitController = createCluePanelFitController({
+      root: window,
+      panel: cluePanel,
+      card: clueCard,
+      body: clueCardBody,
+      content: clueCardContent,
+      footer: clueCardFooter,
+    });
 
     const savedEndpoint = safeGetBrowserStorageItem(window, 'ntwReviewGameEndpoint');
     const savedModel = safeGetBrowserStorageItem(window, 'ntwReviewGameModel');
@@ -4468,70 +4693,15 @@
     }
 
     function resetActiveClueFit() {
-      if (clueFitFrame) {
-        window.cancelAnimationFrame?.(clueFitFrame);
-        window.clearTimeout?.(clueFitFrame);
-        clueFitFrame = 0;
-      }
-      clueCard?.style.removeProperty('--active-clue-scale');
-      clueCard?.style.removeProperty('--active-clue-card-height');
-      clueCard?.style.removeProperty('--active-clue-content-width');
-      clueCard?.classList.remove('is-scaled');
-    }
-
-    function getPanelAvailableRect() {
-      if (!cluePanel) return { availableWidth: 0, availableHeight: 0 };
-      const styles = window.getComputedStyle(cluePanel);
-      const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
-      const paddingY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
-      return {
-        availableWidth: Math.max(1, cluePanel.clientWidth - paddingX),
-        availableHeight: Math.max(1, cluePanel.clientHeight - paddingY),
-      };
-    }
-
-    function applyActiveClueScale(scale) {
-      if (!clueCard || !clueCardContent) return;
-      const scaleValue = formatClueModalScaleForCss(scale);
-      const normalizedScale = Number(scaleValue);
-      clueCard.style.setProperty('--active-clue-scale', scaleValue);
-      clueCard.style.setProperty('--active-clue-content-width', `${100 / normalizedScale}%`);
-      const scaledHeight = Math.ceil(clueCardContent.scrollHeight * normalizedScale) + CLUE_MODAL_FIT_TOLERANCE_PX;
-      clueCard.style.setProperty('--active-clue-card-height', `${scaledHeight}px`);
-      clueCard.classList.toggle('is-scaled', normalizedScale < 0.999);
+      cluePanelFitController.reset();
     }
 
     function fitActiveClueCard() {
-      clueFitFrame = 0;
-      if (!cluePanel || cluePanel.hidden || !clueCard || !clueCardContent) return;
-      resetActiveClueFit();
-      const available = getPanelAvailableRect();
-      const firstScale = calculateClueModalScale({
-        ...available,
-        contentWidth: clueCardContent.scrollWidth,
-        contentHeight: clueCardContent.scrollHeight,
-      });
-      applyActiveClueScale(firstScale);
-      const adjustedScale = calculateClueModalScale({
-        ...available,
-        contentWidth: clueCardContent.scrollWidth,
-        contentHeight: clueCardContent.scrollHeight,
-      });
-      if (Math.abs(adjustedScale - firstScale) > 0.001) {
-        applyActiveClueScale(adjustedScale);
-      }
+      cluePanelFitController.fit();
     }
 
     function scheduleActiveClueFit() {
-      if (!cluePanel || cluePanel.hidden || !clueCard || !clueCardContent) return;
-      if (clueFitFrame) {
-        window.cancelAnimationFrame?.(clueFitFrame);
-        window.clearTimeout?.(clueFitFrame);
-      }
-      clueFitFrame = window.setTimeout(() => {
-        fitActiveClueCard();
-        clueFitFrame = window.requestAnimationFrame?.(fitActiveClueCard) || window.setTimeout(fitActiveClueCard, 16);
-      }, 0);
+      cluePanelFitController.requestFit();
     }
 
     function addSelectedFiles(files) {
@@ -5295,6 +5465,7 @@
     noBuzzButton?.addEventListener('click', () => {
       handleNoBuzz();
     });
+    responseInput?.addEventListener('input', scheduleActiveClueFit);
     responseInput?.addEventListener('keydown', (event) => {
       if (shouldSubmitResponseFromKeydown(event)) {
         event.preventDefault();
@@ -5380,6 +5551,8 @@
     getActiveClueNavigationControlState,
     calculateClueModalScale,
     formatClueModalScaleForCss,
+    verifyActiveClueFit,
+    createCluePanelFitController,
     getContestantChoiceRenderState,
     clearContestantChoiceSelection,
     buildAnswerVerdictPresentation,

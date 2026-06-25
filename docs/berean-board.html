@@ -91,7 +91,7 @@
   ]
 }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260621-berean-board-icon" />
+  <link rel="stylesheet" href="styles.css?v=20260625-fluid-clue-fit" />
   <link rel="icon" type="image/webp" href="images/favicon.webp" />
 </head>
 <body>
@@ -657,32 +657,34 @@
 
       <section id="active-clue-panel" class="active-clue-panel" role="dialog" aria-modal="true" aria-labelledby="active-clue-heading" tabindex="-1" hidden>
         <div class="active-clue-card">
-          <div class="active-clue-card__content">
-            <p class="eyebrow" id="active-clue-heading">Category for $100</p>
-            <p id="active-clue-text" class="active-clue-text"></p>
-            <p id="clue-verdict" class="clue-verdict" aria-live="polite" hidden></p>
-            <p id="active-clue-answer" class="answer-box" hidden></p>
-            <p id="active-clue-explanation" class="answer-box" hidden></p>
-            <p id="active-clue-source" class="answer-box" hidden></p>
-            <div id="active-clue-review" class="answer-box clue-review" hidden></div>
+          <div class="active-clue-card__body">
+            <div class="active-clue-card__fit-content">
+              <p class="eyebrow" id="active-clue-heading">Category for $100</p>
+              <p id="active-clue-text" class="active-clue-text"></p>
+              <p id="clue-verdict" class="clue-verdict" aria-live="polite" hidden></p>
+              <p id="active-clue-answer" class="answer-box" hidden></p>
+              <p id="active-clue-explanation" class="answer-box" hidden></p>
+              <p id="active-clue-source" class="answer-box" hidden></p>
+              <div id="active-clue-review" class="answer-box clue-review" hidden></div>
 
-            <div id="contestant-prompt-section" class="contestant-prompt-section">
-              <h3>Who buzzed in?</h3>
-              <div id="contestant-choices" class="contestant-choices"></div>
-            </div>
+              <div id="contestant-prompt-section" class="contestant-prompt-section">
+                <h3>Who buzzed in?</h3>
+                <div id="contestant-choices" class="contestant-choices"></div>
+              </div>
 
-            <div id="contestant-response-section" class="contestant-response-section" hidden>
-              <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
-                <textarea id="contestant-response-input" rows="3" maxlength="2000" placeholder="Type what the contestant said. Press Enter to check it, or Shift+Enter for a new line. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
-              </label>
-              <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
-            </div>
+              <div id="contestant-response-section" class="contestant-response-section" hidden>
+                <label id="contestant-response-label" for="contestant-response-input">Enter the contestant’s response
+                  <textarea id="contestant-response-input" rows="3" maxlength="2000" placeholder="Type what the contestant said. Press Enter to check it, or Shift+Enter for a new line. The correct answer stays hidden while NTW checks for conceptual correctness."></textarea>
+                </label>
+                <button id="check-response-button" type="button" class="primary-action">Check Response with NTW</button>
+              </div>
 
-            <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
-            <div class="clue-actions">
-              <button id="no-buzz-button" type="button">No one buzzed in</button>
-              <button id="close-clue-button" type="button">Back to Board</button>
+              <p id="clue-feedback" class="clue-feedback" aria-live="polite"></p>
             </div>
+          </div>
+          <div class="active-clue-card__footer clue-actions">
+            <button id="no-buzz-button" type="button">No one buzzed in</button>
+            <button id="close-clue-button" type="button">Back to Board</button>
           </div>
         </div>
       </section>
@@ -716,6 +718,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260621-current-clue-contract"></script>
-<script src="berean-board.js?v=20260621-winner-celebration-scale"></script>
+<script src="berean-board.js?v=20260625-fluid-clue-fit"></script>
 </body>
 </html>
