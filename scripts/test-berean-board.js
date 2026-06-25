@@ -1591,7 +1591,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260625-virtual-claim-guard"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260625-claim-error-status"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-fluid-clue-fit/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-fluid-clue-fit/);
@@ -1728,11 +1729,23 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(claimHandler, /if \(virtualBuzzerClaimInFlight\) return;/);
   assert.match(claimHandler, /virtualBuzzerClaimInFlight = true;[\s\S]*Connecting your buzzer/);
   assert.match(claimHandler, /virtualBuzzerClaimButton\.disabled = true/);
+  assert.match(claimHandler, /let claimStatusMessage = '';/);
+  assert.match(claimHandler, /let claimStatusType = 'info';/);
   assert.ok(
     claimHandler.indexOf('if (result.claim)') < claimHandler.indexOf('if (!result.committed)'),
     'recovered same-phone claims should be accepted before reporting a failed claim transaction'
   );
-  assert.match(claimHandler, /finally \{[\s\S]*virtualBuzzerClaimInFlight = false;[\s\S]*renderPlayerPhoneSession\(\);[\s\S]*\}/);
+  const failedClaimMessageIndex = claimHandler.indexOf("claimStatusMessage = 'That name was just claimed by another device. Choose another available name.'");
+  assert.ok(failedClaimMessageIndex > 0, 'failed claim transactions should store the specific error message');
+  assert.ok(
+    failedClaimMessageIndex < claimHandler.indexOf('return;', failedClaimMessageIndex),
+    'failed claim transactions should store the specific error message before returning'
+  );
+  assert.ok(
+    claimHandler.indexOf('renderPlayerPhoneSession();') < claimHandler.indexOf('if (claimStatusMessage) renderStatus(virtualBuzzerPlayerStatus, claimStatusMessage, claimStatusType);'),
+    'failed claim errors should be restored after renderPlayerPhoneSession rewrites the header status'
+  );
+  assert.match(claimHandler, /finally \{[\s\S]*virtualBuzzerClaimInFlight = false;[\s\S]*renderPlayerPhoneSession\(\);[\s\S]*if \(claimStatusMessage\) renderStatus\(virtualBuzzerPlayerStatus, claimStatusMessage, claimStatusType\);[\s\S]*\}/);
   assert.match(js, /function shouldResetVirtualBuzzersForPlayerSelectionChange/);
   assert.match(js, /void closeVirtualSession\(\);/);
   assert.match(js, /Players changed, so virtual buzzers were reset/);

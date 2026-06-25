@@ -4601,6 +4601,8 @@
       const selected = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       if (!selected) return;
       let claimSucceeded = false;
+      let claimStatusMessage = '';
+      let claimStatusType = 'info';
       virtualBuzzerClaimInFlight = true;
       if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.disabled = true;
       renderStatus(virtualBuzzerPlayerStatus, 'Connecting your buzzer…', 'info');
@@ -4619,14 +4621,17 @@
           return;
         }
         if (!result.committed) {
-          renderStatus(virtualBuzzerPlayerStatus, 'That name was just claimed by another device. Choose another available name.', 'error');
+          claimStatusMessage = 'That name was just claimed by another device. Choose another available name.';
+          claimStatusType = 'error';
           return;
         }
       } catch (error) {
-        renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not claim that player name.', 'error');
+        claimStatusMessage = error.message || 'Could not claim that player name.';
+        claimStatusType = 'error';
       } finally {
         virtualBuzzerClaimInFlight = false;
         renderPlayerPhoneSession();
+        if (claimStatusMessage) renderStatus(virtualBuzzerPlayerStatus, claimStatusMessage, claimStatusType);
         if (claimSucceeded) virtualBuzzerClaimedPanel?.focus({ preventScroll: true });
       }
     });
