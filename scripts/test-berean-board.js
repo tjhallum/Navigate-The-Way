@@ -1540,13 +1540,15 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260621-berean-board-icon" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260625-fluid-clue-fit" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260621-winner-celebration-scale"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260625-fluid-clue-fit"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260621-berean-board-icon/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260621-winner-celebration-scale/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-winner-celebration-scale/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-followup-polish/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-winner-celebration-emoji/);
@@ -2799,19 +2801,53 @@ test('keeps the clue modal fitted without an internal gameplay scrollbar', () =>
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   const panelRule = cssRule(css, '.active-clue-panel');
   const cardRule = cssRule(css, '.active-clue-card');
-  const contentRule = cssRule(css, '.active-clue-card__content');
+  const bodyRule = cssRule(css, '.active-clue-card__body');
+  const contentRule = cssRule(css, '.active-clue-card__fit-content');
+  const footerRule = cssRule(css, '.active-clue-card__footer');
 
-  assert.match(html, /class="active-clue-card__content"/);
+  assert.match(html, /class="active-clue-card__body"/);
+  assert.match(html, /class="active-clue-card__fit-content"/);
+  assert.match(html, /class="active-clue-card__footer clue-actions"/);
   assert.doesNotMatch(panelRule, /overflow-y:\s*auto/i);
   assert.doesNotMatch(cardRule, /overflow-y:\s*auto/i);
-  assert.match(cardRule, /overflow:\s*hidden/i);
+  assert.doesNotMatch(bodyRule, /overflow-y:\s*(auto|scroll)/i);
+  assert.match(cardRule, /display:\s*grid/i);
+  assert.match(cardRule, /grid-template-rows:\s*minmax\(0,\s*1fr\) auto/i);
   assert.match(cardRule, /height:\s*var\(--active-clue-card-height,\s*auto\)/i);
   assert.match(cardRule, /max-height:\s*calc\(100dvh - clamp\(1rem, 4vw, 3rem\)\)/i);
+  assert.match(bodyRule, /overflow:\s*hidden/i);
   assert.match(contentRule, /transform:\s*scale\(var\(--active-clue-scale,\s*1\)\)/i);
   assert.match(contentRule, /transform-origin:\s*top left/i);
   assert.match(contentRule, /width:\s*var\(--active-clue-content-width,\s*100%\)/i);
+  assert.match(footerRule, /flex-wrap:\s*wrap/i);
   assert.match(js, /const CLUE_MODAL_FIT_TOLERANCE_PX = 10;/);
-  assert.match(js, /window\.setTimeout\(\(\) => \{[\s\S]*fitActiveClueCard\(\);[\s\S]*window\.requestAnimationFrame\?\.\(fitActiveClueCard\)/);
+  assert.match(js, /const CLUE_MODAL_FIT_MAX_ITERATIONS = 14;/);
+});
+
+test('protects active clue footer controls outside the fitted body content', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
+  const bodyStart = html.indexOf('class="active-clue-card__body"');
+  const fitContentStart = html.indexOf('class="active-clue-card__fit-content"');
+  const footerStart = html.indexOf('class="active-clue-card__footer clue-actions"');
+  const backButton = html.indexOf('id="close-clue-button"');
+
+  assert.ok(bodyStart > 0, 'expected a protected clue-panel body viewport');
+  assert.ok(fitContentStart > bodyStart, 'expected fitted content inside the body viewport');
+  assert.ok(footerStart > fitContentStart, 'expected the footer after the fitted content');
+  assert.ok(backButton > footerStart, 'expected Back to Board inside the protected footer');
+});
+
+test('uses observer-backed iterative fitting for active clue panel changes', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+
+  assert.match(js, /function createCluePanelFitController\(/);
+  assert.match(js, /function verifyActiveClueFit\(/);
+  assert.match(js, /for \(let iteration = 0; iteration < CLUE_MODAL_FIT_MAX_ITERATIONS; iteration \+= 1\)/);
+  assert.match(js, /new ResizeObserver\(/);
+  assert.match(js, /new MutationObserver\(/);
+  assert.match(js, /visualViewport\?\.addEventListener\('resize', requestFit\)/);
+  assert.match(js, /document\.fonts\.ready/);
+  assert.match(js, /responseInput\?\.addEventListener\('input', scheduleActiveClueFit\)/);
 });
 
 test('calculates dynamic clue modal scaling to fit oversized content', () => {
