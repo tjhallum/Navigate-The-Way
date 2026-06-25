@@ -2967,6 +2967,9 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice__host-override-button {
+  --host-override-hover-color: #eaf0ff;
+  --host-override-hover-background: rgba(255, 206, 72, 0.2);
+  --host-override-hover-border: rgba(255, 225, 150, 0.84);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2990,8 +2993,11 @@ body.has-active-clue-modal {
   height: 1.68rem;
   min-width: 1.68rem;
   min-height: 1.68rem;
+  border: 1px solid rgba(190, 207, 255, 0.32);
   border-radius: 0.48rem;
   padding: 0;
+  color: #eaf0ff;
+  background: rgba(8, 15, 32, 0.78);
   font-size: 0.94rem;
   line-height: 1;
   flex: 0 0 auto;
@@ -3009,29 +3015,30 @@ body.has-active-clue-modal {
 }
 
 .contestant-choice__host-override-button[data-host-verdict-override="correct"] {
-  border-color: rgba(157, 240, 177, 0.62);
-  color: #9df0b1;
-  background: rgba(9, 30, 20, 0.8);
+  --host-override-hover-border: rgba(157, 240, 177, 0.84);
+  --host-override-hover-color: #9df0b1;
+  --host-override-hover-background: rgba(9, 30, 20, 0.8);
 }
 
 .contestant-choice__host-override-button[data-host-verdict-override="partial"] {
-  border-color: rgba(255, 223, 114, 0.62);
-  color: #ffdf72;
-  background: rgba(126, 92, 13, 0.32);
+  --host-override-hover-border: rgba(255, 223, 114, 0.84);
+  --host-override-hover-color: #ffdf72;
+  --host-override-hover-background: rgba(126, 92, 13, 0.32);
 }
 
 .contestant-choice__host-override-button[data-host-verdict-override="incorrect"] {
-  border-color: rgba(255, 157, 157, 0.62);
-  color: #ff9d9d;
-  background: rgba(132, 22, 32, 0.34);
+  --host-override-hover-border: rgba(255, 157, 157, 0.84);
+  --host-override-hover-color: #ff9d9d;
+  --host-override-hover-background: rgba(132, 22, 32, 0.34);
 }
 
 .contestant-choice__host-override-button:hover,
 .contestant-choice__host-override-button:focus-visible {
   transform: translateY(-1px);
   opacity: 1;
-  border-color: rgba(255, 225, 150, 0.84);
-  background: rgba(255, 206, 72, 0.2);
+  color: var(--host-override-hover-color);
+  border-color: var(--host-override-hover-border);
+  background: var(--host-override-hover-background);
 }
 
 .contestant-choice--attempted {

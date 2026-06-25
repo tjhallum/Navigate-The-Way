@@ -4901,7 +4901,7 @@
           ${options.map((option) => {
             const tooltip = `${option.label} for ${contestant.name}`;
             return `
-              <button type="button" class="contestant-choice__host-override-button" data-host-verdict-override="${escapeHtml(option.decision)}" data-host-override-contestant-id="${escapeHtml(contestant.id)}" aria-label="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}">
+              <button type="button" class="contestant-choice__host-override-button" data-host-verdict-override="${escapeHtml(option.decision)}" data-host-override-contestant-id="${escapeHtml(contestant.id)}" data-host-override-tooltip="${escapeHtml(tooltip)}" aria-label="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}">
                 <span class="contestant-choice__host-override-icon" aria-hidden="true">${escapeHtml(option.icon)}</span>
               </button>
             `;
