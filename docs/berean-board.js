@@ -3529,6 +3529,7 @@
     let virtualBuzzerPlayerContext = null;
     let virtualBuzzerPlayerSession = null;
     let virtualBuzzerPlayerUnsubscribe = null;
+    let virtualBuzzerClaimInFlight = false;
     let contestants = [];
     let gameData = null;
     let activeClue = null;
@@ -4258,7 +4259,7 @@
         }).join('');
       }
       if (virtualBuzzerClaimButton) {
-        virtualBuzzerClaimButton.disabled = sessionClosed || hasClaim || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
+        virtualBuzzerClaimButton.disabled = sessionClosed || hasClaim || virtualBuzzerClaimInFlight || !virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       }
       if (virtualBuzzerPlayerClaim) {
         const color = getBuzzerColorForPlayerIndex(virtualBuzzerPlayerClaim.playerIndex);
@@ -4590,6 +4591,7 @@
     });
     virtualBuzzerClaimButton?.addEventListener('click', async () => {
       void playerWakeLock.request();
+      if (virtualBuzzerClaimInFlight) return;
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession) return;
       if (virtualBuzzerService.isVirtualBuzzerSessionClosed?.(virtualBuzzerPlayerSession)) {
         renderStatus(virtualBuzzerPlayerStatus, 'This virtual buzzer session is closed.', 'error');
@@ -4598,6 +4600,10 @@
       }
       const selected = virtualBuzzerNameOptions?.querySelector('input[name="virtual-buzzer-player-name"]:checked');
       if (!selected) return;
+      let claimSucceeded = false;
+      virtualBuzzerClaimInFlight = true;
+      if (virtualBuzzerClaimButton) virtualBuzzerClaimButton.disabled = true;
+      renderStatus(virtualBuzzerPlayerStatus, 'Connecting your buzzer…', 'info');
       try {
         const playerIndex = Number(selected.value);
         const result = await virtualBuzzerService.claimPlayerSlot({
@@ -4606,16 +4612,22 @@
           playerIndex,
           playerNames: virtualBuzzerPlayerSession.playerNames,
         });
+        if (result.claim) {
+          virtualBuzzerPlayerClaim = { ...result.claim, playerIndex };
+          claimSucceeded = true;
+          renderStatus(virtualBuzzerPlayerStatus, 'Name claimed. Keep this screen open for the next question.', 'success');
+          return;
+        }
         if (!result.committed) {
           renderStatus(virtualBuzzerPlayerStatus, 'That name was just claimed by another device. Choose another available name.', 'error');
           return;
         }
-        virtualBuzzerPlayerClaim = { ...result.claim, playerIndex };
-        renderStatus(virtualBuzzerPlayerStatus, 'Name claimed. Keep this screen open for the next question.', 'success');
-        renderPlayerPhoneSession();
-        virtualBuzzerClaimedPanel?.focus({ preventScroll: true });
       } catch (error) {
         renderStatus(virtualBuzzerPlayerStatus, error.message || 'Could not claim that player name.', 'error');
+      } finally {
+        virtualBuzzerClaimInFlight = false;
+        renderPlayerPhoneSession();
+        if (claimSucceeded) virtualBuzzerClaimedPanel?.focus({ preventScroll: true });
       }
     });
     virtualBuzzerButton?.addEventListener('click', async () => {

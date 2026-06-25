@@ -468,7 +468,27 @@
       if (currentClaim) return;
       return claimValue;
     });
-    return { committed: Boolean(result.committed), snapshot: result.snapshot, claim: result.committed ? claimValue : null };
+    const committed = Boolean(result.committed);
+    const existingClaim = result.snapshot?.val?.();
+    const existingClaimMatchesThisPhone = !committed && existingClaim && typeof existingClaim === 'object' &&
+      coerceText(existingClaim.uid) === coerceText(context.uid) &&
+      coerceText(existingClaim.playerName) === claimValue.playerName &&
+      Number(existingClaim.buzzerNumber) === claimValue.buzzerNumber;
+    const recoveredClaim = existingClaimMatchesThisPhone
+      ? {
+        uid: coerceText(existingClaim.uid),
+        playerIndex: index,
+        playerName: coerceText(existingClaim.playerName, claimValue.playerName),
+        buzzerNumber: Number(existingClaim.buzzerNumber) || claimValue.buzzerNumber,
+        claimedAt: Number(existingClaim.claimedAt) || claimValue.claimedAt,
+      }
+      : null;
+    return {
+      committed,
+      recovered: Boolean(recoveredClaim),
+      snapshot: result.snapshot,
+      claim: committed ? { ...claimValue, playerIndex: index } : recoveredClaim,
+    };
   }
 
   async function submitFirstBuzz({ context, sessionId, playerIndex, playerNames, round }) {

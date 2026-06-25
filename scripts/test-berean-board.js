@@ -792,6 +792,48 @@ test('builds virtual buzzer session records, join URLs, claims, and first-buzz p
   });
 });
 
+test('recovers a same-phone virtual buzzer claim after a duplicate claim transaction aborts', async () => {
+  const existingClaim = {
+    uid: 'boaz-phone',
+    playerName: 'Boaz',
+    buzzerNumber: 2,
+    claimedAt: 12345,
+  };
+  const context = {
+    uid: 'boaz-phone',
+    database: {},
+    sdk: {
+      database: {
+        ref(_database, refPath) {
+          return { refPath };
+        },
+        async runTransaction(ref, updater) {
+          assert.equal(ref.refPath, 'sessions/session_abc123/playerClaims/1');
+          assert.equal(updater(existingClaim), undefined);
+          return {
+            committed: false,
+            snapshot: { val: () => existingClaim },
+          };
+        },
+      },
+    },
+  };
+
+  const result = await virtualBuzzers.claimPlayerSlot({
+    context,
+    sessionId: 'session_abc123',
+    playerIndex: 1,
+    playerNames: ['Ada', 'Boaz'],
+  });
+
+  assert.equal(result.committed, false);
+  assert.equal(result.recovered, true);
+  assert.deepEqual(result.claim, {
+    ...existingClaim,
+    playerIndex: 1,
+  });
+});
+
 test('normalizes virtual buzzer state and only enables eligible claimed players', () => {
   const session = {
     status: 'open',
@@ -1542,13 +1584,15 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260625-host-override-tooltips" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260621-current-clue-contract"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-player-route"><\/script>/);
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260625-host-override-tooltips"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260625-virtual-claim-guard"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-fluid-clue-fit/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-fluid-clue-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-berean-board-icon/);
@@ -1674,8 +1718,21 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /document\.body\?\.classList\.toggle\('virtual-buzzer-player-route--claimed', hasClaim\)/);
   assert.match(js, /virtualBuzzerNameOptions\) virtualBuzzerNameOptions\.hidden = hasClaim/);
   assert.match(js, /virtualBuzzerClaimButton\) virtualBuzzerClaimButton\.hidden = hasClaim/);
+  assert.match(js, /virtualBuzzerClaimButton\.disabled = sessionClosed \|\| hasClaim \|\| virtualBuzzerClaimInFlight/);
   assert.match(js, /virtualBuzzerClaimedPanel\) virtualBuzzerClaimedPanel\.hidden = !hasClaim/);
   assert.match(js, /virtualBuzzerPlayerClaim = session\.claims\?\.find\(\(claim\) => claim\?\.uid === virtualBuzzerPlayerContext\?\.uid\) \|\| null/);
+  assert.match(js, /let virtualBuzzerClaimInFlight = false;/);
+  const claimHandlerStart = js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'");
+  const claimHandlerEnd = js.indexOf("virtualBuzzerButton?.addEventListener('click'", claimHandlerStart);
+  const claimHandler = js.slice(claimHandlerStart, claimHandlerEnd);
+  assert.match(claimHandler, /if \(virtualBuzzerClaimInFlight\) return;/);
+  assert.match(claimHandler, /virtualBuzzerClaimInFlight = true;[\s\S]*Connecting your buzzer/);
+  assert.match(claimHandler, /virtualBuzzerClaimButton\.disabled = true/);
+  assert.ok(
+    claimHandler.indexOf('if (result.claim)') < claimHandler.indexOf('if (!result.committed)'),
+    'recovered same-phone claims should be accepted before reporting a failed claim transaction'
+  );
+  assert.match(claimHandler, /finally \{[\s\S]*virtualBuzzerClaimInFlight = false;[\s\S]*renderPlayerPhoneSession\(\);[\s\S]*\}/);
   assert.match(js, /function shouldResetVirtualBuzzersForPlayerSelectionChange/);
   assert.match(js, /void closeVirtualSession\(\);/);
   assert.match(js, /Players changed, so virtual buzzers were reset/);
