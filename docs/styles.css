@@ -2258,7 +2258,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 
 .buzzer-mode-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 0.75rem;
   margin: 0;
   padding: 0;
@@ -2324,6 +2324,10 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   aspect-ratio: 1;
   transform: none;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.36));
+}
+
+.buzzer-mode-option .difficulty-option__art {
+  transform: translateX(-0.3rem);
 }
 
 .difficulty-option__art--portrait {
