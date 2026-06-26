@@ -1614,7 +1614,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260626-buzzer-icon-centering" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260626-next-picker-readability" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
@@ -1623,7 +1623,9 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260625-two-to-four-picker"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260626-next-picker-readability"><\/script>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260626-buzzer-icon-centering/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260625-two-to-four-picker/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-claim-error-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
@@ -1837,12 +1839,16 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.game-actions'), /gap:\s*0\.8rem/i);
   assert.match(cssRule(css, '.game-actions'), /flex-wrap:\s*nowrap/i);
   assert.match(cssRule(css, '.game-actions'), /min-width:\s*0/i);
-  assert.match(cssRule(css, '.next-picker-note'), /max-width:\s*min\(42vw, 34rem\)/);
+  assert.match(cssRule(css, '.next-picker-note'), /max-width:\s*min\(48vw, 42rem\)/);
   assert.match(cssRule(css, '.next-picker-note'), /text-align:\s*right/);
+  assert.match(cssRule(css, '.next-picker-note'), /font-weight:\s*800/);
   assert.match(cssRule(css, '.next-picker-note'), /align-self:\s*center/i);
   assert.match(cssRule(css, '.next-picker-note'), /margin-inline-end:\s*0\.1rem/i);
   assert.match(cssRule(css, '.next-picker-note'), /white-space:\s*nowrap/i);
-  assert.match(cssRule(css, '.next-picker-note'), /font-size:\s*calc\(1rem \* var\(--next-picker-note-scale, 1\)\)/i);
+  assert.match(cssRule(css, '.next-picker-note'), /font-size:\s*calc\(clamp\(1\.1rem, 0\.45rem \+ 0\.78vw, 1\.28rem\) \* var\(--next-picker-note-scale, 1\)\)/i);
+  assert.match(cssRule(css, '.next-picker-note'), /line-height:\s*1\.2/);
+  assert.match(cssRule(css, '.review-game-play .next-picker-note'), /max-inline-size:\s*min\(48vw, 42rem\)/);
+  assert.match(cssRule(css, '.review-game-play .next-picker-note'), /line-height:\s*1\.2/);
   assert.match(cssRule(css, '.winner-celebration-modal'), /position:\s*fixed/i);
   assert.match(cssRule(css, '.winner-celebration-modal'), /z-index:\s*1100/i);
   assert.match(cssRule(css, '.winner-celebration-modal'), /overflow:\s*hidden/i);
@@ -3557,7 +3563,8 @@ test('explains who should pick the next question from the most recent completed 
   const longNote = game.getNextPickerNote({ game: generated, contestants: missed.contestants });
   assert.equal(longNote, 'No full-credit answer last time; host may choose the next question.');
   assert.equal(game.getNextPickerNoteScale('Host may choose the first question.'), 1);
-  assert.ok(game.getNextPickerNoteScale(longNote) < 1);
+  assert.equal(game.getNextPickerNoteScale('The full-credit player should pick the next question.'), 0.96);
+  assert.equal(game.getNextPickerNoteScale(longNote), 0.94);
 });
 
 test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson material and selected difficulty', () => {

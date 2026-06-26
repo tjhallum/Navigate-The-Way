@@ -2668,18 +2668,23 @@ button.primary-action {
 }
 
 .next-picker-note {
-  max-width: min(42vw, 34rem);
+  max-width: min(48vw, 42rem);
   color: #dbe7ff;
   text-align: right;
-  font-weight: 700;
-  font-size: calc(1rem * var(--next-picker-note-scale, 1));
-  line-height: 1.35;
+  font-weight: 800;
+  font-size: calc(clamp(1.1rem, 0.45rem + 0.78vw, 1.28rem) * var(--next-picker-note-scale, 1));
+  line-height: 1.2;
   align-self: center;
   margin-inline-end: 0.1rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.review-game-play .next-picker-note {
+  max-inline-size: min(48vw, 42rem);
+  line-height: 1.2;
 }
 
 .scoreboard {
