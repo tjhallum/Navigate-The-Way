@@ -1737,8 +1737,8 @@ footer {
   overflow-x: clip;
   --berean-board-readable-small: clamp(1rem, 0.9rem + 0.28vw, 1.18rem);
   --berean-board-readable-label: clamp(1.02rem, 0.86rem + 0.5vw, 1.24rem);
-  --berean-board-tile-kicker: clamp(1.02rem, 0.78rem + 0.85vw, 1.28rem);
-  --berean-board-tile-name: clamp(1.18rem, 0.9rem + 1.05vw, 1.55rem);
+  --berean-board-tile-kicker: clamp(1rem, 0.82rem + 0.62vw, 1.17rem);
+  --berean-board-tile-name: clamp(1.14rem, 0.9rem + 0.9vw, 1.46rem);
   --berean-board-tile-meta: clamp(1.02rem, 0.84rem + 0.58vw, 1.24rem);
   --berean-board-category-title: clamp(1.05rem, 0.74rem + 1.15vw, 1.42rem);
 }
@@ -2293,6 +2293,10 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   text-align: left;
 }
 
+.buzzer-mode-option.difficulty-option {
+  grid-template-columns: auto fit-content(17rem) minmax(6rem, 1fr);
+}
+
 .difficulty-option:has(input:checked) {
   border-color: rgba(255, 206, 72, 0.75);
   background: rgba(255, 206, 72, 0.1);
@@ -2361,7 +2365,8 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .difficulty-option__name {
@@ -2371,7 +2376,8 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   line-height: 1.08;
   letter-spacing: -0.02em;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .difficulty-option__grade {
@@ -2386,7 +2392,8 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   line-height: 1.14;
   letter-spacing: -0.01em;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 @media (max-width: 720px) {
@@ -2412,7 +2419,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   .difficulty-option__name,
   .difficulty-option__grade {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 }
 
