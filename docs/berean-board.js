@@ -3341,8 +3341,8 @@
   function getNextPickerNoteScale(note) {
     const length = coerceText(note).length;
     if (length <= 42) return 1;
-    if (length <= 58) return 0.88;
-    return 0.76;
+    if (length <= 58) return 0.96;
+    return 0.94;
   }
 
   function gameHasAllCluesCompleted(game) {
