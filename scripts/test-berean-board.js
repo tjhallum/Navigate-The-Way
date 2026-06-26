@@ -1614,7 +1614,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260626-layout-refinement" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260626-buzzer-icon-centering" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
@@ -1627,6 +1627,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-claim-error-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260626-layout-refinement/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-readable-game-text/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-host-override-tooltips/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-fluid-clue-fit/);
@@ -1829,7 +1830,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
   assert.match(cssRule(css, '.setup-step-status'), /font-size:\s*var\(--berean-board-readable-small\)/);
-  assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 260px\), 1fr\)\)/);
+  assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 360px\), 1fr\)\)/);
   assert.match(cssRule(css, '.game-play-header'), /flex-wrap:\s*nowrap/i);
   assert.match(cssRule(css, '.game-actions'), /align-items:\s*center/i);
   assert.match(cssRule(css, '.game-actions'), /justify-content:\s*flex-end/i);
@@ -1899,6 +1900,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(css, /--berean-board-tile-name:\s*clamp\(1\.14rem, 0\.9rem \+ 0\.9vw, 1\.46rem\)/);
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 250px\), 1fr\)\)/);
   assert.match(cssRule(css, '.buzzer-mode-option.difficulty-option'), /grid-template-columns:\s*auto fit-content\(17rem\) minmax\(6rem, 1fr\)/);
+  assert.match(cssRule(css, '.buzzer-mode-option .difficulty-option__art'), /transform:\s*translateX\(-0\.3rem\)/);
   assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4\.65rem, 0\.58fr\)/);
   assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.9rem 0\.75rem 0\.9rem 0\.9rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
