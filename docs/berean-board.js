@@ -1173,15 +1173,15 @@
     const attendingKeys = new Set(attending.map((name) => name.toLowerCase()));
     const chosen = normalizeGroupMemberList(chosenPlayerNames || [], { allowEmpty: true })
       .filter((name) => attendingKeys.has(name.toLowerCase()));
-    const canContinue = chosen.length === 4;
+    const canContinue = chosen.length >= 2 && chosen.length <= 4;
     return {
       attendingNames: attending,
       playerNames: canContinue ? chosen : [],
       needsPlayerPick: true,
       canContinue,
       message: canContinue
-        ? `Four players are selected: ${chosen.join(', ')}.`
-        : 'More than four group members are present. Pick exactly four players, or let Berean Board choose four randomly.',
+        ? `${chosen.length} ${chosen.length === 1 ? 'player is' : 'players are'} selected: ${chosen.join(', ')}.`
+        : 'More than four group members are present. Pick two to four players, or let Berean Board choose four randomly.',
     };
   }
 
