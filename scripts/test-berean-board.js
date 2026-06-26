@@ -1614,7 +1614,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260625-host-override-tooltips" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260625-readable-game-text" \/>/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
@@ -1627,6 +1627,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-claim-error-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-host-override-tooltips/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260625-host-override-tooltips/);
   assert.doesNotMatch(html, /styles\.css\?v=20260625-fluid-clue-fit/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-fluid-clue-fit/);
   assert.doesNotMatch(html, /styles\.css\?v=20260621-berean-board-icon/);
@@ -1826,6 +1827,7 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.setup-step--locked'), /opacity:\s*0\.58/);
   assert.match(cssRule(css, '.setup-step-toggle:disabled'), /cursor:\s*not-allowed/);
   assert.match(cssRule(css, '.setup-step-status'), /text-transform:\s*uppercase/);
+  assert.match(cssRule(css, '.setup-step-status'), /font-size:\s*var\(--berean-board-readable-small\)/);
   assert.match(cssRule(css, '.buzzer-mode-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 260px\), 1fr\)\)/);
   assert.match(cssRule(css, '.game-play-header'), /flex-wrap:\s*nowrap/i);
   assert.match(cssRule(css, '.game-actions'), /align-items:\s*center/i);
@@ -1892,19 +1894,29 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-button'), /height:\s*100%/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-button'), /min-height:\s*0/);
   assert.match(cssRule(css, 'body.virtual-buzzer-player-route .virtual-buzzer-button'), /font-size:\s*clamp\(2\.85rem, 16vw, 6\.25rem\)/);
-  assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 220px\), 1fr\)\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto max-content minmax\(0, 1fr\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.72rem 0\.52rem 0\.72rem 0\.78rem/);
+  assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 250px\), 1fr\)\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4\.65rem, 0\.58fr\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.9rem 0\.75rem 0\.9rem 0\.9rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
   assert.match(cssRule(css, '.difficulty-option__art'), /grid-column:\s*3/);
   assert.match(cssRule(css, '.difficulty-option__art'), /justify-self:\s*center/);
-  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*min\(5\.65rem, 100%\)/);
+  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*min\(5\.4rem, 100%\)/);
   assert.match(cssRule(css, '.difficulty-option__art'), /aspect-ratio:\s*1/);
   assert.match(cssRule(css, '.difficulty-option__art--portrait'), /aspect-ratio:\s*3\s*\/\s*4/);
   assert.match(cssRule(css, '.difficulty-option__svg'), /width:\s*100%/);
   assert.match(cssRule(css, '.difficulty-option__svg--storybook'), /overflow:\s*visible/);
+  assert.match(css, /\.difficulty-option__level\s*\{[\s\S]*font-size:\s*var\(--berean-board-tile-kicker\)/);
+  assert.match(css, /\.difficulty-option__name\s*\{[\s\S]*font-size:\s*var\(--berean-board-tile-name\)/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
-  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto max-content minmax\(0, 1fr\)/);
+  assert.match(cssRule(css, '.difficulty-option__grade'), /font-size:\s*var\(--berean-board-tile-meta\)/);
+  assert.match(cssRule(css, '.difficulty-option__grade'), /white-space:\s*normal/);
+  assert.match(cssRule(css, '.game-board__category'), /font-size:\s*var\(--berean-board-category-title\)/);
+  assert.match(cssRule(css, '.game-board__category'), /min-height:\s*clamp\(3\.45rem, 8\.5vh, 5\.15rem\)/);
+  assert.match(cssRule(css, '.eyebrow'), /font-size:\s*var\(--berean-board-readable-small\)/);
+  assert.match(cssRule(css, '.winner-celebration-score span'), /font-size:\s*var\(--berean-board-readable-small\)/);
+  assert.doesNotMatch(css, /font-size:\s*(?:0\.7|0\.72|0\.74|0\.75|0\.76|0\.78|0\.82)rem/);
+  assert.doesNotMatch(css, /font-size:\s*clamp\((?:0\.68|0\.72)rem,/);
+  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4rem, 0\.52fr\)/);
   assert.match(css, /@media \(max-width: 390px\)[\s\S]*\.difficulty-option__name,\s*\.difficulty-option__grade\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*anywhere;/);
 });
 
@@ -2474,7 +2486,7 @@ test('hides host override controls until a contestant has an answer verdict', ()
   assert.match(cssRule(css, '.contestant-choice small'), /overflow:\s*hidden/i);
   assert.match(cssRule(css, '.contestant-choice small'), /text-overflow:\s*ellipsis/i);
   assert.match(cssRule(css, '.contestant-choice small'), /white-space:\s*nowrap/i);
-  assert.match(cssRule(css, '.contestant-choice--has-host-overrides small'), /font-size:\s*clamp\(0\.86rem,\s*7\.4cqi,\s*0\.94rem\)/i);
+  assert.match(cssRule(css, '.contestant-choice--has-host-overrides small'), /font-size:\s*clamp\(0\.98rem,\s*7\.4cqi,\s*1\.06rem\)/i);
   assert.match(cssRule(css, '.contestant-choice--has-host-overrides small'), /line-height:\s*1\.08/i);
   assert.match(js, /contestant-choice--has-host-overrides/);
   assert.match(js, /data-host-verdict-override/);
