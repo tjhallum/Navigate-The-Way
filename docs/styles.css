@@ -203,8 +203,8 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(420px, 0.74fr);
-  gap: clamp(1.5rem, 2.6vw, 3rem);
+  grid-template-columns: minmax(0, 1.35fr) minmax(clamp(300px, 24vw, 500px), 0.65fr);
+  gap: clamp(1.05rem, 2vw, 2.5rem);
   align-items: center;
   min-height: auto;
   padding: clamp(1.3rem, 1.85vw, 1.8rem);
@@ -270,14 +270,26 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   line-height: 1.5;
 }
 
-.home-actions {
+.action-row.home-actions {
+  container-type: inline-size;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin: clamp(1.75rem, 1.9vw, 2rem) 0 0;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: clamp(0.4rem, 0.55vw, 0.65rem);
+  margin: clamp(1.75rem, 1.9vw, 2rem) 0 clamp(0.95rem, 1.05vw, 1.1rem);
 }
 
-.home-actions .action-link,
+.home-actions .action-link {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: clamp(3rem, 2.6rem + 0.7vw, 3.35rem);
+  padding-block: clamp(0.76rem, 0.62rem + 0.28vw, 0.9rem);
+  padding-inline: clamp(0.72rem, 0.2rem + 1.4cqw, 1.18rem);
+  font-size: clamp(1rem, 0.54rem + 1cqw, 1.24rem);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
 .home-launch-primary .action-link-primary,
 .home-launch-secondary .action-link {
   min-height: 3.35rem;
@@ -287,7 +299,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 
 .home-actions .action-link-primary {
-  padding-inline: 1.2rem;
+  padding-inline: clamp(0.76rem, 0.22rem + 1.45cqw, 1.2rem);
 }
 
 .action-link.action-link-subtle {
@@ -591,6 +603,12 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
   }
 }
 
+@media (max-width: 1199px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1060px) {
   .home-hero,
   .home-rhythm-layout,
@@ -613,6 +631,19 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 
   .home-hero-card .site-logo {
     width: min(76vw, 390px);
+  }
+}
+
+@media (max-width: 800px) {
+  .action-row.home-actions {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .home-actions .action-link {
+    flex: 1 1 100%;
+    width: 100%;
+    white-space: normal;
   }
 }
 
@@ -995,7 +1026,7 @@ main { flex: 1; width: min(var(--content-max), 100%); margin: 2rem auto; padding
 }
 
 .action-row.home-actions {
-  margin: 1.1rem 0;
+  margin: clamp(1.75rem, 1.9vw, 2rem) 0 clamp(0.95rem, 1.05vw, 1.1rem);
 }
 
 .pill-link,
