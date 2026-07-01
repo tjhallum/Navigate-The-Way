@@ -355,17 +355,51 @@
       return audioContext;
     }
 
-    function resumeAudioContext(context) {
-      if (!context || typeof context.resume !== 'function') return;
-      if (context.state && context.state !== 'running' && context.state !== 'closed') {
-        try {
-          const resumeResult = context.resume();
-          if (resumeResult && typeof resumeResult.catch === 'function') {
-            resumeResult.catch(() => {});
-          }
-        } catch (_error) {
-          // A later user gesture may be able to resume the context.
+    function contextNeedsResume(context) {
+      return Boolean(context && context.state && context.state !== 'running' && context.state !== 'closed');
+    }
+
+    function ensureAudioPrimed(context) {
+      if (!context || audioPrimed) return true;
+      const primed = playSilentHostBuzzerUnlock(context);
+      audioPrimed = true;
+      return primed;
+    }
+
+    function afterAudioContextResume(context, callback) {
+      try {
+        ensureAudioPrimed(context);
+        return callback();
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function resumeAudioContext(context, callback = () => true) {
+      if (!context) return false;
+      if (!contextNeedsResume(context)) {
+        return afterAudioContextResume(context, callback);
+      }
+      if (typeof context.resume !== 'function') return false;
+      try {
+        const resumeResult = context.resume();
+        if (!contextNeedsResume(context)) {
+          return afterAudioContextResume(context, callback);
         }
+        if (resumeResult && typeof resumeResult.then === 'function') {
+          resumeResult
+            .then(() => {
+              if (!contextNeedsResume(context)) {
+                afterAudioContextResume(context, callback);
+              }
+            })
+            .catch(() => {});
+          return true;
+        }
+        return false;
+      } catch (_error) {
+        // A later user gesture may be able to resume the context.
+        return false;
       }
     }
 
@@ -373,12 +407,7 @@
       try {
         const context = getAudioContext();
         if (!context) return false;
-        resumeAudioContext(context);
-        if (!audioPrimed) {
-          playSilentHostBuzzerUnlock(context);
-          audioPrimed = true;
-        }
-        return true;
+        return Boolean(resumeAudioContext(context));
       } catch (_error) {
         return false;
       }
@@ -391,10 +420,14 @@
         if (playStartedAtMs - lastPlayedAtMs < safeMinIntervalMs) return false;
         const context = getAudioContext();
         if (!context) return false;
-        prime();
-        const scheduled = scheduleHostBuzzerSound(context, { volume });
-        if (scheduled) lastPlayedAtMs = playStartedAtMs;
-        return scheduled;
+        const playAudibleCue = () => {
+          const scheduled = scheduleHostBuzzerSound(context, { volume });
+          if (scheduled) lastPlayedAtMs = playStartedAtMs;
+          return scheduled;
+        };
+        const queuedOrScheduled = Boolean(resumeAudioContext(context, playAudibleCue));
+        if (queuedOrScheduled) lastPlayedAtMs = playStartedAtMs;
+        return queuedOrScheduled;
       } catch (_error) {
         return false;
       }
@@ -3867,6 +3900,14 @@
 
     function handleVirtualFirstBuzz(firstBuzz) {
       if (!firstBuzz || !activeClue) return;
+      const activeRound = Number(virtualBuzzerSession?.buzz?.round ?? virtualBuzzerSession?.buzzRound ?? 0);
+      if (Number(firstBuzz.round) !== activeRound) return;
+      const activeCluePayload = getCurrentClueVirtualBuzzerPayload(activeClue);
+      const buzzCluePayload = virtualBuzzerSession?.buzz?.currentClue || null;
+      if (activeCluePayload && buzzCluePayload && (
+        activeCluePayload.categoryTitle !== buzzCluePayload.categoryTitle ||
+        Number(activeCluePayload.value) !== Number(buzzCluePayload.value)
+      )) return;
       const key = `${activeClue.id}:${firstBuzz.round}:${firstBuzz.uid}`;
       if (virtualBuzzerFirstHandledKey === key) return;
       virtualBuzzerFirstHandledKey = key;
@@ -4292,6 +4333,25 @@
       }
     }
 
+    function renderVirtualBuzzerRetryStatus({ action, attempt, maxAttempts, nextDelayMs }) {
+      const remainingAttempts = Math.max(0, Number(maxAttempts) - Number(attempt));
+      const seconds = Math.max(1, Math.ceil((Number(nextDelayMs) || 0) / 1000));
+      renderStatus(
+        virtualBuzzerPlayerStatus,
+        `${action} failed briefly. Retrying automatically in ${seconds}s (${remainingAttempts} ${remainingAttempts === 1 ? 'try' : 'tries'} left)…`,
+        'info'
+      );
+    }
+
+    async function runVirtualBuzzerRetry(operation, { action = 'Virtual buzzer connection' } = {}) {
+      if (virtualBuzzerService?.withVirtualBuzzerRetry) {
+        return virtualBuzzerService.withVirtualBuzzerRetry(operation, {
+          onRetry: (event) => renderVirtualBuzzerRetryStatus({ action, ...event }),
+        });
+      }
+      return operation(1);
+    }
+
     async function initializeVirtualBuzzerPlayerScreen() {
       if (!isVirtualBuzzerPlayerRoute(window.location)) return false;
       virtualBuzzerPlayerSessionId = getVirtualBuzzerSessionIdFromLocation(window.location);
@@ -4309,7 +4369,9 @@
         return true;
       }
       try {
-        virtualBuzzerPlayerContext = await virtualBuzzerService.initializeFirebaseContext();
+        virtualBuzzerPlayerContext = await runVirtualBuzzerRetry(() => virtualBuzzerService.initializeFirebaseContext(), {
+          action: 'Joining the virtual buzzer session',
+        });
         renderStatus(virtualBuzzerPlayerStatus, 'Choose your player name.', 'info');
         virtualBuzzerPlayerUnsubscribe = virtualBuzzerService.subscribeToSessionValue(virtualBuzzerPlayerContext, virtualBuzzerPlayerSessionId, (session) => {
           virtualBuzzerPlayerSession = session;
@@ -4608,11 +4670,13 @@
       renderStatus(virtualBuzzerPlayerStatus, 'Connecting your buzzer…', 'info');
       try {
         const playerIndex = Number(selected.value);
-        const result = await virtualBuzzerService.claimPlayerSlot({
+        const result = await runVirtualBuzzerRetry(() => virtualBuzzerService.claimPlayerSlot({
           context: virtualBuzzerPlayerContext,
           sessionId: virtualBuzzerPlayerSessionId,
           playerIndex,
           playerNames: virtualBuzzerPlayerSession.playerNames,
+        }), {
+          action: 'Connecting your phone buzzer',
         });
         if (result.claim) {
           virtualBuzzerPlayerClaim = { ...result.claim, playerIndex };
@@ -4646,7 +4710,7 @@
           sessionId: virtualBuzzerPlayerSessionId,
           playerIndex: virtualBuzzerPlayerClaim.playerIndex,
           playerNames: virtualBuzzerPlayerSession.playerNames,
-          round: virtualBuzzerPlayerSession.buzzRound,
+          round: virtualBuzzerPlayerSession.buzz?.round ?? virtualBuzzerPlayerSession.buzzRound,
         });
         if (virtualBuzzerPhoneStatus) {
           virtualBuzzerPhoneStatus.textContent = result.committed ? 'You buzzed first!' : 'Another player buzzed first.';
@@ -4980,7 +5044,7 @@
         } else {
           await disableVirtualBuzzersForHost();
         }
-        openClue(result.clue.id);
+        await openClue(result.clue.id);
         maybeShowWinnerCelebrationWhenGameComplete();
         if (!result.clue.completed) {
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName }));
@@ -5052,7 +5116,7 @@
       scheduleActiveClueFit();
     }
 
-    function openClue(clueId) {
+    async function openClue(clueId) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
       responseCheckInFlight = false;
@@ -5120,13 +5184,15 @@
           : 'Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
       }
       renderContestantChoices();
+      if (isVirtualBuzzerMode()) {
+        await openVirtualBuzzersForActiveClue();
+      }
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
       scheduleActiveClueFit();
       window.requestAnimationFrame(() => {
         cluePanel?.focus();
       });
-      void openVirtualBuzzersForActiveClue();
     }
 
     function replaceActiveClue(updatedClue) {
@@ -5458,7 +5524,7 @@
         renderStatus(setupStatus, `Wait for every player to connect before opening a clue (${getVirtualBuzzerConnectedCount()} of ${expectedCount} connected).`, 'error');
         return;
       }
-      openClue(clueId);
+      void openClue(clueId);
     });
 
     contestantChoices?.addEventListener('click', (event) => {

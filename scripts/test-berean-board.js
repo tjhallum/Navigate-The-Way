@@ -39,8 +39,9 @@ function makeLessonFile(name, type, text) {
   };
 }
 
-function createFakeAudioRoot(log) {
+function createFakeAudioRoot(log, options = {}) {
   let nodeId = 0;
+  let pendingResume = null;
 
   class FakeAudioParam {
     constructor(name) {
@@ -122,35 +123,63 @@ function createFakeAudioRoot(log) {
   class FakeAudioContext {
     constructor() {
       this.currentTime = 12;
-      this.state = 'suspended';
+      this.state = options.initialState || 'suspended';
       this.destination = { kind: 'destination' };
       log.push(['context.constructor']);
     }
 
+    assertRunning() {
+      if (options.requireRunningForNodes && this.state !== 'running') {
+        throw new Error('audio context is not running');
+      }
+    }
+
     resume() {
-      this.state = 'running';
       log.push(['context.resume']);
+      if (options.deferResume) {
+        return new Promise((resolve) => {
+          pendingResume = () => {
+            this.state = 'running';
+            log.push(['context.resume.resolve']);
+            resolve();
+          };
+        });
+      }
+      this.state = 'running';
       return Promise.resolve();
     }
 
     createGain() {
+      this.assertRunning();
       return new FakeGainNode();
     }
 
     createOscillator() {
+      this.assertRunning();
       return new FakeOscillatorNode();
     }
 
     createBiquadFilter() {
+      this.assertRunning();
       return new FakeFilterNode();
     }
 
     createDynamicsCompressor() {
+      this.assertRunning();
       return new FakeCompressorNode();
     }
   }
 
-  return { AudioContext: FakeAudioContext };
+  return {
+    AudioContext: FakeAudioContext,
+    resolveResume() {
+      if (pendingResume) {
+        const resume = pendingResume;
+        pendingResume = null;
+        resume();
+      }
+    },
+  };
 }
 
 test('supports common lesson upload file types used by small groups', () => {
@@ -642,6 +671,30 @@ test('host buzzer audio controller rate-limits repeats so buzzes are not obnoxio
   );
 });
 
+test('host buzzer audio controller waits for a suspended context to resume before scheduling sound', async () => {
+  const log = [];
+  const fakeRoot = createFakeAudioRoot(log, {
+    deferResume: true,
+    requireRunningForNodes: true,
+  });
+  const controller = game.createHostBuzzerAudioController({
+    root: fakeRoot,
+    nowMs: () => 4_000,
+  });
+
+  assert.equal(controller.play(), true);
+  assert.deepEqual(log.filter(([event]) => event === 'oscillator.start'), []);
+  assert.deepEqual(log.filter(([event]) => event === 'context.resume'), [['context.resume']]);
+
+  fakeRoot.resolveResume();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(
+    log.filter(([event]) => event === 'oscillator.start').map(([, type]) => type),
+    ['sine', ...game.HOST_BUZZER_SOUND_VOICES.map(({ type }) => type)]
+  );
+});
+
 test('virtual first-buzz host flow primes and plays the synthesized buzzer sound only for remote buzzes', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.html'), 'utf8');
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
@@ -653,6 +706,14 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   const firstBuzzEnd = js.indexOf('function handleVirtualBuzzerBuzzUpdate', firstBuzzStart);
   const firstBuzzHandler = js.slice(firstBuzzStart, firstBuzzEnd);
   assert.match(firstBuzzHandler, /if \(virtualBuzzerFirstHandledKey === key\) return;/);
+  assert.ok(
+    firstBuzzHandler.indexOf('if (Number(firstBuzz.round) !== activeRound) return;') < firstBuzzHandler.indexOf('virtualBuzzerFirstHandledKey = key;'),
+    'stale first-buzz rounds should be ignored before deduping or playing audio'
+  );
+  assert.ok(
+    firstBuzzHandler.indexOf('activeCluePayload.categoryTitle !== buzzCluePayload.categoryTitle') < firstBuzzHandler.indexOf('virtualBuzzerFirstHandledKey = key;'),
+    'stale first-buzz clue metadata should be ignored before deduping or playing audio'
+  );
   assert.ok(
     firstBuzzHandler.indexOf('virtualBuzzerFirstHandledKey = key;') < firstBuzzHandler.indexOf('hostBuzzerAudio.play();'),
     'the sound should play only after the first-buzz event is accepted as new'
@@ -672,6 +733,29 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   const manualChoiceStart = js.indexOf("contestantChoices?.addEventListener('change'");
   const manualChoiceEnd = js.indexOf("checkResponseButton?.addEventListener('click'", manualChoiceStart);
   assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
+});
+
+test('provides a repeatable virtual buzzer latency smoke harness', () => {
+  const scriptPath = path.join(__dirname, 'smoke-berean-board-virtual-latency.cjs');
+  assert.ok(fs.existsSync(scriptPath), 'expected a maintained latency smoke script');
+  const script = fs.readFileSync(scriptPath, 'utf8');
+
+  assert.match(script, /BEREAN_BOARD_CDP_URL/);
+  assert.match(script, /Target\.createBrowserContext/);
+  assert.match(script, /closeVirtualBuzzerSession/);
+  assert.match(script, /disposeBrowserContext/);
+  assert.match(script, /clickToHostMs/);
+  assert.match(script, /phoneEnableLagMs/);
+  assert.match(script, /audioPlayResult/);
+  assert.match(script, /--rounds/);
+  assert.match(script, /--live/);
+});
+
+test('virtual buzzer latency smoke harness retries transient CDP context-destroyed evaluations', () => {
+  const smoke = require('./smoke-berean-board-virtual-latency.cjs');
+  assert.equal(smoke.isTransientCdpEvaluationError(new Error('Runtime.evaluate: Execution context was destroyed.')), true);
+  assert.equal(smoke.isTransientCdpEvaluationError(new Error('Runtime.evaluate: Cannot find context with specified id')), true);
+  assert.equal(smoke.isTransientCdpEvaluationError(new Error('Permission denied')), false);
 });
 
 test('player buzzer screen requests a screen wake lock and reacquires it after visibility changes', async () => {
@@ -907,6 +991,26 @@ test('normalizes virtual buzzer state and only enables eligible claimed players'
   assert.equal(virtualBuzzers.canSubmitVirtualBuzz({ session: firebaseArrayLockedOutSession, claim: firebaseArrayLockedOutSession.claims[1], uid: 'boaz-uid' }), true);
 });
 
+test('virtual buzzers stay disabled during mixed buzzRound and buzz.round snapshots', () => {
+  const mixedRoundSession = virtualBuzzers.normalizeVirtualBuzzerSession({
+    status: 'open',
+    buzzRound: 8,
+    playerNames: { 0: 'Ada' },
+    playerClaims: { 0: { uid: 'ada-uid', playerName: 'Ada', buzzerNumber: 1 } },
+    buzz: { round: 7, open: true, first: null, lockedOutPlayerIndexes: {} },
+  });
+
+  assert.equal(
+    virtualBuzzers.canSubmitVirtualBuzz({ session: mixedRoundSession, claim: mixedRoundSession.claims[0], uid: 'ada-uid' }),
+    false
+  );
+});
+
+test('player buzz submissions use the opened buzz round instead of a mixed top-level round', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+  assert.match(js, /round:\s*virtualBuzzerPlayerSession\.buzz\?\.round\s*\?\?\s*virtualBuzzerPlayerSession\.buzzRound/);
+});
+
 test('builds helpful player-phone buzzer messages from clue and lockout state', () => {
   const session = virtualBuzzers.normalizeVirtualBuzzerSession({
     status: 'open',
@@ -1026,6 +1130,63 @@ test('closed virtual buzzer sessions do not keep claimed names selected', () => 
   });
 
   assert.deepEqual(virtualBuzzers.getPlayerClaimOptions(closed, 'boaz-phone', 1).map((option) => option.selected), [false, false]);
+});
+
+test('retries transient virtual buzzer operations before surfacing a mobile connection error', async () => {
+  const attempts = [];
+  const retryNotices = [];
+  const result = await virtualBuzzers.withVirtualBuzzerRetry(async (attempt) => {
+    attempts.push(attempt);
+    if (attempt < 3) throw new Error('Firebase network-request-failed while joining buzzer.');
+    return 'connected';
+  }, {
+    delaysMs: [11, 22],
+    sleep: async (delayMs) => retryNotices.push(['sleep', delayMs]),
+    onRetry: (event) => retryNotices.push(['retry', event.attempt, event.nextDelayMs, event.error.message]),
+  });
+
+  assert.equal(result, 'connected');
+  assert.deepEqual(attempts, [1, 2, 3]);
+  assert.deepEqual(retryNotices, [
+    ['retry', 1, 11, 'Firebase network-request-failed while joining buzzer.'],
+    ['sleep', 11],
+    ['retry', 2, 22, 'Firebase network-request-failed while joining buzzer.'],
+    ['sleep', 22],
+  ]);
+});
+
+test('does not retry permanent virtual buzzer setup errors', async () => {
+  const attempts = [];
+  await assert.rejects(
+    virtualBuzzers.withVirtualBuzzerRetry(async (attempt) => {
+      attempts.push(attempt);
+      throw new Error('Choose one of the available player names.');
+    }, {
+      delaysMs: [1, 1, 1],
+      sleep: async () => { throw new Error('sleep should not run'); },
+    }),
+    /Choose one of the available player names/
+  );
+  assert.deepEqual(attempts, [1]);
+});
+
+test('virtual clue reveal waits for buzzer-open write before players see the question', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+  const openClueStart = js.indexOf('async function openClue(clueId)');
+  assert.notEqual(openClueStart, -1, 'openClue should be async so the host can pre-arm virtual buzzers');
+  const virtualBranchStart = js.indexOf('Virtual buzzers are opening', openClueStart);
+  const awaitOpenIndex = js.indexOf('await openVirtualBuzzersForActiveClue();', virtualBranchStart);
+  const revealIndex = js.indexOf('cluePanel.hidden = false;', virtualBranchStart);
+  assert.ok(awaitOpenIndex !== -1 && revealIndex !== -1 && awaitOpenIndex < revealIndex, 'virtual buzzer open write should complete before revealing the active clue modal');
+});
+
+test('player virtual buzzer route self-heals transient connection and claim failures', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+  assert.match(js, /function runVirtualBuzzerRetry/);
+  assert.match(js, /virtualBuzzerService\.withVirtualBuzzerRetry/);
+  assert.match(js, /runVirtualBuzzerRetry\(\(\) => virtualBuzzerService\.initializeFirebaseContext/);
+  assert.match(js, /runVirtualBuzzerRetry\(\(\) => virtualBuzzerService\.claimPlayerSlot/);
+  assert.match(js, /Retrying automatically/);
 });
 
 test('waits for Firebase Auth state before deciding to sign in anonymously', async () => {
@@ -1617,14 +1778,16 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260701-difficulty-tile-scaling" \/>/);
   assert.doesNotMatch(html, /styles\.css\?v=20260626-next-picker-readability/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
-  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
+  assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260701-buzzer-round-guard"><\/script>/);
+  assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-host-selected-buzz/);
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-player-route"><\/script>/);
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260626-next-picker-readability"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260701-buzzer-latency-audio"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260626-next-picker-readability/);
   assert.doesNotMatch(html, /styles\.css\?v=20260626-buzzer-icon-centering/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-two-to-four-picker/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-claim-error-status/);
@@ -1700,7 +1863,8 @@ test('documents developer-only Firebase setup and database rules for virtual buz
   assert.match(rules, /"\.read": false/);
   assert.match(rules, /auth\.uid === data\.parent\(\)\.child\('hostUid'\)\.val\(\)/);
   assert.match(rules, /newData\.child\('uid'\)\.val\(\) === auth\.uid/);
-  assert.match(rules, /newData\.child\('round'\)\.val\(\) === data\.parent\(\)\.parent\(\)\.child\('buzzRound'\)\.val\(\)/);
+  assert.match(rules, /newData\.child\('round'\)\.val\(\) === data\.parent\(\)\.child\('round'\)\.val\(\)/);
+  assert.doesNotMatch(rules, /newData\.child\('round'\)\.val\(\) === data\.parent\(\)\.parent\(\)\.child\('buzzRound'\)\.val\(\)/);
   const parsedRules = JSON.parse(rules).rules.sessions.$sessionId;
   assert.equal(Object.hasOwn(parsedRules.playerNames, '$playerIndex'), false);
   assert.equal(Object.hasOwn(parsedRules.playerClaims, '$playerIndex'), false);
@@ -1751,7 +1915,7 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /catch \(primaryError\) \{[\s\S]*if \(currentCluePayload\) \{[\s\S]*currentClue:\s*null/);
   assert.match(js, /await disableVirtualBuzzersForHost\(staleRound, sessionId, context\);/);
   assert.match(js, /function closeActiveClue\(\) \{[\s\S]*virtualBuzzerOpenRequestId \+= 1;[\s\S]*void disableVirtualBuzzersForHost\(\);/);
-  assert.match(js, /cluePanel\.hidden = false;[\s\S]*document\.body\?\.classList\.add\('has-active-clue-modal'\);[\s\S]*void openVirtualBuzzersForActiveClue\(\);/);
+  assert.match(js, /if \(isVirtualBuzzerMode\(\)\) \{[\s\S]*await openVirtualBuzzersForActiveClue\(\);[\s\S]*\}\s*cluePanel\.hidden = false;/);
   assert.match(js, /renderPlayerPhoneSession\(\);/);
   assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
   assert.match(js, /document\.body\?\.classList\.add\('virtual-buzzer-player-route'\)/);

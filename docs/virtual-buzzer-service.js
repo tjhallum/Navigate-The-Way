@@ -12,6 +12,7 @@
   const FIREBASE_APP_CHECK_URL = [SDK_BASE, 'firebase-app-check.js'].join('/');
   const APP_CHECK_PROVIDER_ENTERPRISE = 'recaptcha-enterprise';
   const APP_CHECK_PROVIDER_V3 = 'recaptcha-v3';
+  const DEFAULT_OPERATION_RETRY_DELAYS_MS = [750, 1500, 3000];
 
   let sdkPromise = null;
 
@@ -21,6 +22,52 @@
     }
     if (value == null) return fallback;
     return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  function sleepMs(delayMs) {
+    return new Promise((resolve) => ROOT.setTimeout(resolve, Math.max(0, Number(delayMs) || 0)));
+  }
+
+  function isPermanentVirtualBuzzerError(error) {
+    const message = coerceText(error?.message || error).toLowerCase();
+    return /developer|config|valid virtual buzzer session id|one to four|choose one of the available player names|session is closed|closed virtual buzzer/i.test(message);
+  }
+
+  function isTransientVirtualBuzzerError(error) {
+    if (!error) return true;
+    if (isPermanentVirtualBuzzerError(error)) return false;
+    const message = coerceText(error?.code || error?.message || error).toLowerCase();
+    return !message || /network|timeout|timed out|offline|unavailable|app-check|app check|auth|permission|quota|internal|retry|aborted|cancelled|canceled|failed|firebase/i.test(message);
+  }
+
+  async function withVirtualBuzzerRetry(operation, options = {}) {
+    if (typeof operation !== 'function') throw new Error('A virtual buzzer operation is required.');
+    const delays = Array.isArray(options.delaysMs) && options.delaysMs.length
+      ? options.delaysMs.map((delay) => Math.max(0, Number(delay) || 0))
+      : DEFAULT_OPERATION_RETRY_DELAYS_MS;
+    const maxAttempts = Math.max(1, Math.floor(Number(options.maxAttempts) || (delays.length + 1)));
+    const sleep = typeof options.sleep === 'function' ? options.sleep : sleepMs;
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await operation(attempt);
+      } catch (error) {
+        lastError = error;
+        const nextDelayMs = delays[Math.min(attempt - 1, delays.length - 1)] || 0;
+        if (attempt >= maxAttempts || !isTransientVirtualBuzzerError(error)) {
+          throw error;
+        }
+        if (typeof options.onRetry === 'function') {
+          try {
+            options.onRetry({ attempt, maxAttempts, nextDelayMs, error });
+          } catch (_error) {
+            // Retry notices should never prevent self-healing.
+          }
+        }
+        await sleep(nextDelayMs);
+      }
+    }
+    throw lastError;
   }
 
   function normalizePlayerNames(playerNames) {
@@ -270,8 +317,11 @@
     const normalized = session?.playerNames ? session : normalizeVirtualBuzzerSession(session);
     const authUid = coerceText(uid);
     const playerClaim = claim || null;
+    const buzzRound = Math.max(0, Math.floor(Number(normalized.buzzRound) || 0));
+    const openRound = Math.max(0, Math.floor(Number(normalized.buzz?.round) || 0));
     if (!normalized || isVirtualBuzzerSessionClosed(normalized) || normalized.status !== 'open') return false;
     if (!normalized.buzz?.open || normalized.buzz?.first) return false;
+    if (!openRound || openRound !== buzzRound) return false;
     if (!playerClaim || !authUid || playerClaim.uid !== authUid) return false;
     if (normalized.buzz.lockedOutPlayerIndexes.includes(Number(playerClaim.playerIndex))) return false;
     return true;
@@ -627,6 +677,7 @@
 
   const publicApi = {
     DEFAULT_SESSION_TTL_MS,
+    DEFAULT_OPERATION_RETRY_DELAYS_MS,
     FIREBASE_SDK_VERSION,
     hasUsableFirebaseConfig,
     getFirebaseConfig,
@@ -643,6 +694,8 @@
     normalizeCurrentClue,
     getPlayerClaimOptions,
     canSubmitVirtualBuzz,
+    isTransientVirtualBuzzerError,
+    withVirtualBuzzerRetry,
     buildVirtualBuzzerSessionRecord,
     buildVirtualBuzzerJoinUrl,
     buildPlayerClaimValue,
