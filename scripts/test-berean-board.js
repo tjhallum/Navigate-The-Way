@@ -1240,7 +1240,7 @@ test('locks response controls while a clue question is still revealing', () => {
 
 test('question panel appears first and virtual buzzers open only after timed clue reveal completes', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
-  const openClueStart = js.indexOf('async function openClue(clueId)');
+  const openClueStart = js.indexOf('async function openClue(clueId,');
   const openClueEnd = js.indexOf('function replaceActiveClue', openClueStart);
   assert.notEqual(openClueStart, -1, 'openClue should be present');
   assert.notEqual(openClueEnd, -1, 'openClue section should be bounded');
@@ -1253,6 +1253,27 @@ test('question panel appears first and virtual buzzers open only after timed clu
   assert.ok(virtualOpenIndex !== -1, 'virtual buzzers should still open for active clues');
   assert.ok(panelRevealIndex < timedRevealIndex, 'the host should see the panel before the timed question reveal starts');
   assert.ok(timedRevealIndex < virtualOpenIndex, 'virtual buzzers must stay disabled until the full question is visible');
+});
+
+test('host verdict overrides reopen already exposed incomplete clues without re-running timed reveal', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+  const openClueStart = js.indexOf('async function openClue(clueId,');
+  const openClueEnd = js.indexOf('function replaceActiveClue', openClueStart);
+  const overrideStart = js.indexOf('async function handleHostVerdictOverride');
+  const overrideEnd = js.indexOf('function clearClueVerdict', overrideStart);
+  assert.notEqual(openClueStart, -1, 'openClue should be present');
+  assert.notEqual(openClueEnd, -1, 'openClue section should be bounded');
+  assert.notEqual(overrideStart, -1, 'host verdict override handler should be present');
+  assert.notEqual(overrideEnd, -1, 'host verdict override section should be bounded');
+  const openClueBody = js.slice(openClueStart, openClueEnd);
+  const overrideBody = js.slice(overrideStart, overrideEnd);
+
+  assert.match(openClueBody, /skipQuestionReveal = false/);
+  assert.match(openClueBody, /const shouldRunQuestionReveal = !skipQuestionReveal;/);
+  assert.match(openClueBody, /activeClue\.completed \|\| !shouldRunQuestionReveal \? activeClue\.clue : ''/);
+  assert.match(openClueBody, /if \(shouldRunQuestionReveal\) \{\s+const revealCompleted = await runActiveClueQuestionReveal\(\);/);
+  assert.match(openClueBody, /isVirtualBuzzerMode\(\) && openVirtualBuzzersAfterReveal/);
+  assert.match(overrideBody, /await openClue\(result\.clue\.id, \{\s+skipQuestionReveal: !result\.clue\.completed,\s+openVirtualBuzzersAfterReveal: false,\s+\}\);/);
 });
 
 test('player virtual buzzer route self-heals transient connection and claim failures', () => {
@@ -1861,7 +1882,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260701-timed-clue-reveal"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260701-timed-clue-rereveal-fix"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-reveal/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-player-phone-buzzer-sound/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-back-to-board-after-buzz/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-buzzer-latency-audio/);
@@ -1993,7 +2015,7 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /catch \(primaryError\) \{[\s\S]*if \(currentCluePayload\) \{[\s\S]*currentClue:\s*null/);
   assert.match(js, /await disableVirtualBuzzersForHost\(staleRound, sessionId, context\);/);
   assert.match(js, /function closeActiveClue\(\) \{[\s\S]*virtualBuzzerOpenRequestId \+= 1;[\s\S]*void disableVirtualBuzzersForHost\(\);/);
-  assert.match(js, /cluePanel\.hidden = false;[\s\S]*await runActiveClueQuestionReveal\(\);[\s\S]*if \(isVirtualBuzzerMode\(\)\) \{[\s\S]*await openVirtualBuzzersForActiveClue\(\);/);
+  assert.match(js, /cluePanel\.hidden = false;[\s\S]*await runActiveClueQuestionReveal\(\);[\s\S]*if \(isVirtualBuzzerMode\(\) && openVirtualBuzzersAfterReveal\) \{[\s\S]*await openVirtualBuzzersForActiveClue\(\);/);
   assert.match(js, /renderPlayerPhoneSession\(\);/);
   assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
   assert.match(js, /document\.body\?\.classList\.add\('virtual-buzzer-player-route'\)/);
@@ -2352,7 +2374,7 @@ test('clears stale contestant radio selections between clue modal sessions', () 
 
   assert.deepEqual(inputs.map((input) => input.checked), [false, false, false]);
   assert.match(js, /function closeActiveClue\(\) \{[\s\S]*clearContestantChoiceSelection/);
-  assert.match(js, /function openClue\(clueId\) \{[\s\S]*clearContestantChoiceSelection[\s\S]*renderContestantChoices\(\)/);
+  assert.match(js, /function openClue\(clueId, \{ skipQuestionReveal = false, openVirtualBuzzersAfterReveal = true \} = \{\}\) \{[\s\S]*clearContestantChoiceSelection[\s\S]*renderContestantChoices\(\)/);
 });
 
 test('builds clear verdict announcements without auto-closing revealed answers', () => {
