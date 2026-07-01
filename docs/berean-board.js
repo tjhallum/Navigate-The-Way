@@ -5144,7 +5144,10 @@
         } else {
           await disableVirtualBuzzersForHost();
         }
-        await openClue(result.clue.id);
+        await openClue(result.clue.id, {
+          skipQuestionReveal: !result.clue.completed,
+          openVirtualBuzzersAfterReveal: false,
+        });
         maybeShowWinnerCelebrationWhenGameComplete();
         if (!result.clue.completed) {
           showClueVerdict(buildAnswerVerdictPresentation({ result, contestantName }));
@@ -5216,7 +5219,7 @@
       scheduleActiveClueFit();
     }
 
-    async function openClue(clueId) {
+    async function openClue(clueId, { skipQuestionReveal = false, openVirtualBuzzersAfterReveal = true } = {}) {
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
       responseCheckInFlight = false;
@@ -5224,12 +5227,13 @@
       resetActiveClueFit();
       activeClue = found.clue;
       const clueAtOpen = activeClue;
-      activeClueRevealComplete = Boolean(activeClue.completed);
+      const shouldRunQuestionReveal = !skipQuestionReveal;
+      activeClueRevealComplete = Boolean(activeClue.completed || !shouldRunQuestionReveal);
       answerRevealed = false;
       clearClueVerdict();
       if (clueHeading) clueHeading.textContent = `${found.category.title} for $${activeClue.value}`;
       if (clueText) {
-        clueText.textContent = activeClue.completed ? activeClue.clue : '';
+        clueText.textContent = activeClue.completed || !shouldRunQuestionReveal ? activeClue.clue : '';
         clueText.removeAttribute?.('aria-busy');
       }
       if (clueAnswer) {
@@ -5279,16 +5283,19 @@
         return;
       }
 
-      activeClueRevealComplete = false;
       const promptHeading = contestantPromptSection?.querySelector('h3');
       if (promptHeading) promptHeading.textContent = 'Who buzzed in?';
       if (contestantPromptSection) contestantPromptSection.hidden = false;
-      if (checkResponseButton) checkResponseButton.disabled = true;
-      if (noBuzzButton) noBuzzButton.disabled = true;
+      if (checkResponseButton) checkResponseButton.disabled = shouldRunQuestionReveal;
+      if (noBuzzButton) noBuzzButton.disabled = shouldRunQuestionReveal;
       if (clueFeedback) {
-        clueFeedback.textContent = isVirtualBuzzerMode()
-          ? 'Question is revealing at 145 words per minute. Virtual buzzers stay locked until the full question is visible.'
-          : 'Question is revealing at 145 words per minute. Call on the first person who buzzes after the full question is visible.';
+        clueFeedback.textContent = shouldRunQuestionReveal
+          ? (isVirtualBuzzerMode()
+            ? 'Question is revealing at 145 words per minute. Virtual buzzers stay locked until the full question is visible.'
+            : 'Question is revealing at 145 words per minute. Call on the first person who buzzes after the full question is visible.')
+          : (isVirtualBuzzerMode()
+            ? 'Question complete. Opening virtual buzzers…'
+            : 'Question complete. Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.');
       }
       renderContestantChoices();
       cluePanel.hidden = false;
@@ -5297,14 +5304,16 @@
       window.requestAnimationFrame(() => {
         cluePanel?.focus();
       });
-      const revealCompleted = await runActiveClueQuestionReveal();
-      if (!revealCompleted || activeClue !== clueAtOpen || activeClue.completed || cluePanel.hidden) return;
+      if (shouldRunQuestionReveal) {
+        const revealCompleted = await runActiveClueQuestionReveal();
+        if (!revealCompleted || activeClue !== clueAtOpen || activeClue.completed || cluePanel.hidden) return;
+      }
       if (clueFeedback) {
         clueFeedback.textContent = isVirtualBuzzerMode()
           ? 'Question complete. Opening virtual buzzers…'
           : 'Question complete. Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
       }
-      if (isVirtualBuzzerMode()) {
+      if (isVirtualBuzzerMode() && openVirtualBuzzersAfterReveal) {
         await openVirtualBuzzersForActiveClue();
         if (activeClue !== clueAtOpen || activeClue.completed || cluePanel.hidden) return;
         if (clueFeedback) {
