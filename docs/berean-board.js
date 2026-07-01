@@ -3539,6 +3539,7 @@
     const virtualBuzzerButton = app.querySelector('#virtual-buzzer-button');
     const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
     const hostBuzzerAudio = createHostBuzzerAudioController();
+    const playerBuzzerAudio = createHostBuzzerAudioController();
     const playerWakeLock = createPlayerScreenWakeLockController();
 
     let selectedFiles = [];
@@ -4653,6 +4654,7 @@
     });
     virtualBuzzerClaimButton?.addEventListener('click', async () => {
       void playerWakeLock.request();
+      void playerBuzzerAudio.prime();
       if (virtualBuzzerClaimInFlight) return;
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession) return;
       if (virtualBuzzerService.isVirtualBuzzerSessionClosed?.(virtualBuzzerPlayerSession)) {
@@ -4703,6 +4705,7 @@
       void playerWakeLock.request();
       if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession || !virtualBuzzerPlayerClaim) return;
       if (!virtualBuzzerService.canSubmitVirtualBuzz({ session: virtualBuzzerPlayerSession, claim: virtualBuzzerPlayerClaim, uid: virtualBuzzerPlayerContext.uid })) return;
+      playerBuzzerAudio.play();
       try {
         if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
         const result = await virtualBuzzerService.submitFirstBuzz({
