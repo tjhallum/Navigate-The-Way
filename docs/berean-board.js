@@ -668,15 +668,15 @@
     return Array.isArray(activeClue?.attemptedContestantIds) && activeClue.attemptedContestantIds.length > 0;
   }
 
-  function canCloseActiveClue({ activeClue, responseCheckInFlight, hasSelectedContestant = false } = {}) {
+  function canCloseActiveClue({ activeClue, responseCheckInFlight } = {}) {
     if (!activeClue || responseCheckInFlight) return false;
     if (activeClue.completed) return true;
-    return !hasSelectedContestant && !activeClueHasAttempts(activeClue);
+    return !activeClueHasAttempts(activeClue);
   }
 
-  function getActiveClueNavigationControlState({ activeClue, responseCheckInFlight, hasSelectedContestant = false } = {}) {
+  function getActiveClueNavigationControlState({ activeClue, responseCheckInFlight } = {}) {
     return {
-      closeClueButtonDisabled: !canCloseActiveClue({ activeClue, responseCheckInFlight, hasSelectedContestant }),
+      closeClueButtonDisabled: !canCloseActiveClue({ activeClue, responseCheckInFlight }),
     };
   }
 
