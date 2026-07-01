@@ -1786,7 +1786,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260701-buzzer-latency-audio"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260701-back-to-board-after-buzz"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260701-buzzer-latency-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260626-next-picker-readability/);
   assert.doesNotMatch(html, /styles\.css\?v=20260626-buzzer-icon-centering/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260625-two-to-four-picker/);
@@ -2152,7 +2153,7 @@ test('keeps no-buzz, contestant choices, and response controls disabled while an
   assert.equal(game.canHandleNoBuzz({ activeClue: { completed: false }, responseCheckInFlight: false }), true);
 });
 
-test('enables Back to Board until someone buzzes in, then keeps it disabled until the active clue is resolved', () => {
+test('keeps Back to Board enabled after a buzz until an answer has been submitted', () => {
   const contestants = game.createContestants(['Ada', 'Boaz']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
 
@@ -2166,11 +2167,27 @@ test('enables Back to Board until someone buzzes in, then keeps it disabled unti
     activeClue: clue,
     responseCheckInFlight: false,
     hasSelectedContestant: true,
-  }), false);
+  }), true);
   assert.deepEqual(game.getActiveClueNavigationControlState({
     activeClue: clue,
     responseCheckInFlight: false,
     hasSelectedContestant: true,
+  }), { closeClueButtonDisabled: false });
+
+  const firstPartial = game.applyAnswerJudgment({
+    contestants,
+    clue,
+    contestantId: 'contestant-1',
+    judgment: { verdict: 'partial' },
+  });
+  assert.equal(firstPartial.clue.completed, false);
+  assert.equal(game.canCloseActiveClue({
+    activeClue: firstPartial.clue,
+    responseCheckInFlight: false,
+  }), false);
+  assert.deepEqual(game.getActiveClueNavigationControlState({
+    activeClue: firstPartial.clue,
+    responseCheckInFlight: false,
   }), { closeClueButtonDisabled: true });
 
   const firstMiss = game.applyAnswerJudgment({
