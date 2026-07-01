@@ -1614,7 +1614,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.match(html, /<p id="winner-celebration-score" class="winner-celebration-score"><\/p>/);
   assert.match(html, /<div class="winner-celebration-actions">\s*<button id="winner-celebration-back-button" type="button" class="primary-action winner-celebration-back-button">Back to Board<\/button>\s*<\/div>/);
   assert.doesNotMatch(html, /<button id="close-clue-button" type="button">Close<\/button>/);
-  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260626-next-picker-readability" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260701-difficulty-tile-scaling" \/>/);
+  assert.doesNotMatch(html, /styles\.css\?v=20260626-next-picker-readability/);
   assert.match(html, /<script src="firebase-config\.js\?v=20260619-app-check"><\/script>/);
   assert.match(html, /<script src="virtual-buzzer-service\.js\?v=20260625-virtual-claim-guard"><\/script>/);
   assert.doesNotMatch(html, /virtual-buzzer-service\.js\?v=20260621-current-clue-contract/);
@@ -1907,22 +1908,28 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.difficulty-options'), /grid-template-columns:\s*repeat\(auto-fit, minmax\(min\(100%, 250px\), 1fr\)\)/);
   assert.match(cssRule(css, '.buzzer-mode-option.difficulty-option'), /grid-template-columns:\s*auto fit-content\(17rem\) minmax\(6rem, 1fr\)/);
   assert.match(cssRule(css, '.buzzer-mode-option .difficulty-option__art'), /transform:\s*translateX\(-0\.3rem\)/);
-  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4\.65rem, 0\.58fr\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /container-type:\s*inline-size/);
+  assert.match(cssRule(css, '.difficulty-option'), /--difficulty-option-tile-kicker:\s*var\(--berean-board-tile-kicker\)/);
+  assert.match(cssRule(css, '.difficulty-option'), /grid-template-columns:\s*auto fit-content\(11rem\) minmax\(4\.05rem, 1fr\)/);
   assert.match(cssRule(css, '.difficulty-option'), /padding:\s*0\.9rem 0\.75rem 0\.9rem 0\.9rem/);
   assert.match(cssRule(css, '.difficulty-option'), /text-align:\s*left/);
+  assert.match(css, /@supports \(width: 1cqi\)[\s\S]*--difficulty-option-tile-kicker:\s*clamp\(1rem, 5\.2cqi, var\(--berean-board-tile-kicker\)\)/);
+  assert.match(css, /@supports \(width: 1cqi\)[\s\S]*--difficulty-option-tile-name:\s*clamp\(1\.14rem, 6\.4cqi, var\(--berean-board-tile-name\)\)/);
+  assert.match(css, /@supports \(width: 1cqi\)[\s\S]*--difficulty-option-art-size:\s*clamp\(4\.05rem, 24cqi, 5\.4rem\)/);
   assert.match(cssRule(css, '.difficulty-option__art'), /grid-column:\s*3/);
   assert.match(cssRule(css, '.difficulty-option__art'), /justify-self:\s*center/);
-  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*min\(5\.4rem, 100%\)/);
+  assert.match(cssRule(css, '.difficulty-option__art'), /width:\s*min\(var\(--difficulty-option-art-size\), 100%\)/);
   assert.match(cssRule(css, '.difficulty-option__art'), /aspect-ratio:\s*1/);
+  assert.match(cssRule(css, '.difficulty-option__art--portrait'), /width:\s*min\(var\(--difficulty-option-art-portrait-size\), 100%\)/);
   assert.match(cssRule(css, '.difficulty-option__art--portrait'), /aspect-ratio:\s*3\s*\/\s*4/);
   assert.match(cssRule(css, '.difficulty-option__svg'), /width:\s*100%/);
   assert.match(cssRule(css, '.difficulty-option__svg--storybook'), /overflow:\s*visible/);
-  assert.match(css, /\.difficulty-option__level\s*\{[\s\S]*font-size:\s*var\(--berean-board-tile-kicker\)/);
+  assert.match(css, /\.difficulty-option__level\s*\{[\s\S]*font-size:\s*var\(--difficulty-option-tile-kicker\)/);
   assert.match(css, /\.difficulty-option__level\s*\{[\s\S]*?overflow-wrap:\s*break-word/);
-  assert.match(css, /\.difficulty-option__name\s*\{[\s\S]*font-size:\s*var\(--berean-board-tile-name\)/);
+  assert.match(css, /\.difficulty-option__name\s*\{[\s\S]*font-size:\s*var\(--difficulty-option-tile-name\)/);
   assert.match(css, /\.difficulty-option__name\s*\{[\s\S]*?overflow-wrap:\s*break-word/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /font-weight:\s*650/);
-  assert.match(cssRule(css, '.difficulty-option__grade'), /font-size:\s*var\(--berean-board-tile-meta\)/);
+  assert.match(cssRule(css, '.difficulty-option__grade'), /font-size:\s*var\(--difficulty-option-tile-meta\)/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /white-space:\s*normal/);
   assert.match(cssRule(css, '.difficulty-option__grade'), /overflow-wrap:\s*break-word/);
   assert.match(cssRule(css, '.game-board__category'), /font-size:\s*var\(--berean-board-category-title\)/);
@@ -1931,8 +1938,9 @@ test('styles setup steps as expandable/collapsible panels', () => {
   assert.match(cssRule(css, '.winner-celebration-score span'), /font-size:\s*var\(--berean-board-readable-small\)/);
   assert.doesNotMatch(css, /font-size:\s*(?:0\.7|0\.72|0\.74|0\.75|0\.76|0\.78|0\.82)rem/);
   assert.doesNotMatch(css, /font-size:\s*clamp\((?:0\.68|0\.72)rem,/);
-  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(4rem, 0\.52fr\)/);
+  assert.match(css, /@media \(max-width: 390px\)[\s\S]*grid-template-columns:\s*auto fit-content\(10\.25rem\) minmax\(3\.75rem, 1fr\)/);
   assert.match(css, /@media \(max-width: 390px\)[\s\S]*\.difficulty-option__name,\s*\.difficulty-option__grade\s*\{[\s\S]*white-space:\s*normal;[\s\S]*overflow-wrap:\s*break-word;/);
+  assert.match(css, /@media \(max-width: 300px\)[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(3\.45rem, 0\.34fr\)/);
 });
 
 test('defensively clears required validation from optional contestant inputs at startup', () => {

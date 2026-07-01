@@ -2311,7 +2311,13 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 .difficulty-option {
   position: relative;
   display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) minmax(4.65rem, 0.58fr);
+  container-type: inline-size;
+  --difficulty-option-tile-kicker: var(--berean-board-tile-kicker);
+  --difficulty-option-tile-name: var(--berean-board-tile-name);
+  --difficulty-option-tile-meta: var(--berean-board-tile-meta);
+  --difficulty-option-art-size: 5.4rem;
+  --difficulty-option-art-portrait-size: 4.55rem;
+  grid-template-columns: auto fit-content(11rem) minmax(4.05rem, 1fr);
   align-items: center;
   gap: 0.18rem 0.55rem !important;
   min-height: 8.35rem;
@@ -2351,7 +2357,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   position: relative;
   z-index: 0;
   display: block;
-  width: min(5.4rem, 100%);
+  width: min(var(--difficulty-option-art-size), 100%);
   aspect-ratio: 1;
   transform: none;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.36));
@@ -2362,7 +2368,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 }
 
 .difficulty-option__art--portrait {
-  width: min(4.55rem, 100%);
+  width: min(var(--difficulty-option-art-portrait-size), 100%);
   aspect-ratio: 3 / 4;
 }
 
@@ -2394,7 +2400,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 
 .difficulty-option__level {
   color: #b8caff;
-  font-size: var(--berean-board-tile-kicker);
+  font-size: var(--difficulty-option-tile-kicker);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: 0.04em;
@@ -2406,7 +2412,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 
 .difficulty-option__name {
   color: #f3f8ff;
-  font-size: var(--berean-board-tile-name);
+  font-size: var(--difficulty-option-tile-name);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.02em;
@@ -2422,13 +2428,23 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   text-align: left;
   display: block;
   color: var(--muted);
-  font-size: var(--berean-board-tile-meta);
+  font-size: var(--difficulty-option-tile-meta);
   font-weight: 650;
   line-height: 1.14;
   letter-spacing: -0.01em;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: normal;
+}
+
+@supports (width: 1cqi) {
+  .difficulty-option {
+    --difficulty-option-tile-kicker: clamp(1rem, 5.2cqi, var(--berean-board-tile-kicker));
+    --difficulty-option-tile-name: clamp(1.14rem, 6.4cqi, var(--berean-board-tile-name));
+    --difficulty-option-tile-meta: clamp(1.02rem, 5.4cqi, var(--berean-board-tile-meta));
+    --difficulty-option-art-size: clamp(4.05rem, 24cqi, 5.4rem);
+    --difficulty-option-art-portrait-size: clamp(3.75rem, 20cqi, 4.55rem);
+  }
 }
 
 @media (max-width: 720px) {
@@ -2439,7 +2455,7 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
 
 @media (max-width: 390px) {
   .difficulty-option {
-    grid-template-columns: auto minmax(0, 1fr) minmax(4rem, 0.52fr);
+    grid-template-columns: auto fit-content(10.25rem) minmax(3.75rem, 1fr);
     padding-right: 0.42rem;
   }
 
@@ -2455,6 +2471,12 @@ body.virtual-buzzer-player-route .virtual-buzzer-button {
   .difficulty-option__grade {
     white-space: normal;
     overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 300px) {
+  .difficulty-option {
+    grid-template-columns: auto minmax(0, 1fr) minmax(3.45rem, 0.34fr);
   }
 }
 
