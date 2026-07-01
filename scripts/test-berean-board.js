@@ -735,6 +735,30 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
 });
 
+test('player phone buzz button primes and plays the same synthesized buzzer sound on a valid tap', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
+
+  assert.match(js, /const playerBuzzerAudio = createHostBuzzerAudioController\(\)/);
+
+  const claimStart = js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'");
+  const claimEnd = js.indexOf("virtualBuzzerButton?.addEventListener('click'", claimStart);
+  const claimHandler = js.slice(claimStart, claimEnd);
+  assert.match(claimHandler, /void playerBuzzerAudio\.prime\(\);/);
+
+  const buzzStart = claimEnd;
+  const buzzEnd = js.indexOf("document.addEventListener('visibilitychange'", buzzStart);
+  const buzzHandler = js.slice(buzzStart, buzzEnd);
+  assert.ok(
+    buzzHandler.indexOf('if (!virtualBuzzerService.canSubmitVirtualBuzz') < buzzHandler.indexOf('playerBuzzerAudio.play();'),
+    'the phone sound should play only after the local buzz is still valid'
+  );
+  assert.ok(
+    buzzHandler.indexOf('playerBuzzerAudio.play();') < buzzHandler.indexOf('virtualBuzzerService.submitFirstBuzz'),
+    'the phone should give audible feedback immediately from the BUZZ tap before waiting on Firebase'
+  );
+  assert.doesNotMatch(buzzHandler, /hostBuzzerAudio\.play\(\)/);
+});
+
 test('provides a repeatable virtual buzzer latency smoke harness', () => {
   const scriptPath = path.join(__dirname, 'smoke-berean-board-virtual-latency.cjs');
   assert.ok(fs.existsSync(scriptPath), 'expected a maintained latency smoke script');
@@ -1786,7 +1810,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260701-back-to-board-after-buzz"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260701-player-phone-buzzer-sound"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260701-back-to-board-after-buzz/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-buzzer-latency-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260626-next-picker-readability/);
   assert.doesNotMatch(html, /styles\.css\?v=20260626-buzzer-icon-centering/);
