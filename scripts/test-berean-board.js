@@ -1194,14 +1194,65 @@ test('does not retry permanent virtual buzzer setup errors', async () => {
   assert.deepEqual(attempts, [1]);
 });
 
-test('virtual clue reveal waits for buzzer-open write before players see the question', () => {
+test('reveals clue text one word at a time at 145 words per minute', () => {
+  assert.equal(game.CLUE_REVEAL_WORDS_PER_MINUTE, 145);
+  assert.equal(game.getClueRevealWordIntervalMs(), 60_000 / 145);
+  assert.deepEqual(
+    game.buildClueRevealFrames('  Who   did Jesus call first?  '),
+    ['Who', 'Who did', 'Who did Jesus', 'Who did Jesus call', 'Who did Jesus call first?']
+  );
+});
+
+test('locks response controls while a clue question is still revealing', () => {
+  const controlState = game.getResponseEntryControlState({
+    hasSelectedContestant: true,
+    clueIsComplete: false,
+    responseCheckInFlight: false,
+    clueRevealComplete: false,
+  });
+
+  assert.deepEqual(controlState, {
+    responseSectionHidden: false,
+    responseInputDisabled: true,
+    checkResponseButtonDisabled: true,
+    noBuzzButtonDisabled: true,
+    contestantChoicesDisabled: true,
+  });
+  assert.equal(game.canHandleNoBuzz({
+    activeClue: { completed: false },
+    responseCheckInFlight: false,
+    clueRevealComplete: false,
+  }), false);
+  assert.deepEqual(game.getContestantChoiceRenderState({
+    contestantId: 'contestant-1',
+    selectedContestantId: '',
+    attemptedIds: [],
+    clueIsComplete: false,
+    responseCheckInFlight: false,
+    clueRevealComplete: false,
+  }), {
+    attempted: false,
+    checked: false,
+    disabled: true,
+    choicesDisabled: true,
+  });
+});
+
+test('question panel appears first and virtual buzzers open only after timed clue reveal completes', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
   const openClueStart = js.indexOf('async function openClue(clueId)');
-  assert.notEqual(openClueStart, -1, 'openClue should be async so the host can pre-arm virtual buzzers');
-  const virtualBranchStart = js.indexOf('Virtual buzzers are opening', openClueStart);
-  const awaitOpenIndex = js.indexOf('await openVirtualBuzzersForActiveClue();', virtualBranchStart);
-  const revealIndex = js.indexOf('cluePanel.hidden = false;', virtualBranchStart);
-  assert.ok(awaitOpenIndex !== -1 && revealIndex !== -1 && awaitOpenIndex < revealIndex, 'virtual buzzer open write should complete before revealing the active clue modal');
+  const openClueEnd = js.indexOf('function replaceActiveClue', openClueStart);
+  assert.notEqual(openClueStart, -1, 'openClue should be present');
+  assert.notEqual(openClueEnd, -1, 'openClue section should be bounded');
+  const openClueBody = js.slice(openClueStart, openClueEnd);
+  const panelRevealIndex = openClueBody.indexOf('cluePanel.hidden = false;');
+  const timedRevealIndex = openClueBody.indexOf('await runActiveClueQuestionReveal();');
+  const virtualOpenIndex = openClueBody.indexOf('await openVirtualBuzzersForActiveClue();');
+  assert.ok(panelRevealIndex !== -1, 'question panel should appear immediately');
+  assert.ok(timedRevealIndex !== -1, 'question text should use the timed reveal path');
+  assert.ok(virtualOpenIndex !== -1, 'virtual buzzers should still open for active clues');
+  assert.ok(panelRevealIndex < timedRevealIndex, 'the host should see the panel before the timed question reveal starts');
+  assert.ok(timedRevealIndex < virtualOpenIndex, 'virtual buzzers must stay disabled until the full question is visible');
 });
 
 test('player virtual buzzer route self-heals transient connection and claim failures', () => {
@@ -1810,7 +1861,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260701-player-phone-buzzer-sound"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260701-timed-clue-reveal"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260701-player-phone-buzzer-sound/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-back-to-board-after-buzz/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-buzzer-latency-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260626-next-picker-readability/);
@@ -1941,7 +1993,7 @@ test('wires virtual buzzers into host/player UI and scoped session actions', () 
   assert.match(js, /catch \(primaryError\) \{[\s\S]*if \(currentCluePayload\) \{[\s\S]*currentClue:\s*null/);
   assert.match(js, /await disableVirtualBuzzersForHost\(staleRound, sessionId, context\);/);
   assert.match(js, /function closeActiveClue\(\) \{[\s\S]*virtualBuzzerOpenRequestId \+= 1;[\s\S]*void disableVirtualBuzzersForHost\(\);/);
-  assert.match(js, /if \(isVirtualBuzzerMode\(\)\) \{[\s\S]*await openVirtualBuzzersForActiveClue\(\);[\s\S]*\}\s*cluePanel\.hidden = false;/);
+  assert.match(js, /cluePanel\.hidden = false;[\s\S]*await runActiveClueQuestionReveal\(\);[\s\S]*if \(isVirtualBuzzerMode\(\)\) \{[\s\S]*await openVirtualBuzzersForActiveClue\(\);/);
   assert.match(js, /renderPlayerPhoneSession\(\);/);
   assert.match(js, /if \(isVirtualBuzzerPlayerRoute\(window\.location\)\)/);
   assert.match(js, /document\.body\?\.classList\.add\('virtual-buzzer-player-route'\)/);

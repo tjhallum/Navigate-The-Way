@@ -79,6 +79,7 @@
     { type: 'triangle', gain: 0.18, startFrequency: 1320, midFrequency: 880, endFrequency: 440, detune: 8 },
   ]);
   const LEGACY_PARTIAL_CREDIT_FRACTION = 0.2;
+  const CLUE_REVEAL_WORDS_PER_MINUTE = 145;
   const CLUE_MODAL_FIT_TOLERANCE_PX = 10;
   const CLUE_MODAL_FIT_MAX_ITERATIONS = 14;
   const CLUE_MODAL_FIT_MIN_SCALE = 0.001;
@@ -646,22 +647,23 @@
     return list;
   }
 
-  function getResponseEntryControlState({ hasSelectedContestant, clueIsComplete, responseCheckInFlight }) {
+  function getResponseEntryControlState({ hasSelectedContestant, clueIsComplete, responseCheckInFlight, clueRevealComplete = true }) {
     const selected = Boolean(hasSelectedContestant);
     const complete = Boolean(clueIsComplete);
     const pending = Boolean(responseCheckInFlight);
-    const responseDisabled = !selected || complete || pending;
+    const revealing = !clueRevealComplete;
+    const responseDisabled = !selected || complete || pending || revealing;
     return {
       responseSectionHidden: !selected || complete,
       responseInputDisabled: responseDisabled,
       checkResponseButtonDisabled: responseDisabled,
-      noBuzzButtonDisabled: complete || pending,
-      contestantChoicesDisabled: complete || pending,
+      noBuzzButtonDisabled: complete || pending || revealing,
+      contestantChoicesDisabled: complete || pending || revealing,
     };
   }
 
-  function canHandleNoBuzz({ activeClue, responseCheckInFlight }) {
-    return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight);
+  function canHandleNoBuzz({ activeClue, responseCheckInFlight, clueRevealComplete = true }) {
+    return Boolean(activeClue && !activeClue.completed && !responseCheckInFlight && clueRevealComplete);
   }
 
   function activeClueHasAttempts(activeClue) {
@@ -931,13 +933,14 @@
     return { reset, fit, requestFit, disconnect };
   }
 
-  function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight }) {
+  function getContestantChoiceRenderState({ contestantId, selectedContestantId, attemptedIds, clueIsComplete, responseCheckInFlight, clueRevealComplete = true }) {
     const contestantIdText = String(contestantId || '');
     const attempted = Array.isArray(attemptedIds) && attemptedIds.map(String).includes(contestantIdText);
     const controlState = getResponseEntryControlState({
       hasSelectedContestant: true,
       clueIsComplete,
       responseCheckInFlight,
+      clueRevealComplete,
     });
     return {
       attempted,
@@ -1518,6 +1521,18 @@
       return fallback;
     }
     return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  function getClueRevealWordIntervalMs(wordsPerMinute = CLUE_REVEAL_WORDS_PER_MINUTE) {
+    const safeWordsPerMinute = Number(wordsPerMinute);
+    return safeWordsPerMinute > 0
+      ? 60_000 / safeWordsPerMinute
+      : 60_000 / CLUE_REVEAL_WORDS_PER_MINUTE;
+  }
+
+  function buildClueRevealFrames(text) {
+    const words = coerceText(text).split(' ').filter(Boolean);
+    return words.map((_word, index) => words.slice(0, index + 1).join(' '));
   }
 
   function normalizeLongFormText(value) {
@@ -3569,6 +3584,10 @@
     let activeClue = null;
     let answerRevealed = false;
     let responseCheckInFlight = false;
+    let activeClueRevealComplete = true;
+    let activeClueRevealTimeout = 0;
+    let activeClueRevealCancel = null;
+    let activeClueRevealToken = 0;
     let winnerCelebrationFitFrame = 0;
     let winnerCelebrationShownForGame = false;
 
@@ -4887,8 +4906,84 @@
       return null;
     }
 
+    function cancelActiveClueQuestionReveal({ markComplete = true } = {}) {
+      activeClueRevealToken += 1;
+      if (activeClueRevealTimeout) {
+        window.clearTimeout(activeClueRevealTimeout);
+        activeClueRevealTimeout = 0;
+      }
+      const cancel = activeClueRevealCancel;
+      activeClueRevealCancel = null;
+      if (markComplete) activeClueRevealComplete = true;
+      clueText?.removeAttribute?.('aria-busy');
+      if (cancel) cancel();
+    }
+
+    function settleActiveClueQuestionReveal({ token, clue, completed, resolve }) {
+      if (activeClueRevealTimeout) {
+        window.clearTimeout(activeClueRevealTimeout);
+        activeClueRevealTimeout = 0;
+      }
+      if (token === activeClueRevealToken) {
+        activeClueRevealCancel = null;
+      }
+      clueText?.removeAttribute?.('aria-busy');
+      if (completed && token === activeClueRevealToken && activeClue === clue && !cluePanel?.hidden) {
+        activeClueRevealComplete = true;
+        if (clueText) clueText.textContent = clue.clue;
+        renderContestantChoices();
+        updateResponseEntryState();
+        scheduleActiveClueFit();
+      }
+      resolve(Boolean(completed));
+    }
+
+    function runActiveClueQuestionReveal() {
+      const clue = activeClue;
+      cancelActiveClueQuestionReveal({ markComplete: false });
+      const token = ++activeClueRevealToken;
+      activeClueRevealComplete = false;
+      const frames = buildClueRevealFrames(clue?.clue || '');
+      if (clueText) {
+        clueText.textContent = '';
+        clueText.setAttribute?.('aria-busy', 'true');
+      }
+      renderContestantChoices();
+      updateResponseEntryState();
+      return new Promise((resolve) => {
+        let settled = false;
+        const settle = (completed) => {
+          if (settled) return;
+          settled = true;
+          settleActiveClueQuestionReveal({ token, clue, completed, resolve });
+        };
+        activeClueRevealCancel = () => settle(false);
+        if (!clue || frames.length === 0) {
+          settle(true);
+          return;
+        }
+        let frameIndex = 0;
+        const showNextFrame = () => {
+          if (token !== activeClueRevealToken || activeClue !== clue || cluePanel?.hidden) {
+            settle(false);
+            return;
+          }
+          if (clueText) clueText.textContent = frames[frameIndex] || '';
+          scheduleActiveClueFit();
+          frameIndex += 1;
+          if (frameIndex >= frames.length) {
+            settle(true);
+            return;
+          }
+          activeClueRevealTimeout = window.setTimeout(showNextFrame, getClueRevealWordIntervalMs());
+        };
+        showNextFrame();
+      });
+    }
+
     function closeActiveClue() {
       responseCheckInFlight = false;
+      cancelActiveClueQuestionReveal();
       virtualBuzzerOpenRequestId += 1;
       void disableVirtualBuzzersForHost();
       resetActiveClueFit();
@@ -4956,6 +5051,7 @@
         hasSelectedContestant: Boolean(contestant),
         clueIsComplete,
         responseCheckInFlight,
+        clueRevealComplete: activeClueRevealComplete,
       });
       if (responseSection) responseSection.hidden = controlState.responseSectionHidden;
       if (responseInput) {
@@ -5008,6 +5104,7 @@
           attemptedIds,
           clueIsComplete: Boolean(activeClue.completed),
           responseCheckInFlight,
+          clueRevealComplete: activeClueRevealComplete,
         });
         const hostOverrideButtons = renderHostVerdictOverrideButtons(contestant);
         return `
@@ -5123,12 +5220,18 @@
       const found = findClue(clueId);
       if (!found || !cluePanel) return;
       responseCheckInFlight = false;
+      cancelActiveClueQuestionReveal();
       resetActiveClueFit();
       activeClue = found.clue;
+      const clueAtOpen = activeClue;
+      activeClueRevealComplete = Boolean(activeClue.completed);
       answerRevealed = false;
       clearClueVerdict();
       if (clueHeading) clueHeading.textContent = `${found.category.title} for $${activeClue.value}`;
-      if (clueText) clueText.textContent = activeClue.clue;
+      if (clueText) {
+        clueText.textContent = activeClue.completed ? activeClue.clue : '';
+        clueText.removeAttribute?.('aria-busy');
+      }
       if (clueAnswer) {
         clueAnswer.innerHTML = `<strong>Correct response:</strong> ${escapeHtml(activeClue.correctResponse)}`;
         clueAnswer.hidden = true;
@@ -5176,26 +5279,39 @@
         return;
       }
 
+      activeClueRevealComplete = false;
       const promptHeading = contestantPromptSection?.querySelector('h3');
       if (promptHeading) promptHeading.textContent = 'Who buzzed in?';
       if (contestantPromptSection) contestantPromptSection.hidden = false;
-      if (checkResponseButton) checkResponseButton.disabled = false;
-      if (noBuzzButton) noBuzzButton.disabled = false;
+      if (checkResponseButton) checkResponseButton.disabled = true;
+      if (noBuzzButton) noBuzzButton.disabled = true;
       if (clueFeedback) {
         clueFeedback.textContent = isVirtualBuzzerMode()
-          ? 'Virtual buzzers are opening. The first player to buzz will be selected automatically. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.'
-          : 'Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+          ? 'Question is revealing at 145 words per minute. Virtual buzzers stay locked until the full question is visible.'
+          : 'Question is revealing at 145 words per minute. Call on the first person who buzzes after the full question is visible.';
       }
       renderContestantChoices();
-      if (isVirtualBuzzerMode()) {
-        await openVirtualBuzzersForActiveClue();
-      }
       cluePanel.hidden = false;
       document.body?.classList.add('has-active-clue-modal');
       scheduleActiveClueFit();
       window.requestAnimationFrame(() => {
         cluePanel?.focus();
       });
+      const revealCompleted = await runActiveClueQuestionReveal();
+      if (!revealCompleted || activeClue !== clueAtOpen || activeClue.completed || cluePanel.hidden) return;
+      if (clueFeedback) {
+        clueFeedback.textContent = isVirtualBuzzerMode()
+          ? 'Question complete. Opening virtual buzzers…'
+          : 'Question complete. Call on the first person who buzzed in, then select that contestant here. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+      }
+      if (isVirtualBuzzerMode()) {
+        await openVirtualBuzzersForActiveClue();
+        if (activeClue !== clueAtOpen || activeClue.completed || cluePanel.hidden) return;
+        if (clueFeedback) {
+          clueFeedback.textContent = 'Question complete. Virtual buzzers are open. The first player to buzz will be selected automatically. If no one buzzes in, use “No one buzzed in” to reveal the answer and move on.';
+        }
+      }
+      scheduleActiveClueFit();
     }
 
     function replaceActiveClue(updatedClue) {
@@ -5209,7 +5325,7 @@
     }
 
     function handleNoBuzz() {
-      if (!canHandleNoBuzz({ activeClue, responseCheckInFlight })) return;
+      if (!canHandleNoBuzz({ activeClue, responseCheckInFlight, clueRevealComplete: activeClueRevealComplete })) return;
       const result = applyNoBuzzForClue({ contestants, clue: activeClue });
       contestants = result.contestants;
       replaceActiveClue(result.clue);
@@ -5622,6 +5738,9 @@
     HOST_BUZZER_SOUND_MIN_INTERVAL_MS,
     HOST_BUZZER_SOUND_VOLUME,
     HOST_BUZZER_SOUND_VOICES,
+    CLUE_REVEAL_WORDS_PER_MINUTE,
+    getClueRevealWordIntervalMs,
+    buildClueRevealFrames,
     scheduleHostBuzzerSound,
     createHostBuzzerAudioController,
     createPlayerScreenWakeLockController,
