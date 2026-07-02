@@ -735,10 +735,11 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
 });
 
-test('player phone buzz button pre-arms and plays the same synthesized buzzer sound on a valid tap', () => {
+test('player phone buzz button pre-arms a loudspeaker media element and plays the buzzer sound on a valid tap', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
-  assert.match(js, /const playerBuzzerAudio = createHostBuzzerAudioController\(\)/);
+  assert.match(js, /const playerBuzzerAudio = createPlayerBuzzerMediaAudioController\(\)/);
+  assert.doesNotMatch(js, /const playerBuzzerAudio = createHostBuzzerAudioController\(\)/);
   assert.match(js, /const playerBuzzerAudioFeedback = createVirtualBuzzerPlayerAudioFeedback\(/);
   assert.match(js, /function canCurrentPlayerSubmitVirtualBuzz\(\)/);
 
@@ -766,6 +767,54 @@ test('player phone buzz button pre-arms and plays the same synthesized buzzer so
     'the phone should give audible feedback immediately from the BUZZ tap before waiting on Firebase'
   );
   assert.doesNotMatch(buzzHandler, /hostBuzzerAudio\.play\(\)/);
+});
+
+test('player buzzer media audio controller uses an HTML audio element for phone loudspeaker playback', () => {
+  const created = [];
+  class FakeAudioElement {
+    constructor(src) {
+      this.src = src;
+      this.currentTime = 9;
+      this.volume = 0;
+      this.preload = '';
+      this.playsInline = false;
+      this.attributes = {};
+      this.events = [];
+      created.push(this);
+    }
+
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+      this.events.push(['setAttribute', name, value]);
+    }
+
+    load() {
+      this.events.push(['load']);
+    }
+
+    play() {
+      this.events.push(['play', this.currentTime, this.volume]);
+      return Promise.resolve();
+    }
+  }
+
+  const controller = game.createPlayerBuzzerMediaAudioController({
+    root: { Audio: FakeAudioElement },
+    nowMs: () => 5_000,
+  });
+
+  assert.equal(controller.isSupported(), true);
+  assert.equal(controller.prime(), true);
+  assert.equal(created.length, 1);
+  assert.match(created[0].src, /^data:audio\/wav;base64,/);
+  assert.equal(created[0].preload, 'auto');
+  assert.equal(created[0].playsInline, true);
+  assert.equal(created[0].attributes.playsinline, '');
+  assert.deepEqual(created[0].events.filter(([event]) => event === 'load'), [['load']]);
+
+  assert.equal(controller.play(), true);
+  assert.equal(created[0].currentTime, 0);
+  assert.ok(created[0].events.some(([event, currentTime, volume]) => event === 'play' && currentTime === 0 && volume >= 0.8));
 });
 
 test('player buzzer audio feedback only plays when the current phone can submit', () => {
@@ -1912,7 +1961,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-player-phone-buzzer-unlock"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-player-phone-loudspeaker-audio"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-player-phone-buzzer-unlock/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-rereveal-fix/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-reveal/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-player-phone-buzzer-sound/);
