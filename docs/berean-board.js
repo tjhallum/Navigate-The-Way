@@ -203,8 +203,8 @@
   const BIBLE_PASSAGE_REFERENCE_PATTERN = /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song\s+of\s+(?:Songs|Solomon)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:[-–]\d{1,3})?\b/i;
   const BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE = 'NTW could not verify that every Berean Board answer was grounded in the supplied content and/or Bible content NTW can access, so no game board was generated.';
   const BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS = 2;
-  const TOPIC_ONLY_GROUNDING_INSTRUCTION = '**WHEN NO SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN NTW-ACCESSIBLE SCRIPTURE/BIBLE CONTENT THAT FITS THE LEADER-PROVIDED TOPIC OR SUMMARY; DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT.**';
-  const SOURCE_FILE_GROUNDING_INSTRUCTION = '**WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH; DO NOT REQUIRE EVERY CLUE TO BE FILE-GROUNDED, BUT ANY BIBLE-BASED QUESTION ANSWER MUST BE GROUNDED IN A SPECIFIC SCRIPTURE PASSAGE CITED IN THE SOURCEANCHOR.**';
+  const TOPIC_ONLY_GROUNDING_INSTRUCTION = '**WHEN NO SOURCE CONTENT FILES ARE PROVIDED, QUESTIONS MAY BE TOPICAL AND RELEVANT TO THE LEADER-PROVIDED TOPIC OR SUMMARY, BUT EACH EXPECTED CORRECTRESPONSE MUST BE GROUNDED IN NTW-ACCESSIBLE SCRIPTURE/BIBLE CONTENT THAT SUPPORTS THE ANSWER; DO NOT FORCE EVERY QUESTION TO ASK DIRECTLY ABOUT A BIBLE PASSAGE, AND DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT.**';
+  const SOURCE_FILE_GROUNDING_INSTRUCTION = '**WHEN SOURCE CONTENT FILES ARE PROVIDED, QUESTIONS MAY DRAW FROM THE TOPIC AND SOURCE MATERIAL, BUT EACH EXPECTED CORRECTRESPONSE MUST BE GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH; DO NOT REQUIRE EVERY QUESTION TO BE FILE-OR-PASSAGE-FRAMED, BUT ANY BIBLE-GROUNDED ANSWER MUST BE SUPPORTED BY A SPECIFIC SCRIPTURE PASSAGE CITED IN THE SOURCEANCHOR.**';
   const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
     name: 'ntw_berean_board_scope_check',
     strict: true,
@@ -2873,11 +2873,12 @@
         content: [
           'You are Navigate The Way ✝️ (NTW✝️), serving a small group leader by creating a Bible lesson review game.',
           'Create content that is conservative, historic, confessional, Reformed evangelical, Scripture-centered, charitable, and pastorally careful.',
-          'Use ONLY these factual grounds for this game: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content that NTW has access to through the configured Bible source.',
+          'Use ONLY these factual grounds for expected answers and explanations in this game: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content that NTW has access to through the configured Bible source.',
           TOPIC_ONLY_GROUNDING_INSTRUCTION,
           SOURCE_FILE_GROUNDING_INSTRUCTION,
+          'Answers are what must be grounded; question wording may be topic-relevant, age-appropriate, and natural for the board focus without requiring every question to ask directly about a Bible passage.',
           'Every clue/answer pair is valid only when the expected correctResponse is grounded in user supplied content, NTW-accessible Bible content, or both. Any clue whose expected answer is merely abstract, plausible, devotional, or generally theological without one of those grounds is invalid and must be replaced.',
-          'If the leader supplied only a brief topic or summary, create concrete review content grounded in that stated topic/summary and/or NTW-accessible Bible content without claiming unpublished lesson details.',
+          'If the leader supplied only a brief topic or summary, use that topic to choose reasonable categories and questions, but do not claim unpublished lesson details; the answers still need NTW-accessible Bible grounding unless supplied content grounds them.',
           'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts unless they repeat or point to user supplied content or Bible content.',
           'Do not quote Scripture from memory. When grounding an answer in Bible content, use NTW-accessible Bible content or cite a Bible passage reference without fabricating verse wording; exact Scripture wording is allowed only when it appears in the supplied material or is available through NTW’s configured Bible source.',
           'Do not invent doctrines, anecdotes, precise lesson details, source claims, or expected answers that are not supported by the supplied material and/or NTW-accessible Bible content.',
@@ -2898,7 +2899,7 @@
           '- Clue values must be 100, 200, 300, 400, and 500 in that order for every category.',
           '- Adjust the theological complexity and readability of every clue, correctResponse, and explanation to the selected difficulty level.',
           '- Aim the wording at the selected Flesch-Kincaid grade range while keeping prompts biblically accurate, age-appropriate in substance, and playable aloud.',
-          '- The displayed "clue" should ask or prompt concrete recall/application from the user supplied content and/or NTW-accessible Bible content.',
+          '- The displayed "clue" may ask a topical, reasonable question related to the board focus; the answer is what must be grounded, so do not force every clue to directly quote, cite, or ask about a Bible passage.',
           '- The "correctResponse" should be short enough for a leader to judge a spoken answer and must be directly grounded in user supplied content, NTW-accessible Bible content, or both.',
           `- ${TOPIC_ONLY_GROUNDING_INSTRUCTION}`,
           `- ${SOURCE_FILE_GROUNDING_INSTRUCTION}`,
@@ -2984,6 +2985,7 @@
           'Your task is to verify grounding, not to be generous to the prior generation.',
           'A clue is valid only when its expected correctResponse is grounded in the user supplied content, Bible content NTW can access through the configured Bible source, or both.',
           'Treat sourceAnchor labels as claims that require verification, not as proof.',
+          'Do not reject a clue merely because the question is topical or not Bible-passage-framed; evaluate whether the expected correctResponse is supported by the supplied content, NTW-accessible Bible content, or both.',
           'Reject any clue whose expected answer is abstract, merely plausible, generally theological, devotional, or lesson-sounding without support from the supplied content and/or NTW-accessible Bible content.',
           'Reject Bible-grounded clues when the sourceAnchor does not identify a Bible passage reference, or when the expected answer is not supported by that passage.',
           'Reject user-content-grounded clues when the sourceAnchor does not identify a specific uploaded file, leader topic/summary, lesson section, or heading from the supplied content, or when it cites focus instructions as the factual source.',
@@ -3039,6 +3041,7 @@
           'Return ONLY a JSON object containing replacement clue/answer pairs for the flagged targets. Do not regenerate or return the entire board. Do not change clues that were not flagged.',
           'Return exactly one replacement object for each flagged invalid clue. Echo the same targetId, categoryTitle, and clueValue from the flagged target so duplicate category titles still merge into the exact failed clue.',
           'If a flagged clue can be saved by replacing only the correctResponse, explanation, and sourceAnchor, do that. If the clue itself causes the ungrounded answer, replace the entire clue/answer pair for that same categoryTitle and clueValue.',
+          'The replacement question may be topic-relevant rather than Bible-passage-framed; the replacement answer is what must be grounded.',
           'Use ONLY these factual grounds for repairs: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content NTW has access to through the configured Bible source.',
           TOPIC_ONLY_GROUNDING_INSTRUCTION,
           SOURCE_FILE_GROUNDING_INSTRUCTION,
