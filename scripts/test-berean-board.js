@@ -1962,7 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-nonnegotiable-grounding"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-source-file-grounding-scope"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-nonnegotiable-grounding/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-grounded-answers/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-accepted-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-gate/);
@@ -3975,7 +3976,7 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[0].content, /user supplied content/i);
   assert.match(messages[0].content, /Bible content that NTW has access to/i);
   assert.match(messages[0].content, /\*\*WHEN NO SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN NTW-ACCESSIBLE SCRIPTURE\/BIBLE CONTENT THAT FITS THE LEADER-PROVIDED TOPIC OR SUMMARY; DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT\.\*\*/);
-  assert.match(messages[0].content, /\*\*WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN THE PROVIDED SOURCE FILE CONTENT; USE NTW-ACCESSIBLE BIBLE CONTENT ONLY WHEN IT DIRECTLY SUPPORTS OR REINFORCES THAT FILE-GROUNDED ANSWER\.\*\*/);
+  assert.match(messages[0].content, /\*\*WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH; DO NOT REQUIRE EVERY CLUE TO BE FILE-GROUNDED, BUT ANY BIBLE-BASED QUESTION ANSWER MUST BE GROUNDED IN A SPECIFIC SCRIPTURE PASSAGE CITED IN THE SOURCEANCHOR\.\*\*/);
   assert.match(messages[0].content, /Every clue\/answer pair is valid only/i);
   assert.match(messages[0].content, /merely abstract/i);
   assert.match(messages[0].content, /expected answers that are not supported/i);
@@ -3994,7 +3995,7 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[1].content, /age-appropriate in substance/i);
   assert.match(messages[1].content, /directly grounded in user supplied content, NTW-accessible Bible content, or both/i);
   assert.match(messages[1].content, /- \*\*WHEN NO SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN NTW-ACCESSIBLE SCRIPTURE\/BIBLE CONTENT THAT FITS THE LEADER-PROVIDED TOPIC OR SUMMARY; DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT\.\*\*/);
-  assert.match(messages[1].content, /- \*\*WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN THE PROVIDED SOURCE FILE CONTENT; USE NTW-ACCESSIBLE BIBLE CONTENT ONLY WHEN IT DIRECTLY SUPPORTS OR REINFORCES THAT FILE-GROUNDED ANSWER\.\*\*/);
+  assert.match(messages[1].content, /- \*\*WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH; DO NOT REQUIRE EVERY CLUE TO BE FILE-GROUNDED, BUT ANY BIBLE-BASED QUESTION ANSWER MUST BE GROUNDED IN A SPECIFIC SCRIPTURE PASSAGE CITED IN THE SOURCEANCHOR\.\*\*/);
   assert.match(messages[1].content, /if its expected answer cannot be defended/i);
   assert.match(messages[1].content, /User supplied content: \/ Bible content: \/ User supplied content \+ Bible content:/);
   assert.match(messages[1].content, /sourceAnchor must begin/i);
@@ -4154,6 +4155,8 @@ test('builds schema-enforced grounding-check request bodies', () => {
   );
   assert.match(body.messages[0].content, /Treat sourceAnchor labels as claims/i);
   assert.match(body.messages[0].content, /expected correctResponse is grounded/i);
+  assert.match(body.messages[0].content, /user supplied content, Bible content NTW can access through the configured Bible source, or both/i);
+  assert.match(body.messages[0].content, /Reject Bible-grounded clues when the sourceAnchor does not identify a Bible passage reference/i);
   assert.match(body.messages[1].content, /<<<GENERATED_BOARD_START>>>/);
   assert.match(body.messages[1].content, /Response 1-1/);
 });
