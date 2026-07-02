@@ -1962,7 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-selective-grounding-repair"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-repair-target-ids"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-selective-grounding-repair/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-grounding-repair-flow/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-source-file-grounding-scope/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-nonnegotiable-grounding/);
@@ -4194,7 +4195,9 @@ test('builds repair prompts that replace only ungrounded Berean Board clues', ()
   assert.match(body.messages[0].content, /Return ONLY a JSON object containing replacement clue\/answer pairs/i);
   assert.match(body.messages[0].content, /Do not regenerate or return the entire board/i);
   assert.match(body.messages[0].content, /Do not change clues that were not flagged/i);
-  assert.match(body.messages[0].content, /Every repaired clue\/answer pair is valid only/i);
+  assert.match(body.messages[0].content, /Echo the same targetId, categoryTitle, and clueValue/i);
+  assert.match(body.messages[1].content, /targetId/);
+  assert.match(body.messages[1].content, /category-1-value-100/);
   assert.match(body.messages[1].content, /Repair attempt: 1 of 2/);
   assert.match(body.messages[1].content, /<<<REPAIR_TARGETS_START>>>/);
   assert.match(body.messages[1].content, /too abstract for the cited passage/);
@@ -4205,6 +4208,7 @@ test('builds repair prompts that replace only ungrounded Berean Board clues', ()
 test('builds repair-only grounding-check prompts that omit already-validated clues', () => {
   const generatedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
   const repairedClue = {
+    targetId: 'category-1-value-100',
     categoryTitle: generatedGame.categories[0].title,
     clueValue: 100,
     clue: 'According to Romans 8:15, what family relationship have believers received?',
@@ -4233,6 +4237,78 @@ test('builds repair-only grounding-check prompts that omit already-validated clu
   assert.doesNotMatch(body.messages[1].content, /Response 1-2/);
 });
 
+test('uses target ids to repair duplicate category titles without touching the first matching value', () => {
+  const rawGame = sampleGeneratedGame();
+  rawGame.categories[0].title = 'Shared Topic';
+  rawGame.categories[1].title = 'Shared Topic';
+  rawGame.categories[0].clues[0].clue = 'First shared category clue';
+  rawGame.categories[1].clues[0].clue = 'Second shared category clue';
+  rawGame.categories[1].clues[0].correctResponse = 'Unsupported abstraction';
+  const generatedGame = game.normalizeGeneratedGame(rawGame);
+  const invalidClues = [{
+    categoryTitle: 'Shared Topic',
+    clueValue: 100,
+    clue: 'Second shared category clue',
+    reason: 'The expected answer is not grounded.',
+  }];
+  const repairPromptBody = game.buildBereanBoardGroundingRepairChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    contestantNames: ['Ada'],
+    lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+    difficultyLevel: 'adult',
+    generatedGame,
+    groundingCheck: { isGrounded: false, invalidClues, reason: 'Second duplicate category failed grounding.' },
+    repairAttempt: 1,
+    maxRepairAttempts: 2,
+  });
+  assert.match(repairPromptBody.messages[1].content, /category-2-value-100/);
+  assert.match(repairPromptBody.messages[1].content, /Second shared category clue/);
+
+  const replacement = {
+    targetId: 'category-2-value-100',
+    categoryTitle: 'Shared Topic',
+    clueValue: 100,
+    clue: 'According to Romans 8:15, what family relationship have believers received?',
+    correctResponse: 'Adoption as God’s children',
+    explanation: 'Romans 8:15 says believers receive the Spirit of adoption.',
+    sourceAnchor: 'Bible content: Romans 8:15',
+  };
+  const repairedGame = game.applyBereanBoardGroundingRepairReplacements(generatedGame, [replacement], invalidClues);
+  assert.equal(repairedGame.categories[0].clues[0].clue, 'First shared category clue');
+  assert.equal(repairedGame.categories[0].clues[0].correctResponse, 'Response 1-1');
+  assert.equal(repairedGame.categories[1].clues[0].correctResponse, 'Adoption as God’s children');
+
+  const reviewSubset = game.buildBereanBoardGroundingReviewSubset(repairedGame, [replacement]);
+  assert.equal(reviewSubset.categories.length, 1);
+  assert.equal(reviewSubset.categories[0].title, 'Shared Topic');
+  assert.equal(reviewSubset.categories[0].clues.length, 1);
+  assert.equal(reviewSubset.categories[0].clues[0].correctResponse, 'Adoption as God’s children');
+  assert.doesNotMatch(JSON.stringify(reviewSubset), /Response 1-1/);
+});
+
+test('rejects duplicate replacements for the same flagged repair target', () => {
+  const generatedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
+  const invalidClues = [{
+    categoryTitle: generatedGame.categories[0].title,
+    clueValue: 100,
+    clue: generatedGame.categories[0].clues[0].clue,
+    reason: 'Unsupported answer.',
+  }];
+  const replacement = {
+    targetId: 'category-1-value-100',
+    categoryTitle: generatedGame.categories[0].title,
+    clueValue: 100,
+    clue: 'According to Romans 8:15, what family relationship have believers received?',
+    correctResponse: 'Adoption as God’s children',
+    explanation: 'Romans 8:15 says believers receive the Spirit of adoption.',
+    sourceAnchor: 'Bible content: Romans 8:15',
+  };
+  assert.throws(
+    () => game.applyBereanBoardGroundingRepairReplacements(generatedGame, [replacement, { ...replacement }], invalidClues),
+    /duplicate replacements/i
+  );
+});
+
 test('parses NTW Berean Board grounding-check responses', () => {
   assert.deepEqual(
     game.parseBereanBoardGroundingCheckResponse({ response: '{"isGrounded":true,"invalidClues":[],"reason":"Every clue is supported."}' }),
@@ -4251,10 +4327,11 @@ test('parses NTW Berean Board grounding-check responses', () => {
 test('parses NTW Berean Board grounding-repair responses', () => {
   assert.deepEqual(
     game.parseBereanBoardGroundingRepairResponse({
-      response: '{"replacements":[{"categoryTitle":"Category 1","clueValue":100,"clue":"According to Romans 8:15, what family relationship have believers received?","correctResponse":"Adoption as God’s children","explanation":"Romans 8:15 says believers received the Spirit of adoption.","sourceAnchor":"Bible content: Romans 8:15"}],"reason":"Replaced one unsupported answer."}',
+      response: '{"replacements":[{"targetId":"category-1-value-100","categoryTitle":"Category 1","clueValue":100,"clue":"According to Romans 8:15, what family relationship have believers received?","correctResponse":"Adoption as God’s children","explanation":"Romans 8:15 says believers received the Spirit of adoption.","sourceAnchor":"Bible content: Romans 8:15"}],"reason":"Replaced one unsupported answer."}',
     }),
     {
       replacements: [{
+        targetId: 'category-1-value-100',
         categoryTitle: 'Category 1',
         clueValue: 100,
         clue: 'According to Romans 8:15, what family relationship have believers received?',
@@ -4383,6 +4460,7 @@ test('repairs only flagged answers and validates only the replacements', async (
   initialGame.categories[0].clues[0].correctResponse = 'Abstract admiration';
   initialGame.categories[0].clues[0].sourceAnchor = 'Bible content: Romans 8:15';
   const replacement = {
+    targetId: 'category-1-value-100',
     categoryTitle: initialGame.categories[0].title,
     clueValue: 100,
     clue: 'According to Romans 8:15, what family relationship have believers received? ',
@@ -4487,6 +4565,7 @@ test('blocks generated boards only after selective grounding repair attempts are
   const originalFetch = global.fetch;
   const requestBodies = [];
   const replacement = {
+    targetId: 'category-1-value-100',
     categoryTitle: 'Category 1',
     clueValue: 100,
     clue: 'What still unsupported answer?',
