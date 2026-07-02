@@ -202,6 +202,7 @@
   const CLUE_GROUNDING_SOURCE_PREFIX_PHRASE = CLUE_GROUNDING_SOURCE_PREFIXES.join(' / ');
   const BIBLE_PASSAGE_REFERENCE_PATTERN = /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song\s+of\s+(?:Songs|Solomon)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:[-–]\d{1,3})?\b/i;
   const BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE = 'NTW could not verify that every Berean Board answer was grounded in the supplied content and/or Bible content NTW can access, so no game board was generated.';
+  const BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS = 2;
   const TOPIC_ONLY_GROUNDING_INSTRUCTION = '**WHEN NO SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN NTW-ACCESSIBLE SCRIPTURE/BIBLE CONTENT THAT FITS THE LEADER-PROVIDED TOPIC OR SUMMARY; DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT.**';
   const SOURCE_FILE_GROUNDING_INSTRUCTION = '**WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH; DO NOT REQUIRE EVERY CLUE TO BE FILE-GROUNDED, BUT ANY BIBLE-BASED QUESTION ANSWER MUST BE GROUNDED IN A SPECIFIC SCRIPTURE PASSAGE CITED IN THE SOURCEANCHOR.**';
   const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
@@ -241,6 +242,34 @@
               clueValue: { type: 'integer', enum: BOARD_VALUES },
               clue: { type: 'string' },
               reason: { type: 'string' },
+            },
+          },
+        },
+        reason: { type: 'string' },
+      },
+    },
+  };
+  const BEREAN_BOARD_GROUNDING_REPAIR_JSON_SCHEMA = {
+    name: 'ntw_berean_board_grounding_repair',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['replacements', 'reason'],
+      properties: {
+        replacements: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['categoryTitle', 'clueValue', 'clue', 'correctResponse', 'explanation', 'sourceAnchor'],
+            properties: {
+              categoryTitle: { type: 'string' },
+              clueValue: { type: 'integer', enum: BOARD_VALUES },
+              clue: { type: 'string' },
+              correctResponse: { type: 'string' },
+              explanation: { type: 'string' },
+              sourceAnchor: { type: 'string' },
             },
           },
         },
@@ -1997,6 +2026,137 @@
     };
   }
 
+  function getBereanBoardGroundingTargetKey({ categoryTitle, clueValue }) {
+    return `${coerceText(categoryTitle).toLowerCase()}::${Number(clueValue || 0)}`;
+  }
+
+  function getResolvedBereanBoardGroundingTargetKey(generatedGame, target) {
+    const resolved = findBereanBoardGroundingTarget(generatedGame, target);
+    if (resolved?.category && resolved?.clue) {
+      return getBereanBoardGroundingTargetKey({ categoryTitle: resolved.category.title, clueValue: resolved.clue.value });
+    }
+    return getBereanBoardGroundingTargetKey(target || {});
+  }
+
+  function findBereanBoardGroundingTarget(generatedGame, target) {
+    if (!generatedGame || !Array.isArray(generatedGame.categories) || !target) return null;
+    const targetTitle = coerceText(target.categoryTitle).toLowerCase();
+    const targetValue = Number(target.clueValue || target.value || 0);
+    const targetClueText = coerceText(target.clue).toLowerCase();
+
+    for (let categoryIndex = 0; categoryIndex < generatedGame.categories.length; categoryIndex += 1) {
+      const category = generatedGame.categories[categoryIndex];
+      if (coerceText(category?.title).toLowerCase() !== targetTitle) continue;
+      const clues = Array.isArray(category?.clues) ? category.clues : [];
+      const clueIndex = clues.findIndex((clue) => Number(clue?.value || 0) === targetValue);
+      if (clueIndex >= 0) {
+        return { categoryIndex, clueIndex, category, clue: clues[clueIndex] };
+      }
+    }
+
+    if (targetClueText) {
+      for (let categoryIndex = 0; categoryIndex < generatedGame.categories.length; categoryIndex += 1) {
+        const category = generatedGame.categories[categoryIndex];
+        const clues = Array.isArray(category?.clues) ? category.clues : [];
+        const clueIndex = clues.findIndex((clue) => Number(clue?.value || 0) === targetValue && coerceText(clue?.clue).toLowerCase() === targetClueText);
+        if (clueIndex >= 0) {
+          return { categoryIndex, clueIndex, category, clue: clues[clueIndex] };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function buildBereanBoardGroundingRepairTargets(generatedGame, invalidClues) {
+    return (Array.isArray(invalidClues) ? invalidClues : []).map((invalidClue) => {
+      const target = findBereanBoardGroundingTarget(generatedGame, invalidClue);
+      return {
+        categoryTitle: coerceText(target?.category?.title, invalidClue?.categoryTitle || 'Unknown category'),
+        clueValue: Number(invalidClue?.clueValue || invalidClue?.value || target?.clue?.value || 0),
+        verifierClue: coerceText(invalidClue?.clue, target?.clue?.clue || ''),
+        verifierReason: coerceText(invalidClue?.reason, 'The expected answer was not grounded.'),
+        currentClue: target?.clue
+          ? {
+              clue: target.clue.clue,
+              correctResponse: target.clue.correctResponse,
+              explanation: target.clue.explanation,
+              sourceAnchor: target.clue.sourceAnchor,
+            }
+          : null,
+      };
+    });
+  }
+
+  function buildBereanBoardGroundingReviewSubset(generatedGame, invalidClues) {
+    const grouped = [];
+    (Array.isArray(invalidClues) ? invalidClues : []).forEach((invalidClue) => {
+      const target = findBereanBoardGroundingTarget(generatedGame, invalidClue);
+      if (!target?.category || !target?.clue) return;
+      let category = grouped.find((candidate) => candidate.title === target.category.title);
+      if (!category) {
+        category = { title: target.category.title, clues: [] };
+        grouped.push(category);
+      }
+      category.clues.push({
+        value: target.clue.value,
+        clue: target.clue.clue,
+        correctResponse: target.clue.correctResponse,
+        explanation: target.clue.explanation,
+        sourceAnchor: target.clue.sourceAnchor,
+      });
+    });
+
+    return {
+      title: generatedGame?.title || 'Berean Board Lesson Review',
+      reviewScope: 'Only review these newly repaired replacement clue/answer pairs; previously accepted clues are omitted intentionally.',
+      categories: grouped,
+    };
+  }
+
+  function applyBereanBoardGroundingRepairReplacements(generatedGame, replacements, invalidClues) {
+    const targetClues = Array.isArray(invalidClues) ? invalidClues : [];
+    const replacementList = Array.isArray(replacements) ? replacements : [];
+    if (!replacementList.length) {
+      throw new Error('The NTW grounding repair did not return any replacement clue/answer pairs.');
+    }
+
+    const expectedKeys = new Set(targetClues.map((target) => getResolvedBereanBoardGroundingTargetKey(generatedGame, target)));
+    const replacementKeys = new Set(replacementList.map((replacement) => getResolvedBereanBoardGroundingTargetKey(generatedGame, replacement)));
+    const missingTargets = [...expectedKeys].filter((key) => !replacementKeys.has(key));
+    if (missingTargets.length > 0) {
+      throw new Error('The NTW grounding repair did not replace every flagged clue.');
+    }
+    const unexpectedTargets = [...replacementKeys].filter((key) => !expectedKeys.has(key));
+    if (unexpectedTargets.length > 0) {
+      throw new Error('The NTW grounding repair returned replacements for clues that were not flagged.');
+    }
+
+    const categories = generatedGame.categories.map((category) => ({
+      ...category,
+      clues: category.clues.map((clue) => ({ ...clue })),
+    }));
+
+    replacementList.forEach((replacement) => {
+      const target = findBereanBoardGroundingTarget({ ...generatedGame, categories }, replacement);
+      if (!target?.clue) {
+        throw new Error(`The NTW grounding repair referenced an unknown clue in "${coerceText(replacement.categoryTitle, 'Unknown category')}".`);
+      }
+      target.category.clues[target.clueIndex] = {
+        ...target.clue,
+        clue: replacement.clue,
+        correctResponse: replacement.correctResponse,
+        explanation: replacement.explanation,
+        sourceAnchor: replacement.sourceAnchor,
+      };
+    });
+
+    return {
+      ...generatedGame,
+      categories,
+    };
+  }
+
   function cloneContestants(contestants) {
     return contestants.map((contestant) => ({ ...contestant }));
   }
@@ -2761,32 +2921,37 @@
     ];
   }
 
-  function buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame }) {
+  function buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame, reviewScope = 'full-board' }) {
     const lesson = truncateLessonContent(lessonContent);
     const truncationNote = lesson.truncated
       ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before grounding review. Judge only the visible material below plus NTW-accessible Bible content.`
       : '';
     const gameForReview = JSON.stringify(generatedGame || {}, null, 2);
+    const isRepairOnlyReview = reviewScope === 'repaired-clues' || /newly repaired/i.test(coerceText(generatedGame?.reviewScope));
 
     return [
       {
         role: 'system',
         content: [
-          'You are Navigate The Way ✝️ (NTW✝️), auditing a generated Berean Board before it is shown to a leader.',
+          'You are Navigate The Way ✝️ (NTW✝️), auditing generated Berean Board clues before they are shown to a leader.',
           'Your task is to verify grounding, not to be generous to the prior generation.',
           'A clue is valid only when its expected correctResponse is grounded in the user supplied content, Bible content NTW can access through the configured Bible source, or both.',
           'Treat sourceAnchor labels as claims that require verification, not as proof.',
           'Reject any clue whose expected answer is abstract, merely plausible, generally theological, devotional, or lesson-sounding without support from the supplied content and/or NTW-accessible Bible content.',
           'Reject Bible-grounded clues when the sourceAnchor does not identify a Bible passage reference, or when the expected answer is not supported by that passage.',
           'Reject user-content-grounded clues when the sourceAnchor does not identify a specific uploaded file, leader topic/summary, lesson section, or heading from the supplied content, or when it cites focus instructions as the factual source.',
-          'Return isGrounded true only if every clue and expected answer passes this grounding standard.',
+          isRepairOnlyReview
+            ? 'This is a repair-target-only grounding check. Review ONLY the newly repaired replacement clues included in the JSON. Do not re-audit omitted clues that were already accepted by a previous grounding check.'
+            : 'Return isGrounded true only if every clue and expected answer in the provided generated board JSON passes this grounding standard.',
           'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
         ].join('\n'),
       },
       {
         role: 'user',
         content: [
-          'Review this generated Berean Board for grounded answers before display.',
+          isRepairOnlyReview
+            ? 'Review only these newly repaired Berean Board clue/answer pairs for grounded answers before display.'
+            : 'Review this generated Berean Board for grounded answers before display.',
           'Return this exact JSON shape:',
           '{ "isGrounded": true, "invalidClues": [], "reason": "short reason" }',
           truncationNote,
@@ -2796,10 +2961,69 @@
           lesson.content,
           '<<<LESSON_CONTENT_END>>>',
           '',
-          'Generated Berean Board JSON:',
+          isRepairOnlyReview ? 'Newly repaired Berean Board clue JSON:' : 'Generated Berean Board JSON:',
           '<<<GENERATED_BOARD_START>>>',
           gameForReview,
           '<<<GENERATED_BOARD_END>>>',
+        ].join('\n'),
+      },
+    ];
+  }
+
+  function buildBereanBoardGroundingRepairMessages({ contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL, generatedGame, groundingCheck, repairAttempt = 1, maxRepairAttempts = BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS }) {
+    const names = Array.isArray(contestantNames) ? contestantNames.map((name, index) => normalizeContestantName(name, index)) : [];
+    const lesson = truncateLessonContent(lessonContent);
+    const difficulty = getDifficultyLevelConfig(difficultyLevel) || getDifficultyLevelConfig(DEFAULT_DIFFICULTY_LEVEL);
+    const truncationNote = lesson.truncated
+      ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before repair. Repair the flagged clue/answer pairs only from the visible lesson material below plus NTW-accessible Bible content.`
+      : '';
+    const invalidClues = Array.isArray(groundingCheck?.invalidClues) ? groundingCheck.invalidClues : [];
+    const repairTargetsJson = JSON.stringify(buildBereanBoardGroundingRepairTargets(generatedGame, invalidClues), null, 2);
+    const groundingReason = coerceText(groundingCheck?.reason, 'The grounding verifier found unsupported expected answers.');
+    const safeRepairAttempt = Math.max(1, Number(repairAttempt) || 1);
+    const safeMaxRepairAttempts = Math.max(1, Number(maxRepairAttempts) || BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS);
+
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are Navigate The Way ✝️ (NTW✝️), repairing only the Berean Board clue/answer pairs that failed grounded-answer verification.',
+          'Make the game-board creation process self-healing: do not defend unsupported clues; replace the flagged clue/answer pairs with replacements that can pass the grounding verifier.',
+          'Return ONLY a JSON object containing replacement clue/answer pairs for the flagged targets. Do not regenerate or return the entire board. Do not change clues that were not flagged.',
+          'Return exactly one replacement object for each flagged invalid clue. Use the same categoryTitle and clueValue from the flagged target so the replacement can be merged into the existing board.',
+          'If a flagged clue can be saved by replacing only the correctResponse, explanation, and sourceAnchor, do that. If the clue itself causes the ungrounded answer, replace the entire clue/answer pair for that same categoryTitle and clueValue.',
+          'Use ONLY these factual grounds for repairs: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content NTW has access to through the configured Bible source.',
+          TOPIC_ONLY_GROUNDING_INSTRUCTION,
+          SOURCE_FILE_GROUNDING_INSTRUCTION,
+          'Every repaired clue/answer pair is valid only when the expected correctResponse is grounded in user supplied content, NTW-accessible Bible content, or both. Do not return abstract, plausible, devotional, or generally theological answers that lack one of those grounds.',
+          `Every sourceAnchor must begin with one of these exact grounding labels: ${CLUE_GROUNDING_SOURCE_PREFIX_PHRASE}. After the label, identify the uploaded file, leader topic/summary, lesson section/heading, or Bible passage reference that grounds the expected answer. Bible-grounded sourceAnchor values must include a specific passage reference such as Romans 8:15 or Psalm 23.`,
+          'Self-audit each replacement before output. If any replacement answer cannot be defended from the supplied content and/or NTW-accessible Bible content, replace it before returning JSON.',
+          'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          'Repair only the flagged Berean Board clue/answer pairs so those replacements are grounded before display.',
+          `Contestants: ${names.join(', ')}`,
+          buildDifficultyGenerationInstructions(difficulty.value),
+          `Repair attempt: ${safeRepairAttempt} of ${safeMaxRepairAttempts}`,
+          'Grounding verifier reason:',
+          groundingReason,
+          '',
+          'Flagged repair targets with current clue data:',
+          '<<<REPAIR_TARGETS_START>>>',
+          repairTargetsJson,
+          '<<<REPAIR_TARGETS_END>>>',
+          truncationNote,
+          '',
+          'Lesson source material:',
+          '<<<LESSON_CONTENT_START>>>',
+          lesson.content,
+          '<<<LESSON_CONTENT_END>>>',
+          '',
+          'Return this exact JSON shape:',
+          '{ "replacements": [ { "categoryTitle": "same target category title", "clueValue": 100, "clue": "replacement clue", "correctResponse": "grounded answer", "explanation": "brief teaching explanation", "sourceAnchor": "Bible content: Romans 8:15" } ], "reason": "short repair summary" }',
         ].join('\n'),
       },
     ];
@@ -2809,11 +3033,12 @@
     return BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE;
   }
 
-  function buildBereanBoardGroundingFailureMessage(groundingCheck) {
+  function buildBereanBoardGroundingFailureMessage(groundingCheck, { repairAttempts = 0 } = {}) {
     const invalidCount = Array.isArray(groundingCheck?.invalidClues) ? groundingCheck.invalidClues.length : 0;
     const detail = coerceText(groundingCheck?.reason);
     const countText = invalidCount > 0 ? ` ${invalidCount} ungrounded clue${invalidCount === 1 ? '' : 's'} were flagged.` : '';
-    return `${BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE}${countText}${detail ? ` ${detail}` : ''}`;
+    const repairText = repairAttempts > 0 ? ` NTW tried ${repairAttempts} repair attempt${repairAttempts === 1 ? '' : 's'}, but the board still did not satisfy the grounding check.` : '';
+    return `${BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE}${countText}${repairText}${detail ? ` ${detail}` : ''}`;
   }
 
   function buildAnswerJudgmentMessages({ clue, contestantName, contestantResponse }) {
@@ -3064,6 +3289,75 @@
     return normalizeBereanBoardGroundingCheck(extractJsonObject(completionContent));
   }
 
+  function normalizeBereanBoardGroundingRepairReplacement(rawReplacement, replacementIndex) {
+    if (!rawReplacement || typeof rawReplacement !== 'object') {
+      throw new Error(`Replacement ${replacementIndex + 1} did not include a clue/answer object.`);
+    }
+    const categoryTitle = pickText(rawReplacement, ['categoryTitle', 'category', 'categoryName'], '');
+    const clueValue = Number(rawReplacement?.clueValue ?? rawReplacement?.value ?? 0);
+    const clue = pickText(rawReplacement, ['clue', 'question', 'prompt']);
+    const correctResponse = pickText(rawReplacement, ['correctResponse', 'correct_response', 'answer', 'response']);
+    const explanation = pickText(rawReplacement, ['explanation', 'rationale', 'teachingNote'], 'No explanation supplied.');
+    const sourceAnchor = pickText(rawReplacement, ['sourceAnchor', 'source_anchor', 'source', 'reference']);
+    if (!categoryTitle) {
+      throw new Error(`Replacement ${replacementIndex + 1} is missing the target categoryTitle.`);
+    }
+    if (!BOARD_VALUES.includes(clueValue)) {
+      throw new Error(`Replacement ${replacementIndex + 1} must identify a flagged clueValue.`);
+    }
+    if (!clue) {
+      throw new Error(`Replacement ${replacementIndex + 1} is missing clue text.`);
+    }
+    if (!correctResponse) {
+      throw new Error(`Replacement ${replacementIndex + 1} is missing a correct response.`);
+    }
+    if (!hasApprovedClueGroundingSourceAnchor(sourceAnchor)) {
+      throw new Error(buildClueGroundingSourceAnchorError({ title: categoryTitle, clueIndex: BOARD_VALUES.indexOf(clueValue) }));
+    }
+    return { categoryTitle, clueValue, clue, correctResponse, explanation, sourceAnchor };
+  }
+
+  function normalizeBereanBoardGroundingRepair(rawRepair) {
+    if (!rawRepair || typeof rawRepair !== 'object') {
+      throw new Error('The NTW grounding repair did not return a repair object.');
+    }
+    const rawReplacements = Array.isArray(rawRepair.replacements)
+      ? rawRepair.replacements
+      : (Array.isArray(rawRepair.replacementClues) ? rawRepair.replacementClues : []);
+    const replacements = rawReplacements.map(normalizeBereanBoardGroundingRepairReplacement);
+    if (!replacements.length) {
+      throw new Error('The NTW grounding repair did not return any replacement clue/answer pairs.');
+    }
+    return {
+      replacements,
+      reason: pickText(rawRepair, ['reason', 'rationale', 'explanation', 'message'], 'Replacement clue/answer pairs were generated.'),
+    };
+  }
+
+  function parseBereanBoardGroundingRepairResponse(payload) {
+    if (payload && typeof payload === 'object') {
+      const hasDirectRepair = ['replacements', 'replacementClues'].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      if (hasDirectRepair) {
+        return normalizeBereanBoardGroundingRepair(payload);
+      }
+      const data = payload.data;
+      const hasDataRepair = data && typeof data === 'object' &&
+        ['replacements', 'replacementClues'].some((key) => Object.prototype.hasOwnProperty.call(data, key));
+      if (hasDataRepair) {
+        return normalizeBereanBoardGroundingRepair(data);
+      }
+    }
+
+    const completionContent = findCompletionContent(payload);
+    if (!completionContent) {
+      throw new Error('The NTW grounding repair response did not include a recognizable completion payload.');
+    }
+    if (typeof completionContent === 'object') {
+      return normalizeBereanBoardGroundingRepair(completionContent);
+    }
+    return normalizeBereanBoardGroundingRepair(extractJsonObject(completionContent));
+  }
+
   function normalizeAnswerJudgment(rawJudgment) {
     if (!rawJudgment || typeof rawJudgment !== 'object') {
       throw new Error('The NTW answer check did not return a judgment object.');
@@ -3179,14 +3473,33 @@
     });
   }
 
-  function buildBereanBoardGroundingCheckChatCompletionsBody({ model, lessonContent, generatedGame }) {
+  function buildBereanBoardGroundingCheckChatCompletionsBody({ model, lessonContent, generatedGame, reviewScope = 'full-board' }) {
     return buildChatCompletionsBody({
       model,
-      messages: buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame }),
+      messages: buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame, reviewScope }),
       responseSchema: BEREAN_BOARD_GROUNDING_CHECK_JSON_SCHEMA,
       temperature: 0,
       topP: 1,
       maxCompletionTokens: 1200,
+    });
+  }
+
+  function buildBereanBoardGroundingRepairChatCompletionsBody({ model, contestantNames, lessonContent, difficultyLevel, generatedGame, groundingCheck, repairAttempt, maxRepairAttempts }) {
+    return buildChatCompletionsBody({
+      model,
+      messages: buildBereanBoardGroundingRepairMessages({
+        contestantNames,
+        lessonContent,
+        difficultyLevel,
+        generatedGame,
+        groundingCheck,
+        repairAttempt,
+        maxRepairAttempts,
+      }),
+      responseSchema: BEREAN_BOARD_GROUNDING_REPAIR_JSON_SCHEMA,
+      temperature: 0.2,
+      topP: 0.9,
+      maxCompletionTokens: 2400,
     });
   }
 
@@ -3337,7 +3650,7 @@
     return parseBereanBoardScopeCheckResponse(result.payload);
   }
 
-  async function callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame }) {
+  async function callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame, reviewScope = 'full-board' }) {
     const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
     const cleanKey = String(apiKey || '').trim();
     const cleanModel = String(model || '').trim() || DEFAULT_MODEL;
@@ -3351,7 +3664,7 @@
       throw new Error('Enter the NTW model name.');
     }
 
-    const body = buildBereanBoardGroundingCheckChatCompletionsBody({ model: cleanModel, lessonContent, generatedGame });
+    const body = buildBereanBoardGroundingCheckChatCompletionsBody({ model: cleanModel, lessonContent, generatedGame, reviewScope });
     let result = await postChatCompletionsRequest({
       endpoint: cleanEndpoint,
       apiKey: cleanKey,
@@ -3375,7 +3688,65 @@
     return parseBereanBoardGroundingCheckResponse(result.payload);
   }
 
-  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL, onScopeAccepted, onGroundingCheckStarted }) {
+  async function callBereanBoardGroundingRepairApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel, generatedGame, groundingCheck, repairAttempt, maxRepairAttempts }) {
+    const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
+    const cleanKey = String(apiKey || '').trim();
+    const cleanModel = String(model || '').trim() || DEFAULT_MODEL;
+    if (!cleanEndpoint) {
+      throw new Error('Enter the NTW OpenAI-compatible chat completions endpoint.');
+    }
+    if (!cleanKey) {
+      throw new Error('Enter the NTW API key before repairing Berean Board answer grounding.');
+    }
+    if (!cleanModel) {
+      throw new Error('Enter the NTW model name.');
+    }
+
+    const body = buildBereanBoardGroundingRepairChatCompletionsBody({
+      model: cleanModel,
+      contestantNames,
+      lessonContent,
+      difficultyLevel,
+      generatedGame,
+      groundingCheck,
+      repairAttempt,
+      maxRepairAttempts,
+    });
+    let result = await postChatCompletionsRequest({
+      endpoint: cleanEndpoint,
+      apiKey: cleanKey,
+      body,
+      nonJsonMessage: 'The NTW grounding repair returned non-JSON content with',
+    });
+
+    if (!result.ok && shouldRetryWithJsonMode(result)) {
+      result = await postChatCompletionsRequest({
+        endpoint: cleanEndpoint,
+        apiKey: cleanKey,
+        body: buildJsonModeFallbackBody(body),
+        nonJsonMessage: 'The NTW grounding repair returned non-JSON content with',
+      });
+    }
+
+    if (!result.ok) {
+      throw new Error(`The NTW grounding repair failed: ${extractApiErrorMessage(result.payload, result.status)}`);
+    }
+
+    return parseBereanBoardGroundingRepairResponse(result.payload);
+  }
+
+  async function callScopedBereanBoardGenerationApi({
+    endpoint,
+    apiKey,
+    model,
+    contestantNames,
+    lessonContent,
+    difficultyLevel = DEFAULT_DIFFICULTY_LEVEL,
+    onScopeAccepted,
+    onGroundingCheckStarted,
+    onGroundingRepairStarted,
+    maxGroundingRepairAttempts = BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS,
+  }) {
     const scopeCheck = await callBereanBoardScopeCheckApi({ endpoint, apiKey, model, lessonContent });
     if (!scopeCheck.isInScope) {
       const error = new Error(buildBereanBoardScopeFailureMessage(scopeCheck));
@@ -3385,18 +3756,62 @@
     if (typeof onScopeAccepted === 'function') {
       await onScopeAccepted(scopeCheck);
     }
+
+    const safeMaxRepairAttempts = Math.max(0, Number(maxGroundingRepairAttempts) || 0);
     const messages = buildOpenAiMessages({ contestantNames, lessonContent, difficultyLevel });
-    const generatedGame = await callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
-    if (typeof onGroundingCheckStarted === 'function') {
-      await onGroundingCheckStarted(generatedGame);
+    let generatedGame = await callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
+    let groundingCheck = null;
+    let reviewGame = generatedGame;
+    let reviewScope = 'full-board';
+
+    for (let repairAttempt = 0; repairAttempt <= safeMaxRepairAttempts; repairAttempt += 1) {
+      if (typeof onGroundingCheckStarted === 'function') {
+        await onGroundingCheckStarted(generatedGame, {
+          repairAttempt,
+          maxRepairAttempts: safeMaxRepairAttempts,
+          previousGroundingCheck: groundingCheck,
+          reviewScope,
+        });
+      }
+      groundingCheck = await callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame: reviewGame, reviewScope });
+      if (groundingCheck.isGrounded) {
+        return generatedGame;
+      }
+      if (repairAttempt >= safeMaxRepairAttempts) {
+        const error = new Error(buildBereanBoardGroundingFailureMessage(groundingCheck, { repairAttempts: repairAttempt }));
+        error.groundingCheck = groundingCheck;
+        error.repairAttempts = repairAttempt;
+        throw error;
+      }
+
+      const nextRepairAttempt = repairAttempt + 1;
+      if (typeof onGroundingRepairStarted === 'function') {
+        await onGroundingRepairStarted(groundingCheck, {
+          repairAttempt: nextRepairAttempt,
+          maxRepairAttempts: safeMaxRepairAttempts,
+        });
+      }
+      const repairResult = await callBereanBoardGroundingRepairApi({
+        endpoint,
+        apiKey,
+        model,
+        contestantNames,
+        lessonContent,
+        difficultyLevel,
+        generatedGame,
+        groundingCheck,
+        repairAttempt: nextRepairAttempt,
+        maxRepairAttempts: safeMaxRepairAttempts,
+      });
+      generatedGame = applyBereanBoardGroundingRepairReplacements(generatedGame, repairResult.replacements, groundingCheck.invalidClues);
+      reviewGame = buildBereanBoardGroundingReviewSubset(generatedGame, repairResult.replacements);
+      reviewScope = 'repaired-clues';
     }
-    const groundingCheck = await callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame });
-    if (!groundingCheck.isGrounded) {
-      const error = new Error(buildBereanBoardGroundingFailureMessage(groundingCheck));
-      error.groundingCheck = groundingCheck;
-      throw error;
-    }
-    return generatedGame;
+
+    const error = new Error(buildBereanBoardGroundingFailureMessage(groundingCheck, { repairAttempts: safeMaxRepairAttempts }));
+    error.groundingCheck = groundingCheck;
+    error.repairAttempts = safeMaxRepairAttempts;
+    throw error;
   }
 
   async function callAnswerJudgmentApi({ endpoint, apiKey, model, clue, contestantName, contestantResponse }) {
@@ -6351,8 +6766,18 @@
           onScopeAccepted: () => {
             renderStatus(setupStatus, BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE, 'info');
           },
-          onGroundingCheckStarted: () => {
-            renderStatus(setupStatus, 'Game board generated. Asking NTW to verify every answer is grounded before display…', 'info');
+          onGroundingCheckStarted: (_generatedGame, checkInfo = {}) => {
+            if (Number(checkInfo.repairAttempt) > 0) {
+              renderStatus(setupStatus, 'Replacement questions and answers generated. Asking NTW to verify only the repaired answers before display…', 'info');
+            } else {
+              renderStatus(setupStatus, 'Game board generated. Asking NTW to verify every answer is grounded before display…', 'info');
+            }
+          },
+          onGroundingRepairStarted: (groundingCheck, repairInfo = {}) => {
+            const invalidCount = Array.isArray(groundingCheck?.invalidClues) ? groundingCheck.invalidClues.length : 0;
+            const countText = invalidCount > 0 ? `${invalidCount} unsupported answer${invalidCount === 1 ? '' : 's'}` : 'unsupported answers';
+            const attemptText = Number(repairInfo.maxRepairAttempts) > 1 ? ` (repair attempt ${repairInfo.repairAttempt} of ${repairInfo.maxRepairAttempts})` : '';
+            renderStatus(setupStatus, `NTW flagged ${countText}. Asking NTW to repair or replace only those question/answer pairs${attemptText}…`, 'info');
           },
         });
         renderStatus(setupStatus, 'Game generated. API key was not saved by this page.', 'success');
@@ -6467,6 +6892,7 @@
     BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE,
     BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE,
     BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE,
+    BEREAN_BOARD_GROUNDING_REPAIR_ATTEMPTS,
     CLUE_GROUNDING_SOURCE_PREFIXES,
     DEFAULT_BUZZER_MODE,
     BUZZER_MODES,
@@ -6532,6 +6958,9 @@
     hasBiblePassageReference,
     hasApprovedClueGroundingSourceAnchor,
     normalizeGeneratedGame,
+    buildBereanBoardGroundingRepairTargets,
+    buildBereanBoardGroundingReviewSubset,
+    applyBereanBoardGroundingRepairReplacements,
     applyScoreDecision,
     applyAnswerJudgment,
     applyNoBuzzForClue,
@@ -6556,6 +6985,7 @@
     buildOpenAiMessages,
     buildBereanBoardScopeCheckMessages,
     buildBereanBoardGroundingCheckMessages,
+    buildBereanBoardGroundingRepairMessages,
     buildAnswerJudgmentMessages,
     stripJsonMarkdownFence,
     extractJsonObject,
@@ -6563,14 +6993,17 @@
     parseOpenAiGameResponse,
     parseBereanBoardScopeCheckResponse,
     parseBereanBoardGroundingCheckResponse,
+    parseBereanBoardGroundingRepairResponse,
     parseAnswerJudgmentResponse,
     buildChatCompletionsBody,
     buildBereanBoardScopeCheckChatCompletionsBody,
     buildBereanBoardGroundingCheckChatCompletionsBody,
+    buildBereanBoardGroundingRepairChatCompletionsBody,
     buildAnswerJudgmentChatCompletionsBody,
     callOpenAiCompatibleApi,
     callBereanBoardScopeCheckApi,
     callBereanBoardGroundingCheckApi,
+    callBereanBoardGroundingRepairApi,
     callScopedBereanBoardGenerationApi,
     callAnswerJudgmentApi,
     extractLessonTextFromFiles,

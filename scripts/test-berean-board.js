@@ -1962,7 +1962,9 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-source-file-grounding-scope"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-selective-grounding-repair"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-grounding-repair-flow/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-source-file-grounding-scope/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-nonnegotiable-grounding/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-grounded-answers/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-accepted-status/);
@@ -4161,6 +4163,76 @@ test('builds schema-enforced grounding-check request bodies', () => {
   assert.match(body.messages[1].content, /Response 1-1/);
 });
 
+test('builds repair prompts that replace only ungrounded Berean Board clues', () => {
+  const generatedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
+  const groundingCheck = {
+    isGrounded: false,
+    invalidClues: [
+      {
+        categoryTitle: generatedGame.categories[0].title,
+        clueValue: 100,
+        clue: generatedGame.categories[0].clues[0].clue,
+        reason: 'The expected answer is too abstract for the cited passage.',
+      },
+    ],
+    reason: 'One answer is unsupported.',
+  };
+  const body = game.buildBereanBoardGroundingRepairChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    contestantNames: ['Ada', 'Boaz'],
+    lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+    difficultyLevel: 'adult',
+    generatedGame,
+    groundingCheck,
+    repairAttempt: 1,
+    maxRepairAttempts: 2,
+  });
+
+  assert.equal(body.response_format.json_schema.name, 'ntw_berean_board_grounding_repair');
+  assert.equal(body.max_completion_tokens, 2400);
+  assert.match(body.messages[0].content, /self-healing/i);
+  assert.match(body.messages[0].content, /Return ONLY a JSON object containing replacement clue\/answer pairs/i);
+  assert.match(body.messages[0].content, /Do not regenerate or return the entire board/i);
+  assert.match(body.messages[0].content, /Do not change clues that were not flagged/i);
+  assert.match(body.messages[0].content, /Every repaired clue\/answer pair is valid only/i);
+  assert.match(body.messages[1].content, /Repair attempt: 1 of 2/);
+  assert.match(body.messages[1].content, /<<<REPAIR_TARGETS_START>>>/);
+  assert.match(body.messages[1].content, /too abstract for the cited passage/);
+  assert.doesNotMatch(body.messages[1].content, /<<<GENERATED_BOARD_START>>>/);
+  assert.match(body.messages[1].content, /Romans 8/);
+});
+
+test('builds repair-only grounding-check prompts that omit already-validated clues', () => {
+  const generatedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
+  const repairedClue = {
+    categoryTitle: generatedGame.categories[0].title,
+    clueValue: 100,
+    clue: 'According to Romans 8:15, what family relationship have believers received?',
+    correctResponse: 'Adoption as God’s children',
+    explanation: 'Romans 8:15 says believers receive the Spirit of adoption.',
+    sourceAnchor: 'Bible content: Romans 8:15',
+  };
+  const repairedGame = game.applyBereanBoardGroundingRepairReplacements(generatedGame, [repairedClue], [{
+    categoryTitle: generatedGame.categories[0].title,
+    clueValue: 100,
+    clue: generatedGame.categories[0].clues[0].clue,
+    reason: 'Unsupported answer.',
+  }]);
+  const reviewSubset = game.buildBereanBoardGroundingReviewSubset(repairedGame, [repairedClue]);
+  const body = game.buildBereanBoardGroundingCheckChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+    generatedGame: reviewSubset,
+    reviewScope: 'repaired-clues',
+  });
+
+  assert.match(body.messages[0].content, /Review ONLY the newly repaired replacement clues/i);
+  assert.match(body.messages[0].content, /Do not re-audit omitted clues/i);
+  assert.match(body.messages[1].content, /Newly repaired Berean Board clue JSON/);
+  assert.match(body.messages[1].content, /Adoption as God’s children/);
+  assert.doesNotMatch(body.messages[1].content, /Response 1-2/);
+});
+
 test('parses NTW Berean Board grounding-check responses', () => {
   assert.deepEqual(
     game.parseBereanBoardGroundingCheckResponse({ response: '{"isGrounded":true,"invalidClues":[],"reason":"Every clue is supported."}' }),
@@ -4172,6 +4244,25 @@ test('parses NTW Berean Board grounding-check responses', () => {
       isGrounded: false,
       invalidClues: [{ categoryTitle: 'Adoption', clueValue: 100, clue: 'What abstract idea?', reason: 'Not supported by supplied content.' }],
       reason: 'One answer is unsupported.',
+    }
+  );
+});
+
+test('parses NTW Berean Board grounding-repair responses', () => {
+  assert.deepEqual(
+    game.parseBereanBoardGroundingRepairResponse({
+      response: '{"replacements":[{"categoryTitle":"Category 1","clueValue":100,"clue":"According to Romans 8:15, what family relationship have believers received?","correctResponse":"Adoption as God’s children","explanation":"Romans 8:15 says believers received the Spirit of adoption.","sourceAnchor":"Bible content: Romans 8:15"}],"reason":"Replaced one unsupported answer."}',
+    }),
+    {
+      replacements: [{
+        categoryTitle: 'Category 1',
+        clueValue: 100,
+        clue: 'According to Romans 8:15, what family relationship have believers received?',
+        correctResponse: 'Adoption as God’s children',
+        explanation: 'Romans 8:15 says believers received the Spirit of adoption.',
+        sourceAnchor: 'Bible content: Romans 8:15',
+      }],
+      reason: 'Replaced one unsupported answer.',
     }
   );
 });
@@ -4256,8 +4347,8 @@ test('generates the board only after NTW approves in-scope lesson material', asy
       onScopeAccepted: (scopeCheck) => {
         generationEvents.push(`accepted:${scopeCheck.matchedAreas.join(',')}`);
       },
-      onGroundingCheckStarted: () => {
-        generationEvents.push('grounding-started');
+      onGroundingCheckStarted: (_generatedGame, checkInfo) => {
+        generationEvents.push(`grounding-started:${checkInfo.repairAttempt}`);
       },
     });
 
@@ -4270,7 +4361,7 @@ test('generates the board only after NTW approves in-scope lesson material', asy
       'request:ntw_berean_board_scope_check',
       'accepted:Scripture,Theology',
       'request:ntw_berean_board',
-      'grounding-started',
+      'grounding-started:0',
       'request:ntw_berean_board_grounding_check',
     ]);
     assert.match(requestBodies[1].messages[1].content, /Romans 8/);
@@ -4281,9 +4372,128 @@ test('generates the board only after NTW approves in-scope lesson material', asy
   }
 });
 
-test('blocks generated boards when NTW cannot verify every expected answer is grounded', async () => {
+test('repairs only flagged answers and validates only the replacements', async () => {
   const originalFetch = global.fetch;
   const requestBodies = [];
+  const generationEvents = [];
+  let boardRequestCount = 0;
+  let groundingRequestCount = 0;
+  const initialGame = sampleGeneratedGame();
+  initialGame.categories[0].clues[0].clue = 'What abstract virtue should believers admire?';
+  initialGame.categories[0].clues[0].correctResponse = 'Abstract admiration';
+  initialGame.categories[0].clues[0].sourceAnchor = 'Bible content: Romans 8:15';
+  const replacement = {
+    categoryTitle: initialGame.categories[0].title,
+    clueValue: 100,
+    clue: 'According to Romans 8:15, what family relationship have believers received? ',
+    correctResponse: 'Adoption as God’s children',
+    explanation: 'Romans 8:15 says believers received the Spirit of adoption.',
+    sourceAnchor: 'Bible content: Romans 8:15',
+  };
+
+  global.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    const schemaName = body.response_format.json_schema.name;
+    requestBodies.push(body);
+    generationEvents.push(`request:${schemaName}`);
+    if (schemaName === 'ntw_berean_board_scope_check') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ response: '{"isInScope":true,"matchedAreas":["Scripture"],"reason":"Romans 8 lesson."}' }),
+      };
+    }
+    if (schemaName === 'ntw_berean_board_grounding_check') {
+      groundingRequestCount += 1;
+      const response = groundingRequestCount === 1
+        ? '{"isGrounded":false,"invalidClues":[{"categoryTitle":"Category 1","clueValue":100,"clue":"What abstract virtue should believers admire?","reason":"The expected answer is not grounded in supplied content or a cited Bible passage."}],"reason":"One answer was unsupported."}'
+        : '{"isGrounded":true,"invalidClues":[],"reason":"The repaired answer is grounded."}';
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ response }),
+      };
+    }
+    if (schemaName === 'ntw_berean_board_grounding_repair') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ response: JSON.stringify({ replacements: [replacement], reason: 'Replaced the unsupported answer.' }) }),
+      };
+    }
+    boardRequestCount += 1;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ response: JSON.stringify(initialGame) }),
+    };
+  };
+
+  try {
+    const parsed = await game.callScopedBereanBoardGenerationApi({
+      endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+      apiKey: 'test-key',
+      model: game.DEFAULT_MODEL,
+      contestantNames: ['Ada', 'Boaz'],
+      lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+      difficultyLevel: 'adult',
+      onScopeAccepted: (scopeCheck) => {
+        generationEvents.push(`accepted:${scopeCheck.matchedAreas.join(',')}`);
+      },
+      onGroundingCheckStarted: (_generatedGame, checkInfo) => {
+        generationEvents.push(`grounding-started:${checkInfo.repairAttempt}:${checkInfo.reviewScope}`);
+      },
+      onGroundingRepairStarted: (groundingCheck, repairInfo) => {
+        generationEvents.push(`repair-started:${repairInfo.repairAttempt}:${groundingCheck.invalidClues.length}`);
+      },
+    });
+
+    assert.equal(parsed.categories[0].clues[0].correctResponse, 'Adoption as God’s children');
+    assert.equal(parsed.categories[0].clues[1].correctResponse, 'Response 1-2');
+    assert.equal(boardRequestCount, 1, 'repair must not requery for a full replacement board');
+    assert.deepEqual(
+      requestBodies.map((body) => body.response_format.json_schema.name),
+      [
+        'ntw_berean_board_scope_check',
+        'ntw_berean_board',
+        'ntw_berean_board_grounding_check',
+        'ntw_berean_board_grounding_repair',
+        'ntw_berean_board_grounding_check',
+      ]
+    );
+    assert.deepEqual(generationEvents, [
+      'request:ntw_berean_board_scope_check',
+      'accepted:Scripture',
+      'request:ntw_berean_board',
+      'grounding-started:0:full-board',
+      'request:ntw_berean_board_grounding_check',
+      'repair-started:1:1',
+      'request:ntw_berean_board_grounding_repair',
+      'grounding-started:1:repaired-clues',
+      'request:ntw_berean_board_grounding_check',
+    ]);
+    assert.match(requestBodies[3].messages[0].content, /Do not regenerate or return the entire board/i);
+    assert.match(requestBodies[3].messages[1].content, /What abstract virtue should believers admire/);
+    assert.doesNotMatch(requestBodies[3].messages[1].content, /Response 1-2/);
+    assert.match(requestBodies[4].messages[0].content, /Review ONLY the newly repaired replacement clues/i);
+    assert.match(requestBodies[4].messages[1].content, /Adoption as God’s children/);
+    assert.doesNotMatch(requestBodies[4].messages[1].content, /Response 1-2/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('blocks generated boards only after selective grounding repair attempts are exhausted', async () => {
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  const replacement = {
+    categoryTitle: 'Category 1',
+    clueValue: 100,
+    clue: 'What still unsupported answer?',
+    correctResponse: 'Still unsupported',
+    explanation: 'Still not grounded.',
+    sourceAnchor: 'Bible content: Romans 8:15',
+  };
   global.fetch = async (_url, options) => {
     const body = JSON.parse(options.body);
     const schemaName = body.response_format.json_schema.name;
@@ -4300,8 +4510,15 @@ test('blocks generated boards when NTW cannot verify every expected answer is gr
         ok: true,
         status: 200,
         text: async () => JSON.stringify({
-          response: '{"isGrounded":false,"invalidClues":[{"categoryTitle":"Adoption","clueValue":100,"clue":"What abstract virtue should believers admire?","reason":"The expected answer is not grounded in supplied content or a cited Bible passage."}],"reason":"One answer was unsupported."}',
+          response: '{"isGrounded":false,"invalidClues":[{"categoryTitle":"Category 1","clueValue":100,"clue":"What abstract virtue should believers admire?","reason":"The expected answer is not grounded in supplied content or a cited Bible passage."}],"reason":"One answer was unsupported."}',
         }),
+      };
+    }
+    if (schemaName === 'ntw_berean_board_grounding_repair') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ response: JSON.stringify({ replacements: [replacement], reason: 'Tried replacing it.' }) }),
       };
     }
     return {
@@ -4320,15 +4537,23 @@ test('blocks generated boards when NTW cannot verify every expected answer is gr
         contestantNames: ['Ada', 'Boaz'],
         lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
         difficultyLevel: 'adult',
+        maxGroundingRepairAttempts: 1,
       }),
-      /could not verify that every Berean Board answer was grounded/i
+      /tried 1 repair attempt/i
     );
 
-    assert.equal(requestBodies.length, 3);
     assert.deepEqual(
       requestBodies.map((body) => body.response_format.json_schema.name),
-      ['ntw_berean_board_scope_check', 'ntw_berean_board', 'ntw_berean_board_grounding_check']
+      [
+        'ntw_berean_board_scope_check',
+        'ntw_berean_board',
+        'ntw_berean_board_grounding_check',
+        'ntw_berean_board_grounding_repair',
+        'ntw_berean_board_grounding_check',
+      ]
     );
+    assert.match(requestBodies[4].messages[0].content, /Review ONLY the newly repaired replacement clues/i);
+    assert.doesNotMatch(requestBodies[4].messages[1].content, /Response 1-2/);
   } finally {
     global.fetch = originalFetch;
   }
