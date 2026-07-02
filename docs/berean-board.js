@@ -194,6 +194,14 @@
   const BEREAN_BOARD_SCOPE_AREA_PHRASE = 'Scripture, Theology, Christian Life, Worldview, Ministry, or Biblical Studies';
   const BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE = 'We detected an attempt to use Berean Board outside Berean Board’s scope and purpose. Berean Board is designed to reinforce lessons connected to Scripture, theology, Christian life, worldview, ministry, or biblical studies, so no game board was generated.';
   const BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE = 'Your supplied content was accepted for Berean Board. Generating the game board…';
+  const CLUE_GROUNDING_SOURCE_PREFIXES = Object.freeze([
+    'User supplied content:',
+    'Bible content:',
+    'User supplied content + Bible content:',
+  ]);
+  const CLUE_GROUNDING_SOURCE_PREFIX_PHRASE = CLUE_GROUNDING_SOURCE_PREFIXES.join(' / ');
+  const BIBLE_PASSAGE_REFERENCE_PATTERN = /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song\s+of\s+(?:Songs|Solomon)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:[-–]\d{1,3})?\b/i;
+  const BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE = 'NTW could not verify that every Berean Board answer was grounded in the supplied content and/or Bible content NTW can access, so no game board was generated.';
   const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
     name: 'ntw_berean_board_scope_check',
     strict: true,
@@ -206,6 +214,33 @@
         matchedAreas: {
           type: 'array',
           items: { type: 'string', enum: BEREAN_BOARD_SCOPE_AREAS },
+        },
+        reason: { type: 'string' },
+      },
+    },
+  };
+  const BEREAN_BOARD_GROUNDING_CHECK_JSON_SCHEMA = {
+    name: 'ntw_berean_board_grounding_check',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['isGrounded', 'invalidClues', 'reason'],
+      properties: {
+        isGrounded: { type: 'boolean' },
+        invalidClues: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['categoryTitle', 'clueValue', 'clue', 'reason'],
+            properties: {
+              categoryTitle: { type: 'string' },
+              clueValue: { type: 'integer', enum: BOARD_VALUES },
+              clue: { type: 'string' },
+              reason: { type: 'string' },
+            },
+          },
         },
         reason: { type: 'string' },
       },
@@ -1834,6 +1869,50 @@
     return fallback;
   }
 
+  function getClueGroundingSourceAnchorParts(sourceAnchor) {
+    const text = coerceText(sourceAnchor);
+    const textLower = text.toLowerCase();
+    const prefix = CLUE_GROUNDING_SOURCE_PREFIXES.find((candidate) => textLower.startsWith(candidate.toLowerCase())) || '';
+    if (!prefix) {
+      return { prefix: '', detail: '' };
+    }
+    return {
+      prefix,
+      detail: coerceText(text.slice(prefix.length)),
+    };
+  }
+
+  function clueGroundingSourceAnchorUsesBible(prefix) {
+    return prefix === 'Bible content:' || prefix === 'User supplied content + Bible content:';
+  }
+
+  function clueGroundingSourceAnchorUsesUserContent(prefix) {
+    return prefix === 'User supplied content:' || prefix === 'User supplied content + Bible content:';
+  }
+
+  function hasBiblePassageReference(text) {
+    BIBLE_PASSAGE_REFERENCE_PATTERN.lastIndex = 0;
+    return BIBLE_PASSAGE_REFERENCE_PATTERN.test(coerceText(text));
+  }
+
+  function hasApprovedClueGroundingSourceAnchor(sourceAnchor) {
+    const { prefix, detail } = getClueGroundingSourceAnchorParts(sourceAnchor);
+    if (!prefix || !/[A-Za-z0-9]/.test(detail)) {
+      return false;
+    }
+    if (clueGroundingSourceAnchorUsesUserContent(prefix) && /\bfocus instructions?\b/i.test(detail)) {
+      return false;
+    }
+    if (clueGroundingSourceAnchorUsesBible(prefix) && !hasBiblePassageReference(detail)) {
+      return false;
+    }
+    return true;
+  }
+
+  function buildClueGroundingSourceAnchorError({ title, clueIndex }) {
+    return `Clue ${clueIndex + 1} in "${title}" must include a sourceAnchor beginning with ${CLUE_GROUNDING_SOURCE_PREFIX_PHRASE}, followed by a specific source detail. Bible-grounded sourceAnchor values must include a Bible passage reference.`;
+  }
+
   function normalizeGeneratedGame(rawGame) {
     if (!rawGame || typeof rawGame !== 'object') {
       throw new Error('The NTW API response did not contain a game object.');
@@ -1864,13 +1943,16 @@
           const clue = pickText(rawClue, ['clue', 'prompt', 'question']);
           const correctResponse = pickText(rawClue, ['correctResponse', 'correct_response', 'answer', 'response']);
           const explanation = pickText(rawClue, ['explanation', 'rationale', 'teachingNote'], 'No explanation supplied.');
-          const sourceAnchor = pickText(rawClue, ['sourceAnchor', 'source_anchor', 'source', 'reference'], 'Uploaded lesson content');
+          const sourceAnchor = pickText(rawClue, ['sourceAnchor', 'source_anchor', 'source', 'reference']);
 
           if (!clue) {
             throw new Error(`Clue ${clueIndex + 1} in "${title}" is missing clue text.`);
           }
           if (!correctResponse) {
             throw new Error(`Clue ${clueIndex + 1} in "${title}" is missing a correct response.`);
+          }
+          if (!hasApprovedClueGroundingSourceAnchor(sourceAnchor)) {
+            throw new Error(buildClueGroundingSourceAnchorError({ title, clueIndex }));
           }
 
           return {
@@ -2582,11 +2664,12 @@
         content: [
           'You are Navigate The Way ✝️ (NTW✝️), serving a small group leader by creating a Bible lesson review game.',
           'Create content that is conservative, historic, confessional, Reformed evangelical, Scripture-centered, charitable, and pastorally careful.',
-          'Use ONLY the lesson material supplied by the user as the factual source for this game. The material may include uploaded files, a leader-provided lesson topic or summary, leader-provided focus instructions, or a combination of those.',
-          'If the leader supplied only a brief topic or summary, create broadly applicable review content for that stated lesson subject without claiming unpublished lesson details.',
-          'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts.',
-          'Do not quote Scripture from memory. If exact Scripture text appears in the supplied lesson material, you may use that supplied text; otherwise cite references without fabricating verse wording.',
-          'Do not invent doctrines, anecdotes, precise lesson details, or source claims that are not supported by the supplied material.',
+          'Use ONLY these factual grounds for this game: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content that NTW has access to through the configured Bible source.',
+          'Every clue/answer pair is valid only when the expected correctResponse is grounded in user supplied content, NTW-accessible Bible content, or both. Any clue whose expected answer is merely abstract, plausible, devotional, or generally theological without one of those grounds is invalid and must be replaced.',
+          'If the leader supplied only a brief topic or summary, create concrete review content grounded in that stated topic/summary and/or NTW-accessible Bible content without claiming unpublished lesson details.',
+          'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts unless they repeat or point to user supplied content or Bible content.',
+          'Do not quote Scripture from memory. When grounding an answer in Bible content, use NTW-accessible Bible content or cite a Bible passage reference without fabricating verse wording; exact Scripture wording is allowed only when it appears in the supplied material or is available through NTW’s configured Bible source.',
+          'Do not invent doctrines, anecdotes, precise lesson details, source claims, or expected answers that are not supported by the supplied material and/or NTW-accessible Bible content.',
           'Adjust both theological complexity and wording readability to the selected difficulty level, aiming for the selected Flesch-Kincaid grade range without weakening biblical or theological accuracy.',
           'Keep the tone warm, clear, and suitable for a fun Berean Board review activity.',
           'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
@@ -2604,9 +2687,10 @@
           '- Clue values must be 100, 200, 300, 400, and 500 in that order for every category.',
           '- Adjust the theological complexity and readability of every clue, correctResponse, and explanation to the selected difficulty level.',
           '- Aim the wording at the selected Flesch-Kincaid grade range while keeping prompts biblically accurate, age-appropriate in substance, and playable aloud.',
-          '- The displayed "clue" should ask or prompt recall/application from the lesson.',
-          '- The "correctResponse" should be short enough for a leader to judge a spoken answer.',
-          '- Include a brief explanation and a sourceAnchor pointing to the uploaded file, leader-provided topic/summary, lesson section, heading, or passage reference when available. Use any leader focus instructions to guide emphasis rather than as a sourceAnchor.',
+          '- The displayed "clue" should ask or prompt concrete recall/application from the user supplied content and/or NTW-accessible Bible content.',
+          '- The "correctResponse" should be short enough for a leader to judge a spoken answer and must be directly grounded in user supplied content, NTW-accessible Bible content, or both.',
+          '- Every clue must be self-audited before output: if its expected answer cannot be defended from the supplied content and/or NTW-accessible Bible content, discard it and write a grounded replacement.',
+          `- Every sourceAnchor must begin with one of these exact grounding labels: ${CLUE_GROUNDING_SOURCE_PREFIX_PHRASE}. After the label, identify the uploaded file, leader topic/summary, lesson section/heading, or Bible passage reference that grounds the expected answer. Bible-grounded sourceAnchor values must include a specific passage reference such as Romans 8:15 or Psalm 23. Do not name leader focus instructions as the grounding source; use them only to guide emphasis.`,
           '- Avoid trick questions and avoid mocking wrong answers.',
           '- Prefer questions that reinforce faithful understanding, careful application, and Christ-centered theological clarity.',
           '',
@@ -2671,8 +2755,59 @@
     ];
   }
 
+  function buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame }) {
+    const lesson = truncateLessonContent(lessonContent);
+    const truncationNote = lesson.truncated
+      ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before grounding review. Judge only the visible material below plus NTW-accessible Bible content.`
+      : '';
+    const gameForReview = JSON.stringify(generatedGame || {}, null, 2);
+
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are Navigate The Way ✝️ (NTW✝️), auditing a generated Berean Board before it is shown to a leader.',
+          'Your task is to verify grounding, not to be generous to the prior generation.',
+          'A clue is valid only when its expected correctResponse is grounded in the user supplied content, Bible content NTW can access through the configured Bible source, or both.',
+          'Treat sourceAnchor labels as claims that require verification, not as proof.',
+          'Reject any clue whose expected answer is abstract, merely plausible, generally theological, devotional, or lesson-sounding without support from the supplied content and/or NTW-accessible Bible content.',
+          'Reject Bible-grounded clues when the sourceAnchor does not identify a Bible passage reference, or when the expected answer is not supported by that passage.',
+          'Reject user-content-grounded clues when the sourceAnchor does not identify a specific uploaded file, leader topic/summary, lesson section, or heading from the supplied content, or when it cites focus instructions as the factual source.',
+          'Return isGrounded true only if every clue and expected answer passes this grounding standard.',
+          'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          'Review this generated Berean Board for grounded answers before display.',
+          'Return this exact JSON shape:',
+          '{ "isGrounded": true, "invalidClues": [], "reason": "short reason" }',
+          truncationNote,
+          '',
+          'Lesson source material:',
+          '<<<LESSON_CONTENT_START>>>',
+          lesson.content,
+          '<<<LESSON_CONTENT_END>>>',
+          '',
+          'Generated Berean Board JSON:',
+          '<<<GENERATED_BOARD_START>>>',
+          gameForReview,
+          '<<<GENERATED_BOARD_END>>>',
+        ].join('\n'),
+      },
+    ];
+  }
+
   function buildBereanBoardScopeFailureMessage() {
     return BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE;
+  }
+
+  function buildBereanBoardGroundingFailureMessage(groundingCheck) {
+    const invalidCount = Array.isArray(groundingCheck?.invalidClues) ? groundingCheck.invalidClues.length : 0;
+    const detail = coerceText(groundingCheck?.reason);
+    const countText = invalidCount > 0 ? ` ${invalidCount} ungrounded clue${invalidCount === 1 ? '' : 's'} were flagged.` : '';
+    return `${BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE}${countText}${detail ? ` ${detail}` : ''}`;
   }
 
   function buildAnswerJudgmentMessages({ clue, contestantName, contestantResponse }) {
@@ -2873,6 +3008,56 @@
     return normalizeBereanBoardScopeCheck(extractJsonObject(completionContent));
   }
 
+  function normalizeBereanBoardGroundingInvalidClue(rawClue) {
+    return {
+      categoryTitle: pickText(rawClue, ['categoryTitle', 'category', 'categoryName'], 'Unknown category'),
+      clueValue: Number(rawClue?.clueValue ?? rawClue?.value ?? 0),
+      clue: pickText(rawClue, ['clue', 'question', 'prompt'], 'Unknown clue'),
+      reason: pickText(rawClue, ['reason', 'rationale', 'explanation', 'message'], 'The expected answer was not verified against the supplied content or Bible content.'),
+    };
+  }
+
+  function normalizeBereanBoardGroundingCheck(rawCheck) {
+    if (!rawCheck || typeof rawCheck !== 'object') {
+      throw new Error('The NTW grounding check did not return a review object.');
+    }
+    const invalidClues = (Array.isArray(rawCheck.invalidClues)
+      ? rawCheck.invalidClues
+      : (Array.isArray(rawCheck.invalid_clues) ? rawCheck.invalid_clues : []))
+      .map(normalizeBereanBoardGroundingInvalidClue);
+    return {
+      isGrounded: coerceScopeBoolean(rawCheck.isGrounded ?? rawCheck.grounded ?? rawCheck.valid ?? rawCheck.approved) && invalidClues.length === 0,
+      invalidClues,
+      reason: pickText(rawCheck, ['reason', 'rationale', 'explanation', 'message'], invalidClues.length ? 'Some clues were not grounded.' : 'Every clue was grounded.'),
+    };
+  }
+
+  function parseBereanBoardGroundingCheckResponse(payload) {
+    if (payload && typeof payload === 'object') {
+      const hasDirectGroundingCheck = ['isGrounded', 'grounded', 'valid', 'approved', 'invalidClues', 'invalid_clues']
+        .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      if (hasDirectGroundingCheck) {
+        return normalizeBereanBoardGroundingCheck(payload);
+      }
+      const data = payload.data;
+      const hasDataGroundingCheck = data && typeof data === 'object' &&
+        ['isGrounded', 'grounded', 'valid', 'approved', 'invalidClues', 'invalid_clues']
+          .some((key) => Object.prototype.hasOwnProperty.call(data, key));
+      if (hasDataGroundingCheck) {
+        return normalizeBereanBoardGroundingCheck(data);
+      }
+    }
+
+    const completionContent = findCompletionContent(payload);
+    if (!completionContent) {
+      throw new Error('The NTW grounding check response did not include a recognizable completion payload.');
+    }
+    if (typeof completionContent === 'object') {
+      return normalizeBereanBoardGroundingCheck(completionContent);
+    }
+    return normalizeBereanBoardGroundingCheck(extractJsonObject(completionContent));
+  }
+
   function normalizeAnswerJudgment(rawJudgment) {
     if (!rawJudgment || typeof rawJudgment !== 'object') {
       throw new Error('The NTW answer check did not return a judgment object.');
@@ -2985,6 +3170,17 @@
       temperature: 0,
       topP: 1,
       maxCompletionTokens: 220,
+    });
+  }
+
+  function buildBereanBoardGroundingCheckChatCompletionsBody({ model, lessonContent, generatedGame }) {
+    return buildChatCompletionsBody({
+      model,
+      messages: buildBereanBoardGroundingCheckMessages({ lessonContent, generatedGame }),
+      responseSchema: BEREAN_BOARD_GROUNDING_CHECK_JSON_SCHEMA,
+      temperature: 0,
+      topP: 1,
+      maxCompletionTokens: 1200,
     });
   }
 
@@ -3135,7 +3331,45 @@
     return parseBereanBoardScopeCheckResponse(result.payload);
   }
 
-  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL, onScopeAccepted }) {
+  async function callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame }) {
+    const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
+    const cleanKey = String(apiKey || '').trim();
+    const cleanModel = String(model || '').trim() || DEFAULT_MODEL;
+    if (!cleanEndpoint) {
+      throw new Error('Enter the NTW OpenAI-compatible chat completions endpoint.');
+    }
+    if (!cleanKey) {
+      throw new Error('Enter the NTW API key before verifying Berean Board answer grounding.');
+    }
+    if (!cleanModel) {
+      throw new Error('Enter the NTW model name.');
+    }
+
+    const body = buildBereanBoardGroundingCheckChatCompletionsBody({ model: cleanModel, lessonContent, generatedGame });
+    let result = await postChatCompletionsRequest({
+      endpoint: cleanEndpoint,
+      apiKey: cleanKey,
+      body,
+      nonJsonMessage: 'The NTW grounding check returned non-JSON content with',
+    });
+
+    if (!result.ok && shouldRetryWithJsonMode(result)) {
+      result = await postChatCompletionsRequest({
+        endpoint: cleanEndpoint,
+        apiKey: cleanKey,
+        body: buildJsonModeFallbackBody(body),
+        nonJsonMessage: 'The NTW grounding check returned non-JSON content with',
+      });
+    }
+
+    if (!result.ok) {
+      throw new Error(`The NTW grounding check failed: ${extractApiErrorMessage(result.payload, result.status)}`);
+    }
+
+    return parseBereanBoardGroundingCheckResponse(result.payload);
+  }
+
+  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL, onScopeAccepted, onGroundingCheckStarted }) {
     const scopeCheck = await callBereanBoardScopeCheckApi({ endpoint, apiKey, model, lessonContent });
     if (!scopeCheck.isInScope) {
       const error = new Error(buildBereanBoardScopeFailureMessage(scopeCheck));
@@ -3146,7 +3380,17 @@
       await onScopeAccepted(scopeCheck);
     }
     const messages = buildOpenAiMessages({ contestantNames, lessonContent, difficultyLevel });
-    return callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
+    const generatedGame = await callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
+    if (typeof onGroundingCheckStarted === 'function') {
+      await onGroundingCheckStarted(generatedGame);
+    }
+    const groundingCheck = await callBereanBoardGroundingCheckApi({ endpoint, apiKey, model, lessonContent, generatedGame });
+    if (!groundingCheck.isGrounded) {
+      const error = new Error(buildBereanBoardGroundingFailureMessage(groundingCheck));
+      error.groundingCheck = groundingCheck;
+      throw error;
+    }
+    return generatedGame;
   }
 
   async function callAnswerJudgmentApi({ endpoint, apiKey, model, clue, contestantName, contestantResponse }) {
@@ -6101,6 +6345,9 @@
           onScopeAccepted: () => {
             renderStatus(setupStatus, BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE, 'info');
           },
+          onGroundingCheckStarted: () => {
+            renderStatus(setupStatus, 'Game board generated. Asking NTW to verify every answer is grounded before display…', 'info');
+          },
         });
         renderStatus(setupStatus, 'Game generated. API key was not saved by this page.', 'success');
         completeSetupUi();
@@ -6213,6 +6460,8 @@
     BEREAN_BOARD_SCOPE_AREAS,
     BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE,
     BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE,
+    BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE,
+    CLUE_GROUNDING_SOURCE_PREFIXES,
     DEFAULT_BUZZER_MODE,
     BUZZER_MODES,
     BUZZER_COLORS,
@@ -6274,6 +6523,8 @@
     clearSavedGroupMembersCookie,
     safeGetBrowserStorageItem,
     safeSetBrowserStorageItem,
+    hasBiblePassageReference,
+    hasApprovedClueGroundingSourceAnchor,
     normalizeGeneratedGame,
     applyScoreDecision,
     applyAnswerJudgment,
@@ -6298,18 +6549,22 @@
     truncateLessonContent,
     buildOpenAiMessages,
     buildBereanBoardScopeCheckMessages,
+    buildBereanBoardGroundingCheckMessages,
     buildAnswerJudgmentMessages,
     stripJsonMarkdownFence,
     extractJsonObject,
     normalizeChatCompletionsEndpoint,
     parseOpenAiGameResponse,
     parseBereanBoardScopeCheckResponse,
+    parseBereanBoardGroundingCheckResponse,
     parseAnswerJudgmentResponse,
     buildChatCompletionsBody,
     buildBereanBoardScopeCheckChatCompletionsBody,
+    buildBereanBoardGroundingCheckChatCompletionsBody,
     buildAnswerJudgmentChatCompletionsBody,
     callOpenAiCompatibleApi,
     callBereanBoardScopeCheckApi,
+    callBereanBoardGroundingCheckApi,
     callScopedBereanBoardGenerationApi,
     callAnswerJudgmentApi,
     extractLessonTextFromFiles,

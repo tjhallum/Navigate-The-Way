@@ -17,7 +17,7 @@ function sampleGeneratedGame() {
         clue: `Clue ${categoryIndex + 1}-${clueIndex + 1}`,
         correctResponse: `Response ${categoryIndex + 1}-${clueIndex + 1}`,
         explanation: `Explanation ${categoryIndex + 1}-${clueIndex + 1}`,
-        sourceAnchor: `Lesson section ${categoryIndex + 1}`,
+        sourceAnchor: `User supplied content: Lesson section ${categoryIndex + 1}`,
       })),
     })),
   };
@@ -1962,7 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-scope-accepted-status"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-grounded-answers"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-accepted-status/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-gate/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-player-phone-loudspeaker-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-rereveal-fix/);
@@ -3455,6 +3456,28 @@ test('rejects invalid generated boards instead of fabricating missing clues', ()
   assert.throws(() => game.normalizeGeneratedGame(invalid), /five clues/i);
 });
 
+test('rejects generated clues whose answer source is not grounded in supplied content or Bible content', () => {
+  const invalid = sampleGeneratedGame();
+  invalid.categories[0].clues[0].sourceAnchor = 'General theology idea';
+  assert.throws(
+    () => game.normalizeGeneratedGame(invalid),
+    /sourceAnchor beginning with User supplied content: \/ Bible content: \/ User supplied content \+ Bible content:/i
+  );
+
+  const emptyDetail = sampleGeneratedGame();
+  emptyDetail.categories[0].clues[0].sourceAnchor = 'Bible content:';
+  assert.throws(() => game.normalizeGeneratedGame(emptyDetail), /specific source detail/i);
+
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('User supplied content: Romans 8 lesson notes'), true);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('Bible content: Romans 8:15'), true);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('Bible content: Psalm 23'), true);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('User supplied content + Bible content: lesson summary and Romans 8:15'), true);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('General theology idea'), false);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('User supplied content:   '), false);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('Bible content: adoption theme'), false);
+  assert.equal(game.hasApprovedClueGroundingSourceAnchor('User supplied content + Bible content: focus instructions and Romans 8:15'), false);
+});
+
 test('applies leader scoring decisions without connected buzzers', () => {
   const contestants = game.createContestants(['Ada', 'Boaz', 'Chloe', 'Daniel']);
   const clue = game.normalizeGeneratedGame(sampleGeneratedGame()).categories[0].clues[0];
@@ -3948,6 +3971,11 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.equal(messages[0].role, 'system');
   assert.match(messages[0].content, /Navigate The Way/i);
   assert.match(messages[0].content, /Do not quote Scripture from memory/i);
+  assert.match(messages[0].content, /user supplied content/i);
+  assert.match(messages[0].content, /Bible content that NTW has access to/i);
+  assert.match(messages[0].content, /Every clue\/answer pair is valid only/i);
+  assert.match(messages[0].content, /merely abstract/i);
+  assert.match(messages[0].content, /expected answers that are not supported/i);
   assert.match(messages[0].content, /leader-provided focus instructions/i);
   assert.match(messages[0].content, /shape the game board emphasis/i);
   assert.match(messages[0].content, /do not treat focus instructions as new lesson facts/i);
@@ -3961,6 +3989,12 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[1].content, /Target Flesch-Kincaid grade level: Grade 1-2/);
   assert.match(messages[1].content, /theological complexity and readability/i);
   assert.match(messages[1].content, /age-appropriate in substance/i);
+  assert.match(messages[1].content, /directly grounded in user supplied content, NTW-accessible Bible content, or both/i);
+  assert.match(messages[1].content, /if its expected answer cannot be defended/i);
+  assert.match(messages[1].content, /User supplied content: \/ Bible content: \/ User supplied content \+ Bible content:/);
+  assert.match(messages[1].content, /sourceAnchor must begin/i);
+  assert.match(messages[1].content, /specific passage reference such as Romans 8:15 or Psalm 23/i);
+  assert.match(messages[1].content, /Do not name leader focus instructions as the grounding source/i);
   assert.match(messages[1].content, /Lesson material about Romans 8/);
 });
 
@@ -4094,6 +4128,46 @@ test('parses NTW Berean Board scope-check responses', () => {
   );
 });
 
+test('builds schema-enforced grounding-check request bodies', () => {
+  const generatedGame = game.normalizeGeneratedGame(sampleGeneratedGame());
+  const body = game.buildBereanBoardGroundingCheckChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+    generatedGame,
+  });
+
+  assert.equal(body.model, 'openai/gpt/5.4');
+  assert.equal(body.temperature, 0);
+  assert.equal(body.top_p, 1);
+  assert.equal(body.response_format.type, 'json_schema');
+  assert.equal(body.response_format.json_schema.name, 'ntw_berean_board_grounding_check');
+  assert.equal(body.response_format.json_schema.strict, true);
+  assert.deepEqual(body.response_format.json_schema.schema.required, ['isGrounded', 'invalidClues', 'reason']);
+  assert.deepEqual(
+    body.response_format.json_schema.schema.properties.invalidClues.items.required,
+    ['categoryTitle', 'clueValue', 'clue', 'reason']
+  );
+  assert.match(body.messages[0].content, /Treat sourceAnchor labels as claims/i);
+  assert.match(body.messages[0].content, /expected correctResponse is grounded/i);
+  assert.match(body.messages[1].content, /<<<GENERATED_BOARD_START>>>/);
+  assert.match(body.messages[1].content, /Response 1-1/);
+});
+
+test('parses NTW Berean Board grounding-check responses', () => {
+  assert.deepEqual(
+    game.parseBereanBoardGroundingCheckResponse({ response: '{"isGrounded":true,"invalidClues":[],"reason":"Every clue is supported."}' }),
+    { isGrounded: true, invalidClues: [], reason: 'Every clue is supported.' }
+  );
+  assert.deepEqual(
+    game.parseBereanBoardGroundingCheckResponse({ data: { response: '```json\n{"isGrounded":false,"invalidClues":[{"categoryTitle":"Adoption","clueValue":100,"clue":"What abstract idea?","reason":"Not supported by supplied content."}],"reason":"One answer is unsupported."}\n```' } }),
+    {
+      isGrounded: false,
+      invalidClues: [{ categoryTitle: 'Adoption', clueValue: 100, clue: 'What abstract idea?', reason: 'Not supported by supplied content.' }],
+      reason: 'One answer is unsupported.',
+    }
+  );
+});
+
 test('runs NTW scope check before board generation and blocks out-of-scope material', async () => {
   const originalFetch = global.fetch;
   const requestBodies = [];
@@ -4135,14 +4209,24 @@ test('generates the board only after NTW approves in-scope lesson material', asy
   const generationEvents = [];
   global.fetch = async (_url, options) => {
     const body = JSON.parse(options.body);
+    const schemaName = body.response_format.json_schema.name;
     requestBodies.push(body);
-    generationEvents.push(`request:${body.response_format.json_schema.name}`);
-    if (requestBodies.length === 1) {
+    generationEvents.push(`request:${schemaName}`);
+    if (schemaName === 'ntw_berean_board_scope_check') {
       return {
         ok: true,
         status: 200,
         text: async () => JSON.stringify({
           response: '{"isInScope":true,"matchedAreas":["Scripture","Theology"],"reason":"Romans 8 and adoption in Christ."}',
+        }),
+      };
+    }
+    if (schemaName === 'ntw_berean_board_grounding_check') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          response: '{"isGrounded":true,"invalidClues":[],"reason":"Every clue answer is grounded."}',
         }),
       };
     }
@@ -4164,18 +4248,79 @@ test('generates the board only after NTW approves in-scope lesson material', asy
       onScopeAccepted: (scopeCheck) => {
         generationEvents.push(`accepted:${scopeCheck.matchedAreas.join(',')}`);
       },
+      onGroundingCheckStarted: () => {
+        generationEvents.push('grounding-started');
+      },
     });
 
     assert.equal(parsed.categories.length, 5);
-    assert.equal(requestBodies.length, 2);
+    assert.equal(requestBodies.length, 3);
     assert.equal(requestBodies[0].response_format.json_schema.name, 'ntw_berean_board_scope_check');
     assert.equal(requestBodies[1].response_format.json_schema.name, 'ntw_berean_board');
+    assert.equal(requestBodies[2].response_format.json_schema.name, 'ntw_berean_board_grounding_check');
     assert.deepEqual(generationEvents, [
       'request:ntw_berean_board_scope_check',
       'accepted:Scripture,Theology',
       'request:ntw_berean_board',
+      'grounding-started',
+      'request:ntw_berean_board_grounding_check',
     ]);
     assert.match(requestBodies[1].messages[1].content, /Romans 8/);
+    assert.match(requestBodies[2].messages[1].content, /Generated Berean Board JSON/);
+    assert.match(requestBodies[2].messages[1].content, /Response 1-1/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('blocks generated boards when NTW cannot verify every expected answer is grounded', async () => {
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  global.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    const schemaName = body.response_format.json_schema.name;
+    requestBodies.push(body);
+    if (schemaName === 'ntw_berean_board_scope_check') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ response: '{"isInScope":true,"matchedAreas":["Scripture"],"reason":"Romans 8 lesson."}' }),
+      };
+    }
+    if (schemaName === 'ntw_berean_board_grounding_check') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          response: '{"isGrounded":false,"invalidClues":[{"categoryTitle":"Adoption","clueValue":100,"clue":"What abstract virtue should believers admire?","reason":"The expected answer is not grounded in supplied content or a cited Bible passage."}],"reason":"One answer was unsupported."}',
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ response: JSON.stringify(sampleGeneratedGame()) }),
+    };
+  };
+
+  try {
+    await assert.rejects(
+      () => game.callScopedBereanBoardGenerationApi({
+        endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+        apiKey: 'test-key',
+        model: game.DEFAULT_MODEL,
+        contestantNames: ['Ada', 'Boaz'],
+        lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+        difficultyLevel: 'adult',
+      }),
+      /could not verify that every Berean Board answer was grounded/i
+    );
+
+    assert.equal(requestBodies.length, 3);
+    assert.deepEqual(
+      requestBodies.map((body) => body.response_format.json_schema.name),
+      ['ntw_berean_board_scope_check', 'ntw_berean_board', 'ntw_berean_board_grounding_check']
+    );
   } finally {
     global.fetch = originalFetch;
   }
