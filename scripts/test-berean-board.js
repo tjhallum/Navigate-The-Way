@@ -1962,7 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-answer-grounding-prompts"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-topic-facing-prompts"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-answer-grounding-prompts/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-repair-target-ids/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-selective-grounding-repair/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-grounding-repair-flow/);
@@ -3984,6 +3985,8 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[0].content, /QUESTIONS MAY DRAW FROM THE TOPIC AND SOURCE MATERIAL, BUT EACH EXPECTED CORRECTRESPONSE MUST BE GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH/i);
   assert.match(messages[0].content, /DO NOT REQUIRE EVERY QUESTION TO BE FILE-OR-PASSAGE-FRAMED/i);
   assert.match(messages[0].content, /Answers are what must be grounded; question wording may be topic-relevant/i);
+  assert.match(messages[0].content, /Displayed questions should be visibly tied to the selected topic/i);
+  assert.match(messages[0].content, /generic Bible-reference quiz stems/i);
   assert.match(messages[0].content, /Every clue\/answer pair is valid only/i);
   assert.match(messages[0].content, /merely abstract/i);
   assert.match(messages[0].content, /expected answers that are not supported/i);
@@ -4002,6 +4005,8 @@ test('builds OpenAI-compatible prompts that constrain NTW to the supplied lesson
   assert.match(messages[1].content, /age-appropriate in substance/i);
   assert.match(messages[1].content, /The displayed "clue" may ask a topical, reasonable question/i);
   assert.match(messages[1].content, /the answer is what must be grounded/i);
+  assert.match(messages[1].content, /could be mistaken for generic Bible trivia/i);
+  assert.match(messages[1].content, /topic connection is visible/i);
   assert.match(messages[1].content, /The "correctResponse" should be short enough for a leader to judge a spoken answer and must be directly grounded/i);
   assert.match(messages[1].content, /- \*\*WHEN NO SOURCE CONTENT FILES ARE PROVIDED, QUESTIONS MAY BE TOPICAL AND RELEVANT TO THE LEADER-PROVIDED TOPIC OR SUMMARY, BUT EACH EXPECTED CORRECTRESPONSE MUST BE GROUNDED IN NTW-ACCESSIBLE SCRIPTURE\/BIBLE CONTENT THAT SUPPORTS THE ANSWER/i);
   assert.match(messages[1].content, /- \*\*WHEN SOURCE CONTENT FILES ARE PROVIDED, QUESTIONS MAY DRAW FROM THE TOPIC AND SOURCE MATERIAL, BUT EACH EXPECTED CORRECTRESPONSE MUST BE GROUNDED IN USER-SUPPLIED SOURCE FILE CONTENT, NTW-ACCESSIBLE BIBLE CONTENT, OR BOTH/i);
@@ -4166,6 +4171,8 @@ test('builds schema-enforced grounding-check request bodies', () => {
   assert.match(body.messages[0].content, /expected correctResponse is grounded/i);
   assert.match(body.messages[0].content, /Do not reject a clue merely because the question is topical/i);
   assert.match(body.messages[0].content, /evaluate whether the expected correctResponse is supported/i);
+  assert.match(body.messages[0].content, /generic Bible trivia/i);
+  assert.match(body.messages[0].content, /visibly tied to the supplied topic or source/i);
   assert.match(body.messages[0].content, /user supplied content, Bible content NTW can access through the configured Bible source, or both/i);
   assert.match(body.messages[0].content, /Reject Bible-grounded clues when the sourceAnchor does not identify a Bible passage reference/i);
   assert.match(body.messages[1].content, /<<<GENERATED_BOARD_START>>>/);
@@ -4205,6 +4212,8 @@ test('builds repair prompts that replace only ungrounded Berean Board clues', ()
   assert.match(body.messages[0].content, /Do not change clues that were not flagged/i);
   assert.match(body.messages[0].content, /Echo the same targetId, categoryTitle, and clueValue/i);
   assert.match(body.messages[0].content, /replacement question may be topic-relevant rather than Bible-passage-framed/i);
+  assert.match(body.messages[0].content, /If the displayed question reads like generic Bible trivia/i);
+  assert.match(body.messages[0].content, /make the selected topic visible/i);
   assert.match(body.messages[0].content, /replacement answer is what must be grounded/i);
   assert.match(body.messages[1].content, /targetId/);
   assert.match(body.messages[1].content, /category-1-value-100/);
