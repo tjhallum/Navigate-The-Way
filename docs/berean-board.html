@@ -141,7 +141,8 @@
           <li>Drag in the week’s lesson files, type a brief lesson topic/summary, add focus instructions for uploaded files, or use both. TXT, Markdown, RTF, HTML, JSON, XML, YAML, TeX, PDF, EPUB, Word, OpenDocument, iWork Pages, PowerPoint, Keynote, CSV, Excel, and OpenDocument spreadsheet files are supported in the browser.</li>
           <li>Select a difficulty level—Little Lamb, Bible Explorer, Disciple, Berean, or Theologian—so generated clues adjust both theological complexity and wording readability to the intended Flesch-Kincaid grade range.</li>
           <li>Provide your NTW Apologist Fusion API key. The Chat Completions endpoint and English premium model are prefilled from The Apologist Project documentation.</li>
-          <li>NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
+          <li>Before a game board is built, NTW checks whether the supplied material meaningfully connects with Scripture, theology, Christian life, worldview, ministry, or biblical studies.</li>
+          <li>If the supplied material is in scope, NTW generates the categories, clues, correct responses, explanations, and lesson anchors.</li>
           <li>Choose in-person play for physical buzzers, or Virtual buzzers for remote players using phones. The leader selects or receives the first buzzer, privately types that contestant’s response, and NTW checks whether it is fully correct, partially creditable, or incorrect.</li>
           <li>Points are assigned automatically from NTW’s verdict, and the game continues only while credit remains available for that clue.</li>
         </ol>
@@ -632,7 +633,7 @@
               <input id="ntw-api-key" type="password" placeholder="apg_…" autocomplete="off" required />
             </label>
           </div>
-          <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed lesson descriptions/instructions are processed locally first, then sent to the endpoint only when you press Generate Game Board. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
+          <p class="privacy-note">The endpoint and model may be remembered by this browser for convenience. The API key is not saved by this page. Lesson files and typed lesson descriptions/instructions are processed locally first, then sent to the endpoint only when you press Generate Game Board. NTW first checks whether the supplied material meaningfully connects with Scripture, theology, Christian life, worldview, ministry, or biblical studies; if it does not, no game board is generated. If you paste the base endpoint <code>https://navtheway.apologist.ai/</code>, the app appends <code>/api/v1/chat/completions</code> automatically.</p>
 
           <button id="generate-game-button" type="submit" class="primary-action">Generate Game Board</button>
           <p id="game-setup-status" class="game-status" aria-live="polite"></p>
@@ -718,6 +719,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" referrerpolicy="no-referrer"></script>
 <script src="firebase-config.js?v=20260619-app-check"></script>
 <script src="virtual-buzzer-service.js?v=20260701-buzzer-round-guard"></script>
-<script src="berean-board.js?v=20260702-player-phone-loudspeaker-audio"></script>
+<script src="berean-board.js?v=20260702-scope-gate"></script>
 </body>
 </html>

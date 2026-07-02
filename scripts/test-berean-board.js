@@ -1927,6 +1927,7 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<span id="api-setup-title" class="setup-step-title">4\. Connect to NTW’s API<\/span>/);
   assert.match(html, /<div id="api-setup-content" class="setup-step-content" hidden>/);
   assert.match(html, /<div class="api-grid">/);
+  assert.match(html, /The API key is not saved by this page\. Lesson files and typed lesson descriptions\/instructions are processed locally first, then sent to the endpoint only when you press Generate Game Board\. NTW first checks whether the supplied material meaningfully connects with Scripture, theology, Christian life, worldview, ministry, or biblical studies; if it does not, no game board is generated\./);
   assert.match(html, /<button id="generate-game-button" type="submit" class="primary-action">Generate Game Board<\/button>/);
   assert.doesNotMatch(html, /Generate Review Game/);
   assert.match(html, /<p id="clue-verdict" class="clue-verdict"[^>]*hidden><\/p>/);
@@ -1961,8 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-player-phone-loudspeaker-audio"><\/script>/);
-  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-player-phone-buzzer-unlock/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-scope-gate"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-player-phone-loudspeaker-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-rereveal-fix/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-reveal/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-player-phone-buzzer-sound/);
@@ -4044,6 +4045,129 @@ test('builds Apologist Fusion chat completion request bodies', () => {
     language: 'en',
     bible: 'bsb',
   });
+});
+
+test('builds NTW scope-check prompts for Berean Board lesson material', () => {
+  const messages = game.buildBereanBoardScopeCheckMessages({
+    lessonContent: 'Baseball standings, ballpark trivia, and World Series facts with no Christian teaching connection.',
+  });
+
+  assert.equal(messages[0].role, 'system');
+  assert.match(messages[0].content, /Navigate The Way/i);
+  assert.match(messages[0].content, /Berean Board/i);
+  assert.match(messages[0].content, /not a generic trivia game/i);
+  assert.match(messages[0].content, /Scripture, Theology, Christian Life, Worldview, Ministry, or Biblical Studies/i);
+  assert.match(messages[0].content, /meaningfully connects/i);
+  assert.match(messages[1].content, /<<<LESSON_CONTENT_START>>>/);
+  assert.match(messages[1].content, /Baseball standings/);
+});
+
+test('builds schema-enforced scope-check request bodies', () => {
+  const body = game.buildBereanBoardScopeCheckChatCompletionsBody({
+    model: game.DEFAULT_MODEL,
+    lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+  });
+
+  assert.equal(body.model, 'openai/gpt/5.4');
+  assert.equal(body.temperature, 0);
+  assert.equal(body.top_p, 1);
+  assert.equal(body.max_completion_tokens <= 250, true);
+  assert.equal(body.response_format.type, 'json_schema');
+  assert.equal(body.response_format.json_schema.name, 'ntw_berean_board_scope_check');
+  assert.equal(body.response_format.json_schema.strict, true);
+  assert.deepEqual(body.response_format.json_schema.schema.required, ['isInScope', 'matchedAreas', 'reason']);
+  assert.deepEqual(
+    body.response_format.json_schema.schema.properties.matchedAreas.items.enum,
+    ['Scripture', 'Theology', 'Christian Life', 'Worldview', 'Ministry', 'Biblical Studies']
+  );
+});
+
+test('parses NTW Berean Board scope-check responses', () => {
+  assert.deepEqual(
+    game.parseBereanBoardScopeCheckResponse({ response: '{"isInScope":true,"matchedAreas":["Scripture","Theology"],"reason":"Romans 8 and adoption in Christ."}' }),
+    { isInScope: true, matchedAreas: ['Scripture', 'Theology'], reason: 'Romans 8 and adoption in Christ.' }
+  );
+  assert.deepEqual(
+    game.parseBereanBoardScopeCheckResponse({ data: { response: '```json\n{"isInScope":false,"matchedAreas":[],"reason":"Generic sports trivia."}\n```' } }),
+    { isInScope: false, matchedAreas: [], reason: 'Generic sports trivia.' }
+  );
+});
+
+test('runs NTW scope check before board generation and blocks out-of-scope material', async () => {
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  global.fetch = async (_url, options) => {
+    requestBodies.push(JSON.parse(options.body));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        response: '{"isInScope":false,"matchedAreas":[],"reason":"Generic sports trivia."}',
+      }),
+    };
+  };
+
+  try {
+    await assert.rejects(
+      () => game.callScopedBereanBoardGenerationApi({
+        endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+        apiKey: 'test-key',
+        model: game.DEFAULT_MODEL,
+        contestantNames: ['Ada', 'Boaz'],
+        lessonContent: 'Baseball standings, ballpark trivia, and World Series facts.',
+        difficultyLevel: 'adult',
+      }),
+      /outside Berean Board’s scope and purpose/i
+    );
+
+    assert.equal(requestBodies.length, 1, 'out-of-scope material must not trigger game-board generation');
+    assert.equal(requestBodies[0].response_format.json_schema.name, 'ntw_berean_board_scope_check');
+    assert.notEqual(requestBodies[0].response_format.json_schema.name, 'ntw_berean_board');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('generates the board only after NTW approves in-scope lesson material', async () => {
+  const originalFetch = global.fetch;
+  const requestBodies = [];
+  global.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    requestBodies.push(body);
+    if (requestBodies.length === 1) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          response: '{"isInScope":true,"matchedAreas":["Scripture","Theology"],"reason":"Romans 8 and adoption in Christ."}',
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ response: JSON.stringify(sampleGeneratedGame()) }),
+    };
+  };
+
+  try {
+    const parsed = await game.callScopedBereanBoardGenerationApi({
+      endpoint: game.DEFAULT_CHAT_COMPLETIONS_ENDPOINT,
+      apiKey: 'test-key',
+      model: game.DEFAULT_MODEL,
+      contestantNames: ['Ada', 'Boaz'],
+      lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
+      difficultyLevel: 'adult',
+    });
+
+    assert.equal(parsed.categories.length, 5);
+    assert.equal(requestBodies.length, 2);
+    assert.equal(requestBodies[0].response_format.json_schema.name, 'ntw_berean_board_scope_check');
+    assert.equal(requestBodies[1].response_format.json_schema.name, 'ntw_berean_board');
+    assert.match(requestBodies[1].messages[1].content, /Romans 8/);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test('builds concise schema-enforced answer judgment request bodies', () => {

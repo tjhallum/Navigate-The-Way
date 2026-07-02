@@ -183,6 +183,33 @@
       },
     },
   };
+  const BEREAN_BOARD_SCOPE_AREAS = Object.freeze([
+    'Scripture',
+    'Theology',
+    'Christian Life',
+    'Worldview',
+    'Ministry',
+    'Biblical Studies',
+  ]);
+  const BEREAN_BOARD_SCOPE_AREA_PHRASE = 'Scripture, Theology, Christian Life, Worldview, Ministry, or Biblical Studies';
+  const BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE = 'We detected an attempt to use Berean Board outside Berean Board’s scope and purpose. Berean Board is designed to reinforce lessons connected to Scripture, theology, Christian life, worldview, ministry, or biblical studies, so no game board was generated.';
+  const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
+    name: 'ntw_berean_board_scope_check',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['isInScope', 'matchedAreas', 'reason'],
+      properties: {
+        isInScope: { type: 'boolean' },
+        matchedAreas: {
+          type: 'array',
+          items: { type: 'string', enum: BEREAN_BOARD_SCOPE_AREAS },
+        },
+        reason: { type: 'string' },
+      },
+    },
+  };
   const ANSWER_JUDGMENT_JSON_SCHEMA = {
     name: 'ntw_answer_judgment',
     strict: true,
@@ -2605,6 +2632,48 @@
     ];
   }
 
+  function buildBereanBoardScopeCheckMessages({ lessonContent }) {
+    const lesson = truncateLessonContent(lessonContent);
+    const truncationNote = lesson.truncated
+      ? `\n\nNOTE: The supplied lesson material was truncated from ${lesson.originalLength} characters to ${lesson.content.length} characters before scope review. Judge only the visible material below.`
+      : '';
+
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are Navigate The Way ✝️ (NTW✝️), checking whether supplied material fits Berean Board before any game board is generated.',
+          'Berean Board is not a generic trivia game. It exists to help Christian families, church leaders, and ministry leaders reinforce content they are teaching to those under their care.',
+          `Approve the supplied material only when it meaningfully connects with one or more of these areas: ${BEREAN_BOARD_SCOPE_AREA_PHRASE}.`,
+          'A connection may be explicit Scripture, doctrine, Christian living and discipleship, Christian worldview or apologetics, church/ministry practice, or biblical studies content.',
+          'Reject generic entertainment, sports, school-subject, pop-culture, history, science, or hobby trivia when the supplied material does not make a meaningful Christian teaching connection.',
+          'Do not require a Bible verse reference when the material is clearly about Christian life, worldview, ministry, theology, or biblical studies.',
+          'If the material is brief but clearly within the stated purpose, mark it in scope. If it is merely generic trivia with Christian words pasted on without a meaningful teaching connection, mark it out of scope.',
+          'Return only valid JSON that matches the enforced schema. Do not wrap the JSON in markdown unless the API requires it.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: [
+          'Determine whether this supplied Berean Board lesson material is within scope before game-board generation.',
+          'Return this exact JSON shape:',
+          '{ "isInScope": true, "matchedAreas": ["Scripture"], "reason": "short reason" }',
+          `Allowed matchedAreas values: ${BEREAN_BOARD_SCOPE_AREAS.join(', ')}`,
+          truncationNote,
+          '',
+          'Lesson source material:',
+          '<<<LESSON_CONTENT_START>>>',
+          lesson.content,
+          '<<<LESSON_CONTENT_END>>>',
+        ].join('\n'),
+      },
+    ];
+  }
+
+  function buildBereanBoardScopeFailureMessage() {
+    return BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE;
+  }
+
   function buildAnswerJudgmentMessages({ clue, contestantName, contestantResponse }) {
     if (!clue || typeof clue !== 'object') {
       throw new Error('A clue is required before checking an answer.');
@@ -2747,6 +2816,62 @@
     return normalizeGeneratedGame(extractJsonObject(completionContent));
   }
 
+  function normalizeBereanBoardScopeArea(value) {
+    const normalized = coerceText(value).toLowerCase();
+    return BEREAN_BOARD_SCOPE_AREAS.find((area) => area.toLowerCase() === normalized) || '';
+  }
+
+  function coerceScopeBoolean(value) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    const normalized = coerceText(value).toLowerCase();
+    if (['true', 'yes', 'approved', 'approve', 'in scope', 'in-scope', 'allowed'].includes(normalized)) return true;
+    if (['false', 'no', 'rejected', 'reject', 'out of scope', 'out-of-scope', 'blocked'].includes(normalized)) return false;
+    return false;
+  }
+
+  function normalizeBereanBoardScopeCheck(rawCheck) {
+    if (!rawCheck || typeof rawCheck !== 'object') {
+      throw new Error('The NTW scope check did not return a review object.');
+    }
+    const matchedAreas = [...new Set((Array.isArray(rawCheck.matchedAreas)
+      ? rawCheck.matchedAreas
+      : (Array.isArray(rawCheck.areas) ? rawCheck.areas : []))
+      .map(normalizeBereanBoardScopeArea)
+      .filter(Boolean))];
+    return {
+      isInScope: coerceScopeBoolean(rawCheck.isInScope ?? rawCheck.inScope ?? rawCheck.allowed ?? rawCheck.approved),
+      matchedAreas,
+      reason: pickText(rawCheck, ['reason', 'rationale', 'explanation', 'message'], ''),
+    };
+  }
+
+  function parseBereanBoardScopeCheckResponse(payload) {
+    if (payload && typeof payload === 'object') {
+      const hasDirectScopeCheck = ['isInScope', 'inScope', 'allowed', 'approved', 'matchedAreas', 'areas']
+        .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      if (hasDirectScopeCheck) {
+        return normalizeBereanBoardScopeCheck(payload);
+      }
+      const data = payload.data;
+      const hasDataScopeCheck = data && typeof data === 'object' &&
+        ['isInScope', 'inScope', 'allowed', 'approved', 'matchedAreas', 'areas']
+          .some((key) => Object.prototype.hasOwnProperty.call(data, key));
+      if (hasDataScopeCheck) {
+        return normalizeBereanBoardScopeCheck(data);
+      }
+    }
+
+    const completionContent = findCompletionContent(payload);
+    if (!completionContent) {
+      throw new Error('The NTW scope check response did not include a recognizable completion payload.');
+    }
+    if (typeof completionContent === 'object') {
+      return normalizeBereanBoardScopeCheck(completionContent);
+    }
+    return normalizeBereanBoardScopeCheck(extractJsonObject(completionContent));
+  }
+
   function normalizeAnswerJudgment(rawJudgment) {
     if (!rawJudgment || typeof rawJudgment !== 'object') {
       throw new Error('The NTW answer check did not return a judgment object.');
@@ -2848,6 +2973,17 @@
       temperature: 0,
       topP: 1,
       maxCompletionTokens: 120,
+    });
+  }
+
+  function buildBereanBoardScopeCheckChatCompletionsBody({ model, lessonContent }) {
+    return buildChatCompletionsBody({
+      model,
+      messages: buildBereanBoardScopeCheckMessages({ lessonContent }),
+      responseSchema: BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA,
+      temperature: 0,
+      topP: 1,
+      maxCompletionTokens: 220,
     });
   }
 
@@ -2958,6 +3094,55 @@
     }
 
     return parseOpenAiGameResponse(result.payload);
+  }
+
+  async function callBereanBoardScopeCheckApi({ endpoint, apiKey, model, lessonContent }) {
+    const cleanEndpoint = normalizeChatCompletionsEndpoint(endpoint);
+    const cleanKey = String(apiKey || '').trim();
+    const cleanModel = String(model || '').trim() || DEFAULT_MODEL;
+    if (!cleanEndpoint) {
+      throw new Error('Enter the NTW OpenAI-compatible chat completions endpoint.');
+    }
+    if (!cleanKey) {
+      throw new Error('Enter the NTW API key before checking whether the lesson fits Berean Board.');
+    }
+    if (!cleanModel) {
+      throw new Error('Enter the NTW model name.');
+    }
+
+    const body = buildBereanBoardScopeCheckChatCompletionsBody({ model: cleanModel, lessonContent });
+    let result = await postChatCompletionsRequest({
+      endpoint: cleanEndpoint,
+      apiKey: cleanKey,
+      body,
+      nonJsonMessage: 'The NTW scope check returned non-JSON content with',
+    });
+
+    if (!result.ok && shouldRetryWithJsonMode(result)) {
+      result = await postChatCompletionsRequest({
+        endpoint: cleanEndpoint,
+        apiKey: cleanKey,
+        body: buildJsonModeFallbackBody(body),
+        nonJsonMessage: 'The NTW scope check returned non-JSON content with',
+      });
+    }
+
+    if (!result.ok) {
+      throw new Error(`The NTW scope check failed: ${extractApiErrorMessage(result.payload, result.status)}`);
+    }
+
+    return parseBereanBoardScopeCheckResponse(result.payload);
+  }
+
+  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL }) {
+    const scopeCheck = await callBereanBoardScopeCheckApi({ endpoint, apiKey, model, lessonContent });
+    if (!scopeCheck.isInScope) {
+      const error = new Error(buildBereanBoardScopeFailureMessage(scopeCheck));
+      error.scopeCheck = scopeCheck;
+      throw error;
+    }
+    const messages = buildOpenAiMessages({ contestantNames, lessonContent, difficultyLevel });
+    return callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
   }
 
   async function callAnswerJudgmentApi({ endpoint, apiKey, model, clue, contestantName, contestantResponse }) {
@@ -5896,22 +6081,19 @@
           files: selectedFiles,
           lessonTopicText: lessonTopicInput?.value || '',
         });
-        const messages = buildOpenAiMessages({
-          contestantNames: contestants.map((contestant) => contestant.name),
-          lessonContent,
-          difficultyLevel: difficulty.value,
-        });
         const endpoint = normalizeChatCompletionsEndpoint(endpointInput?.value || DEFAULT_CHAT_COMPLETIONS_ENDPOINT);
         const model = modelInput?.value || DEFAULT_MODEL;
         if (endpointInput) endpointInput.value = endpoint;
         safeSetBrowserStorageItem(window, 'ntwReviewGameEndpoint', endpoint);
         safeSetBrowserStorageItem(window, 'ntwReviewGameModel', model.trim() || DEFAULT_MODEL);
-        renderStatus(setupStatus, 'Calling the NTW API to generate the game board…', 'info');
-        gameData = await callOpenAiCompatibleApi({
+        renderStatus(setupStatus, 'Asking NTW to check whether the supplied material fits Berean Board’s purpose…', 'info');
+        gameData = await callScopedBereanBoardGenerationApi({
           endpoint,
           apiKey: apiKeyInput?.value || '',
           model,
-          messages,
+          contestantNames: contestants.map((contestant) => contestant.name),
+          lessonContent,
+          difficultyLevel: difficulty.value,
         });
         renderStatus(setupStatus, 'Game generated. API key was not saved by this page.', 'success');
         completeSetupUi();
@@ -6021,6 +6203,8 @@
     DEFAULT_BIBLE,
     DEFAULT_DIFFICULTY_LEVEL,
     DIFFICULTY_LEVELS,
+    BEREAN_BOARD_SCOPE_AREAS,
+    BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE,
     DEFAULT_BUZZER_MODE,
     BUZZER_MODES,
     BUZZER_COLORS,
@@ -6105,15 +6289,20 @@
     shouldAutoCloseAfterAnswerResult,
     truncateLessonContent,
     buildOpenAiMessages,
+    buildBereanBoardScopeCheckMessages,
     buildAnswerJudgmentMessages,
     stripJsonMarkdownFence,
     extractJsonObject,
     normalizeChatCompletionsEndpoint,
     parseOpenAiGameResponse,
+    parseBereanBoardScopeCheckResponse,
     parseAnswerJudgmentResponse,
     buildChatCompletionsBody,
+    buildBereanBoardScopeCheckChatCompletionsBody,
     buildAnswerJudgmentChatCompletionsBody,
     callOpenAiCompatibleApi,
+    callBereanBoardScopeCheckApi,
+    callScopedBereanBoardGenerationApi,
     callAnswerJudgmentApi,
     extractLessonTextFromFiles,
     hasLessonSourceInput,
