@@ -193,6 +193,7 @@
   ]);
   const BEREAN_BOARD_SCOPE_AREA_PHRASE = 'Scripture, Theology, Christian Life, Worldview, Ministry, or Biblical Studies';
   const BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE = 'We detected an attempt to use Berean Board outside Berean Board’s scope and purpose. Berean Board is designed to reinforce lessons connected to Scripture, theology, Christian life, worldview, ministry, or biblical studies, so no game board was generated.';
+  const BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE = 'Your supplied content was accepted for Berean Board. Generating the game board…';
   const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
     name: 'ntw_berean_board_scope_check',
     strict: true,
@@ -3134,12 +3135,15 @@
     return parseBereanBoardScopeCheckResponse(result.payload);
   }
 
-  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL }) {
+  async function callScopedBereanBoardGenerationApi({ endpoint, apiKey, model, contestantNames, lessonContent, difficultyLevel = DEFAULT_DIFFICULTY_LEVEL, onScopeAccepted }) {
     const scopeCheck = await callBereanBoardScopeCheckApi({ endpoint, apiKey, model, lessonContent });
     if (!scopeCheck.isInScope) {
       const error = new Error(buildBereanBoardScopeFailureMessage(scopeCheck));
       error.scopeCheck = scopeCheck;
       throw error;
+    }
+    if (typeof onScopeAccepted === 'function') {
+      await onScopeAccepted(scopeCheck);
     }
     const messages = buildOpenAiMessages({ contestantNames, lessonContent, difficultyLevel });
     return callOpenAiCompatibleApi({ endpoint, apiKey, model, messages });
@@ -6094,6 +6098,9 @@
           contestantNames: contestants.map((contestant) => contestant.name),
           lessonContent,
           difficultyLevel: difficulty.value,
+          onScopeAccepted: () => {
+            renderStatus(setupStatus, BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE, 'info');
+          },
         });
         renderStatus(setupStatus, 'Game generated. API key was not saved by this page.', 'success');
         completeSetupUi();
@@ -6205,6 +6212,7 @@
     DIFFICULTY_LEVELS,
     BEREAN_BOARD_SCOPE_AREAS,
     BEREAN_BOARD_OUT_OF_SCOPE_MESSAGE,
+    BEREAN_BOARD_SCOPE_ACCEPTED_MESSAGE,
     DEFAULT_BUZZER_MODE,
     BUZZER_MODES,
     BUZZER_COLORS,

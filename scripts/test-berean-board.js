@@ -1962,7 +1962,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260702-scope-gate"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-scope-accepted-status"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260702-scope-gate/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260702-player-phone-loudspeaker-audio/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-rereveal-fix/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-reveal/);
@@ -4131,9 +4132,11 @@ test('runs NTW scope check before board generation and blocks out-of-scope mater
 test('generates the board only after NTW approves in-scope lesson material', async () => {
   const originalFetch = global.fetch;
   const requestBodies = [];
+  const generationEvents = [];
   global.fetch = async (_url, options) => {
     const body = JSON.parse(options.body);
     requestBodies.push(body);
+    generationEvents.push(`request:${body.response_format.json_schema.name}`);
     if (requestBodies.length === 1) {
       return {
         ok: true,
@@ -4158,12 +4161,20 @@ test('generates the board only after NTW approves in-scope lesson material', asy
       contestantNames: ['Ada', 'Boaz'],
       lessonContent: 'Romans 8, adoption in Christ, assurance, and prayer.',
       difficultyLevel: 'adult',
+      onScopeAccepted: (scopeCheck) => {
+        generationEvents.push(`accepted:${scopeCheck.matchedAreas.join(',')}`);
+      },
     });
 
     assert.equal(parsed.categories.length, 5);
     assert.equal(requestBodies.length, 2);
     assert.equal(requestBodies[0].response_format.json_schema.name, 'ntw_berean_board_scope_check');
     assert.equal(requestBodies[1].response_format.json_schema.name, 'ntw_berean_board');
+    assert.deepEqual(generationEvents, [
+      'request:ntw_berean_board_scope_check',
+      'accepted:Scripture,Theology',
+      'request:ntw_berean_board',
+    ]);
     assert.match(requestBodies[1].messages[1].content, /Romans 8/);
   } finally {
     global.fetch = originalFetch;
