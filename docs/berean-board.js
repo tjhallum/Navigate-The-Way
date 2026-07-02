@@ -73,6 +73,9 @@
   const HOST_BUZZER_SOUND_DURATION_SECONDS = 0.72;
   const HOST_BUZZER_SOUND_MIN_INTERVAL_MS = 650;
   const HOST_BUZZER_SOUND_VOLUME = 0.38;
+  const PLAYER_BUZZER_MEDIA_SAMPLE_RATE = 22050;
+  const PLAYER_BUZZER_MEDIA_VOLUME = 1;
+  const PLAYER_BUZZER_MEDIA_MIN_INTERVAL_MS = 220;
   const HOST_BUZZER_SOUND_VOICES = Object.freeze([
     { type: 'sawtooth', gain: 0.45, startFrequency: 880, midFrequency: 523, endFrequency: 220, detune: -4 },
     { type: 'square', gain: 0.30, startFrequency: 554, midFrequency: 392, endFrequency: 196, detune: 0 },
@@ -438,6 +441,224 @@
       isSupported() {
         return Boolean(getHostBuzzerAudioContextConstructor(root));
       },
+      prime,
+      play,
+    };
+  }
+
+  function getBuzzerVoiceFrequencyAtTime(voice, time, duration) {
+    const progress = Math.max(0, Math.min(1, duration > 0 ? time / duration : 0));
+    if (progress <= 0.36) {
+      const localProgress = progress / 0.36;
+      return voice.startFrequency * Math.pow(voice.midFrequency / voice.startFrequency, localProgress);
+    }
+    const localProgress = (progress - 0.36) / 0.64;
+    return voice.midFrequency * Math.pow(voice.endFrequency / voice.midFrequency, localProgress);
+  }
+
+  function getBuzzerVoiceSample(type, phase) {
+    if (type === 'square') return Math.sin(phase) >= 0 ? 1 : -1;
+    if (type === 'triangle') return (2 / Math.PI) * Math.asin(Math.sin(phase));
+    if (type === 'sawtooth') {
+      const cycle = (phase / (2 * Math.PI)) % 1;
+      const normalizedCycle = cycle < 0 ? cycle + 1 : cycle;
+      return (2 * normalizedCycle) - 1;
+    }
+    return Math.sin(phase);
+  }
+
+  function getBuzzerMediaEnvelope(time, duration) {
+    if (time < 0 || time > duration) return 0;
+    if (time <= 0.018) return time / 0.018;
+    if (time <= 0.16) return 1 - (0.74 * ((time - 0.018) / 0.142));
+    if (time <= 0.29) return 0.26 + (0.68 * ((time - 0.16) / 0.13));
+    if (time <= 0.48) return 0.94 - (0.62 * ((time - 0.29) / 0.19));
+    if (time <= 0.56) return 0.32 + (0.20 * ((time - 0.48) / 0.08));
+    return 0.52 * (1 - ((time - 0.56) / Math.max(0.001, duration - 0.56)));
+  }
+
+  function writeAsciiToBytes(bytes, offset, text) {
+    for (let index = 0; index < text.length; index += 1) {
+      bytes[offset + index] = text.charCodeAt(index) & 0xff;
+    }
+  }
+
+  function writeUint16ToBytes(bytes, offset, value) {
+    bytes[offset] = value & 0xff;
+    bytes[offset + 1] = (value >> 8) & 0xff;
+  }
+
+  function writeUint32ToBytes(bytes, offset, value) {
+    bytes[offset] = value & 0xff;
+    bytes[offset + 1] = (value >> 8) & 0xff;
+    bytes[offset + 2] = (value >> 16) & 0xff;
+    bytes[offset + 3] = (value >> 24) & 0xff;
+  }
+
+  function encodeBytesAsBase64(bytes, root = ROOT) {
+    if (typeof root?.btoa === 'function') {
+      const chunks = [];
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        const chunk = bytes.subarray(offset, offset + chunkSize);
+        let binary = '';
+        for (let index = 0; index < chunk.length; index += 1) {
+          binary += String.fromCharCode(chunk[index]);
+        }
+        chunks.push(binary);
+      }
+      return root.btoa(chunks.join(''));
+    }
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(bytes).toString('base64');
+    }
+    return '';
+  }
+
+  function createHostBuzzerSoundDataUri({ root = ROOT, sampleRate = PLAYER_BUZZER_MEDIA_SAMPLE_RATE } = {}) {
+    const safeSampleRate = Math.max(8000, Math.min(48000, Math.round(Number(sampleRate) || PLAYER_BUZZER_MEDIA_SAMPLE_RATE)));
+    const duration = HOST_BUZZER_SOUND_DURATION_SECONDS;
+    const sampleCount = Math.max(1, Math.ceil(duration * safeSampleRate));
+    const dataSize = sampleCount * 2;
+    const bytes = new Uint8Array(44 + dataSize);
+    const voicePhases = HOST_BUZZER_SOUND_VOICES.map(() => 0);
+
+    writeAsciiToBytes(bytes, 0, 'RIFF');
+    writeUint32ToBytes(bytes, 4, 36 + dataSize);
+    writeAsciiToBytes(bytes, 8, 'WAVE');
+    writeAsciiToBytes(bytes, 12, 'fmt ');
+    writeUint32ToBytes(bytes, 16, 16);
+    writeUint16ToBytes(bytes, 20, 1);
+    writeUint16ToBytes(bytes, 22, 1);
+    writeUint32ToBytes(bytes, 24, safeSampleRate);
+    writeUint32ToBytes(bytes, 28, safeSampleRate * 2);
+    writeUint16ToBytes(bytes, 32, 2);
+    writeUint16ToBytes(bytes, 34, 16);
+    writeAsciiToBytes(bytes, 36, 'data');
+    writeUint32ToBytes(bytes, 40, dataSize);
+
+    for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+      const time = sampleIndex / safeSampleRate;
+      const envelope = getBuzzerMediaEnvelope(time, duration);
+      let mixed = 0;
+      HOST_BUZZER_SOUND_VOICES.forEach((voice, voiceIndex) => {
+        const frequency = getBuzzerVoiceFrequencyAtTime(voice, time, duration);
+        voicePhases[voiceIndex] += (2 * Math.PI * frequency) / safeSampleRate;
+        mixed += getBuzzerVoiceSample(voice.type, voicePhases[voiceIndex]) * voice.gain;
+      });
+      const softened = Math.tanh(mixed * 1.6) * envelope * 0.96;
+      const pcm = Math.max(-32768, Math.min(32767, Math.round(softened * 32767)));
+      const offset = 44 + (sampleIndex * 2);
+      writeUint16ToBytes(bytes, offset, pcm < 0 ? pcm + 65536 : pcm);
+    }
+
+    const encoded = encodeBytesAsBase64(bytes, root);
+    return encoded ? `data:audio/wav;base64,${encoded}` : '';
+  }
+
+  function createPlayerBuzzerMediaElement(root, sourceUrl) {
+    if (!root) return null;
+    if (typeof root.Audio === 'function') {
+      return new root.Audio(sourceUrl);
+    }
+    const element = root.document?.createElement?.('audio');
+    if (element) element.src = sourceUrl;
+    return element || null;
+  }
+
+  function configurePlayerBuzzerMediaElement(element, { volume = PLAYER_BUZZER_MEDIA_VOLUME } = {}) {
+    if (!element) return false;
+    const safeVolume = Math.max(0.2, Math.min(1, Number(volume) || PLAYER_BUZZER_MEDIA_VOLUME));
+    try {
+      element.preload = 'auto';
+      element.volume = safeVolume;
+      element.playsInline = true;
+      element.setAttribute?.('preload', 'auto');
+      element.setAttribute?.('playsinline', '');
+      element.setAttribute?.('webkit-playsinline', '');
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function createPlayerBuzzerMediaAudioController({
+    root = ROOT,
+    sourceUrl = '',
+    volume = PLAYER_BUZZER_MEDIA_VOLUME,
+    minIntervalMs = PLAYER_BUZZER_MEDIA_MIN_INTERVAL_MS,
+    nowMs = () => Date.now(),
+  } = {}) {
+    const safeMinIntervalMs = Math.max(0, Number(minIntervalMs) || 0);
+    let mediaElement = null;
+    let mediaSourceUrl = sourceUrl;
+    let lastPlayedAtMs = Number.NEGATIVE_INFINITY;
+
+    function getMediaElement() {
+      if (mediaElement) return mediaElement;
+      mediaSourceUrl = mediaSourceUrl || createHostBuzzerSoundDataUri({ root });
+      if (!mediaSourceUrl) return null;
+      try {
+        mediaElement = createPlayerBuzzerMediaElement(root, mediaSourceUrl);
+        if (!mediaElement) return null;
+        if (!mediaElement.src) mediaElement.src = mediaSourceUrl;
+        configurePlayerBuzzerMediaElement(mediaElement, { volume });
+        if (!mediaElement.parentNode && root?.document?.body?.appendChild && typeof root.HTMLElement === 'function' && mediaElement instanceof root.HTMLElement) {
+          mediaElement.setAttribute?.('aria-hidden', 'true');
+          mediaElement.style.display = 'none';
+          root.document.body.appendChild(mediaElement);
+        }
+      } catch (_error) {
+        mediaElement = null;
+      }
+      return mediaElement;
+    }
+
+    function isSupported() {
+      return Boolean(typeof root?.Audio === 'function' || typeof root?.document?.createElement === 'function');
+    }
+
+    function prime() {
+      try {
+        const element = getMediaElement();
+        if (!element) return false;
+        element.load?.();
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function play() {
+      try {
+        const playStartedAtMs = Number(nowMs()) || Date.now();
+        if (playStartedAtMs - lastPlayedAtMs < safeMinIntervalMs) return false;
+        const element = getMediaElement();
+        if (!element || typeof element.play !== 'function') return false;
+        configurePlayerBuzzerMediaElement(element, { volume });
+        try {
+          element.pause?.();
+        } catch (_error) {}
+        try {
+          element.currentTime = 0;
+        } catch (_error) {}
+        const playResult = element.play();
+        lastPlayedAtMs = playStartedAtMs;
+        if (playResult && typeof playResult.catch === 'function') {
+          playResult.catch(() => {
+            if (lastPlayedAtMs === playStartedAtMs) {
+              lastPlayedAtMs = Number.NEGATIVE_INFINITY;
+            }
+          });
+        }
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    return {
+      isSupported,
       prime,
       play,
     };
@@ -3585,7 +3806,7 @@
     const virtualBuzzerButton = app.querySelector('#virtual-buzzer-button');
     const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
     const hostBuzzerAudio = createHostBuzzerAudioController();
-    const playerBuzzerAudio = createHostBuzzerAudioController();
+    const playerBuzzerAudio = createPlayerBuzzerMediaAudioController();
     const playerBuzzerAudioFeedback = createVirtualBuzzerPlayerAudioFeedback({
       audioController: playerBuzzerAudio,
       canSubmitVirtualBuzz: canCurrentPlayerSubmitVirtualBuzz,
@@ -5806,12 +6027,17 @@
     HOST_BUZZER_SOUND_DURATION_SECONDS,
     HOST_BUZZER_SOUND_MIN_INTERVAL_MS,
     HOST_BUZZER_SOUND_VOLUME,
+    PLAYER_BUZZER_MEDIA_SAMPLE_RATE,
+    PLAYER_BUZZER_MEDIA_VOLUME,
+    PLAYER_BUZZER_MEDIA_MIN_INTERVAL_MS,
     HOST_BUZZER_SOUND_VOICES,
     CLUE_REVEAL_WORDS_PER_MINUTE,
     getClueRevealWordIntervalMs,
     buildClueRevealFrames,
     scheduleHostBuzzerSound,
     createHostBuzzerAudioController,
+    createHostBuzzerSoundDataUri,
+    createPlayerBuzzerMediaAudioController,
     createVirtualBuzzerPlayerAudioFeedback,
     createPlayerScreenWakeLockController,
     isSupportedLessonFile,
