@@ -35,11 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+      url: ${{ steps.deploy_attempt_1.outputs.page_url || steps.deploy_attempt_2.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages (attempt 1)
         id: deploy_attempt_1
         continue-on-error: true
         uses: actions/deploy-pages@v5
+      - name: Wait before retrying deployment
+        if: steps.deploy_attempt_1.outcome == 'failure'
+        run: sleep 10
       - name: Deploy to GitHub Pages (attempt 2)
         id: deploy_attempt_2
         if: steps.deploy_attempt_1.outcome == 'failure'
