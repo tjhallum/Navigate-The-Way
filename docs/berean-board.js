@@ -443,6 +443,37 @@
     };
   }
 
+  function createVirtualBuzzerPlayerAudioFeedback({ audioController, canSubmitVirtualBuzz } = {}) {
+    function currentBuzzCanSubmit() {
+      if (typeof canSubmitVirtualBuzz !== 'function') return false;
+      try {
+        return Boolean(canSubmitVirtualBuzz());
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function runAudioMethod(methodName) {
+      if (!currentBuzzCanSubmit()) return false;
+      const method = audioController?.[methodName];
+      if (typeof method !== 'function') return false;
+      try {
+        return Boolean(method.call(audioController));
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    return {
+      prime() {
+        return runAudioMethod('prime');
+      },
+      play() {
+        return runAudioMethod('play');
+      },
+    };
+  }
+
   function createPlayerScreenWakeLockController({ root = ROOT, documentRef = root?.document } = {}) {
     let wakeLockSentinel = null;
     let wakeLockRequestPromise = null;
@@ -3555,6 +3586,10 @@
     const virtualBuzzerPhoneStatus = app.querySelector('#virtual-buzzer-phone-status');
     const hostBuzzerAudio = createHostBuzzerAudioController();
     const playerBuzzerAudio = createHostBuzzerAudioController();
+    const playerBuzzerAudioFeedback = createVirtualBuzzerPlayerAudioFeedback({
+      audioController: playerBuzzerAudio,
+      canSubmitVirtualBuzz: canCurrentPlayerSubmitVirtualBuzz,
+    });
     const playerWakeLock = createPlayerScreenWakeLockController();
 
     let selectedFiles = [];
@@ -4297,6 +4332,19 @@
       closeVirtualSession();
     }
 
+    function canCurrentPlayerSubmitVirtualBuzz() {
+      return Boolean(
+        virtualBuzzerPlayerContext
+        && virtualBuzzerPlayerSession
+        && virtualBuzzerPlayerClaim
+        && virtualBuzzerService?.canSubmitVirtualBuzz?.({
+          session: virtualBuzzerPlayerSession,
+          claim: virtualBuzzerPlayerClaim,
+          uid: virtualBuzzerPlayerContext.uid,
+        })
+      );
+    }
+
     function renderPlayerPhoneSession() {
       if (!virtualBuzzerPlayerScreen || !virtualBuzzerService) return;
       const session = virtualBuzzerPlayerSession;
@@ -4330,7 +4378,7 @@
         }
         if (virtualBuzzerButton) {
           virtualBuzzerButton.style.setProperty('--virtual-buzzer-player-color', color.value);
-          virtualBuzzerButton.disabled = !virtualBuzzerService.canSubmitVirtualBuzz({ session, claim: virtualBuzzerPlayerClaim, uid });
+          virtualBuzzerButton.disabled = !canCurrentPlayerSubmitVirtualBuzz();
         }
       }
       if (virtualBuzzerPhoneStatus && session) {
@@ -4720,11 +4768,23 @@
         if (claimSucceeded) virtualBuzzerClaimedPanel?.focus({ preventScroll: true });
       }
     });
+    function handlePlayerBuzzerPressStart() {
+      playerBuzzerAudioFeedback.play();
+    }
+
+    if (virtualBuzzerButton) {
+      if (typeof ROOT.PointerEvent === 'function') {
+        virtualBuzzerButton.addEventListener('pointerdown', handlePlayerBuzzerPressStart);
+      } else {
+        virtualBuzzerButton.addEventListener('touchstart', handlePlayerBuzzerPressStart, { passive: true });
+        virtualBuzzerButton.addEventListener('mousedown', handlePlayerBuzzerPressStart);
+      }
+    }
+
     virtualBuzzerButton?.addEventListener('click', async () => {
       void playerWakeLock.request();
-      if (!virtualBuzzerPlayerContext || !virtualBuzzerPlayerSession || !virtualBuzzerPlayerClaim) return;
-      if (!virtualBuzzerService.canSubmitVirtualBuzz({ session: virtualBuzzerPlayerSession, claim: virtualBuzzerPlayerClaim, uid: virtualBuzzerPlayerContext.uid })) return;
-      playerBuzzerAudio.play();
+      if (!canCurrentPlayerSubmitVirtualBuzz()) return;
+      playerBuzzerAudioFeedback.play();
       try {
         if (virtualBuzzerButton) virtualBuzzerButton.disabled = true;
         const result = await virtualBuzzerService.submitFirstBuzz({
@@ -5752,6 +5812,7 @@
     buildClueRevealFrames,
     scheduleHostBuzzerSound,
     createHostBuzzerAudioController,
+    createVirtualBuzzerPlayerAudioFeedback,
     createPlayerScreenWakeLockController,
     isSupportedLessonFile,
     addLessonFilesToSelection,

@@ -735,28 +735,58 @@ test('virtual first-buzz host flow primes and plays the synthesized buzzer sound
   assert.doesNotMatch(js.slice(manualChoiceStart, manualChoiceEnd), /hostBuzzerAudio\.play/);
 });
 
-test('player phone buzz button primes and plays the same synthesized buzzer sound on a valid tap', () => {
+test('player phone buzz button pre-arms and plays the same synthesized buzzer sound on a valid tap', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'docs', 'berean-board.js'), 'utf8');
 
   assert.match(js, /const playerBuzzerAudio = createHostBuzzerAudioController\(\)/);
+  assert.match(js, /const playerBuzzerAudioFeedback = createVirtualBuzzerPlayerAudioFeedback\(/);
+  assert.match(js, /function canCurrentPlayerSubmitVirtualBuzz\(\)/);
 
   const claimStart = js.indexOf("virtualBuzzerClaimButton?.addEventListener('click'");
-  const claimEnd = js.indexOf("virtualBuzzerButton?.addEventListener('click'", claimStart);
+  const claimEnd = js.indexOf('function handlePlayerBuzzerPressStart()', claimStart);
   const claimHandler = js.slice(claimStart, claimEnd);
   assert.match(claimHandler, /void playerBuzzerAudio\.prime\(\);/);
 
-  const buzzStart = claimEnd;
-  const buzzEnd = js.indexOf("document.addEventListener('visibilitychange'", buzzStart);
-  const buzzHandler = js.slice(buzzStart, buzzEnd);
+  const pressStart = claimEnd;
+  const clickStart = js.indexOf("virtualBuzzerButton?.addEventListener('click'", pressStart);
+  const pressHandler = js.slice(pressStart, clickStart);
+  assert.match(pressHandler, /function handlePlayerBuzzerPressStart\(\)/);
+  assert.match(pressHandler, /playerBuzzerAudioFeedback\.play\(\);/);
+  assert.match(pressHandler, /virtualBuzzerButton\.addEventListener\('pointerdown', handlePlayerBuzzerPressStart\)/);
+  assert.match(pressHandler, /virtualBuzzerButton\.addEventListener\('touchstart', handlePlayerBuzzerPressStart, \{ passive: true \}\)/);
+
+  const buzzEnd = js.indexOf("document.addEventListener('visibilitychange'", clickStart);
+  const buzzHandler = js.slice(clickStart, buzzEnd);
   assert.ok(
-    buzzHandler.indexOf('if (!virtualBuzzerService.canSubmitVirtualBuzz') < buzzHandler.indexOf('playerBuzzerAudio.play();'),
+    buzzHandler.indexOf('if (!canCurrentPlayerSubmitVirtualBuzz()) return;') < buzzHandler.indexOf('playerBuzzerAudioFeedback.play();'),
     'the phone sound should play only after the local buzz is still valid'
   );
   assert.ok(
-    buzzHandler.indexOf('playerBuzzerAudio.play();') < buzzHandler.indexOf('virtualBuzzerService.submitFirstBuzz'),
+    buzzHandler.indexOf('playerBuzzerAudioFeedback.play();') < buzzHandler.indexOf('virtualBuzzerService.submitFirstBuzz'),
     'the phone should give audible feedback immediately from the BUZZ tap before waiting on Firebase'
   );
   assert.doesNotMatch(buzzHandler, /hostBuzzerAudio\.play\(\)/);
+});
+
+test('player buzzer audio feedback only plays when the current phone can submit', () => {
+  let canSubmit = false;
+  const calls = [];
+  const feedback = game.createVirtualBuzzerPlayerAudioFeedback({
+    audioController: {
+      prime: () => calls.push('prime'),
+      play: () => calls.push('play'),
+    },
+    canSubmitVirtualBuzz: () => canSubmit,
+  });
+
+  assert.equal(feedback.prime(), false);
+  assert.equal(feedback.play(), false);
+  assert.deepEqual(calls, []);
+
+  canSubmit = true;
+  assert.equal(feedback.prime(), true);
+  assert.equal(feedback.play(), true);
+  assert.deepEqual(calls, ['prime', 'play']);
 });
 
 test('provides a repeatable virtual buzzer latency smoke harness', () => {
@@ -1882,7 +1912,8 @@ test('renders group setup wizard controls before lesson setup in the browser for
   assert.doesNotMatch(html, /<script src="virtual-buzzer-service\.js\?v=20260620-virtual-buzzer-rules-fix"><\/script>/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/xlsx\/0\.18\.5\/xlsx\.full\.min\.js"/);
   assert.match(html, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/qrcode-generator\/1\.4\.4\/qrcode\.min\.js"/);
-  assert.match(html, /<script src="berean-board\.js\?v=20260701-timed-clue-rereveal-fix"><\/script>/);
+  assert.match(html, /<script src="berean-board\.js\?v=20260702-player-phone-buzzer-unlock"><\/script>/);
+  assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-rereveal-fix/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-timed-clue-reveal/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-player-phone-buzzer-sound/);
   assert.doesNotMatch(html, /berean-board\.js\?v=20260701-back-to-board-after-buzz/);
