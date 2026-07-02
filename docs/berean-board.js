@@ -202,6 +202,8 @@
   const CLUE_GROUNDING_SOURCE_PREFIX_PHRASE = CLUE_GROUNDING_SOURCE_PREFIXES.join(' / ');
   const BIBLE_PASSAGE_REFERENCE_PATTERN = /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song\s+of\s+(?:Songs|Solomon)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:[-–]\d{1,3})?\b/i;
   const BEREAN_BOARD_GROUNDING_FAILURE_MESSAGE = 'NTW could not verify that every Berean Board answer was grounded in the supplied content and/or Bible content NTW can access, so no game board was generated.';
+  const TOPIC_ONLY_GROUNDING_INSTRUCTION = '**WHEN NO SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN NTW-ACCESSIBLE SCRIPTURE/BIBLE CONTENT THAT FITS THE LEADER-PROVIDED TOPIC OR SUMMARY; DO NOT GENERATE GENERIC CHRISTIAN-LIFE ANSWERS THAT THE CITED PASSAGE DOES NOT DIRECTLY SUPPORT.**';
+  const SOURCE_FILE_GROUNDING_INSTRUCTION = '**WHEN SOURCE CONTENT FILES ARE PROVIDED, YOU MUST SPECIFICALLY ENGINEER EACH CLUE SO ITS EXPECTED CORRECTRESPONSE IS GROUNDED IN THE PROVIDED SOURCE FILE CONTENT; USE NTW-ACCESSIBLE BIBLE CONTENT ONLY WHEN IT DIRECTLY SUPPORTS OR REINFORCES THAT FILE-GROUNDED ANSWER.**';
   const BEREAN_BOARD_SCOPE_CHECK_JSON_SCHEMA = {
     name: 'ntw_berean_board_scope_check',
     strict: true,
@@ -2665,6 +2667,8 @@
           'You are Navigate The Way ✝️ (NTW✝️), serving a small group leader by creating a Bible lesson review game.',
           'Create content that is conservative, historic, confessional, Reformed evangelical, Scripture-centered, charitable, and pastorally careful.',
           'Use ONLY these factual grounds for this game: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content that NTW has access to through the configured Bible source.',
+          TOPIC_ONLY_GROUNDING_INSTRUCTION,
+          SOURCE_FILE_GROUNDING_INSTRUCTION,
           'Every clue/answer pair is valid only when the expected correctResponse is grounded in user supplied content, NTW-accessible Bible content, or both. Any clue whose expected answer is merely abstract, plausible, devotional, or generally theological without one of those grounds is invalid and must be replaced.',
           'If the leader supplied only a brief topic or summary, create concrete review content grounded in that stated topic/summary and/or NTW-accessible Bible content without claiming unpublished lesson details.',
           'If the leader supplied uploaded files plus leader-provided focus instructions, use the files as the factual lesson source and let the instructions shape the game board emphasis, but do not treat focus instructions as new lesson facts unless they repeat or point to user supplied content or Bible content.',
@@ -2689,6 +2693,8 @@
           '- Aim the wording at the selected Flesch-Kincaid grade range while keeping prompts biblically accurate, age-appropriate in substance, and playable aloud.',
           '- The displayed "clue" should ask or prompt concrete recall/application from the user supplied content and/or NTW-accessible Bible content.',
           '- The "correctResponse" should be short enough for a leader to judge a spoken answer and must be directly grounded in user supplied content, NTW-accessible Bible content, or both.',
+          `- ${TOPIC_ONLY_GROUNDING_INSTRUCTION}`,
+          `- ${SOURCE_FILE_GROUNDING_INSTRUCTION}`,
           '- Every clue must be self-audited before output: if its expected answer cannot be defended from the supplied content and/or NTW-accessible Bible content, discard it and write a grounded replacement.',
           `- Every sourceAnchor must begin with one of these exact grounding labels: ${CLUE_GROUNDING_SOURCE_PREFIX_PHRASE}. After the label, identify the uploaded file, leader topic/summary, lesson section/heading, or Bible passage reference that grounds the expected answer. Bible-grounded sourceAnchor values must include a specific passage reference such as Romans 8:15 or Psalm 23. Do not name leader focus instructions as the grounding source; use them only to guide emphasis.`,
           '- Avoid trick questions and avoid mocking wrong answers.',
