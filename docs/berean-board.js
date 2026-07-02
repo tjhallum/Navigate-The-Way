@@ -262,8 +262,9 @@
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['categoryTitle', 'clueValue', 'clue', 'correctResponse', 'explanation', 'sourceAnchor'],
+            required: ['targetId', 'categoryTitle', 'clueValue', 'clue', 'correctResponse', 'explanation', 'sourceAnchor'],
             properties: {
+              targetId: { type: 'string' },
               categoryTitle: { type: 'string' },
               clueValue: { type: 'integer', enum: BOARD_VALUES },
               clue: { type: 'string' },
@@ -2026,43 +2027,83 @@
     };
   }
 
-  function getBereanBoardGroundingTargetKey({ categoryTitle, clueValue }) {
-    return `${coerceText(categoryTitle).toLowerCase()}::${Number(clueValue || 0)}`;
+  function buildBereanBoardGroundingTargetId(categoryIndex, clue) {
+    return `category-${Number(categoryIndex) + 1}-value-${Number(clue?.value || 0)}`;
+  }
+
+  function parseBereanBoardGroundingTargetId(targetId) {
+    const match = coerceText(targetId).match(/^category-(\d+)-value-(\d+)$/i);
+    if (!match) return null;
+    return {
+      categoryIndex: Math.max(0, Number(match[1]) - 1),
+      clueValue: Number(match[2]),
+    };
+  }
+
+  function getBereanBoardGroundingTargetKey(target) {
+    const targetId = coerceText(target?.targetId).toLowerCase();
+    if (targetId) return targetId;
+    return `${coerceText(target?.categoryTitle).toLowerCase()}::${Number(target?.clueValue || target?.value || 0)}::${coerceText(target?.clue).toLowerCase()}`;
   }
 
   function getResolvedBereanBoardGroundingTargetKey(generatedGame, target) {
     const resolved = findBereanBoardGroundingTarget(generatedGame, target);
     if (resolved?.category && resolved?.clue) {
-      return getBereanBoardGroundingTargetKey({ categoryTitle: resolved.category.title, clueValue: resolved.clue.value });
+      return buildBereanBoardGroundingTargetId(resolved.categoryIndex, resolved.clue).toLowerCase();
     }
     return getBereanBoardGroundingTargetKey(target || {});
   }
 
   function findBereanBoardGroundingTarget(generatedGame, target) {
     if (!generatedGame || !Array.isArray(generatedGame.categories) || !target) return null;
+    const targetIdParts = parseBereanBoardGroundingTargetId(target.targetId);
     const targetTitle = coerceText(target.categoryTitle).toLowerCase();
-    const targetValue = Number(target.clueValue || target.value || 0);
-    const targetClueText = coerceText(target.clue).toLowerCase();
+    const targetValue = Number(target.clueValue || target.value || targetIdParts?.clueValue || 0);
+    const targetClueText = coerceText(target.targetClue || target.verifierClue || target.originalClue || target.clue).toLowerCase();
 
+    if (targetIdParts) {
+      const category = generatedGame.categories[targetIdParts.categoryIndex];
+      if (!category) return null;
+      if (targetTitle && coerceText(category.title).toLowerCase() !== targetTitle) return null;
+      if (targetValue && Number(targetValue) !== targetIdParts.clueValue) return null;
+      const clues = Array.isArray(category.clues) ? category.clues : [];
+      const clueIndex = clues.findIndex((clue) => Number(clue?.value || 0) === targetIdParts.clueValue);
+      if (clueIndex >= 0) {
+        return { categoryIndex: targetIdParts.categoryIndex, clueIndex, category, clue: clues[clueIndex] };
+      }
+      return null;
+    }
+
+    const titledValueMatches = [];
     for (let categoryIndex = 0; categoryIndex < generatedGame.categories.length; categoryIndex += 1) {
       const category = generatedGame.categories[categoryIndex];
-      if (coerceText(category?.title).toLowerCase() !== targetTitle) continue;
+      if (targetTitle && coerceText(category?.title).toLowerCase() !== targetTitle) continue;
       const clues = Array.isArray(category?.clues) ? category.clues : [];
-      const clueIndex = clues.findIndex((clue) => Number(clue?.value || 0) === targetValue);
-      if (clueIndex >= 0) {
-        return { categoryIndex, clueIndex, category, clue: clues[clueIndex] };
-      }
+      clues.forEach((clue, clueIndex) => {
+        if (Number(clue?.value || 0) !== targetValue) return;
+        titledValueMatches.push({ categoryIndex, clueIndex, category, clue });
+      });
     }
 
     if (targetClueText) {
+      const exactMatch = titledValueMatches.find((candidate) => coerceText(candidate.clue?.clue).toLowerCase() === targetClueText);
+      if (exactMatch) return exactMatch;
+    }
+
+    if (titledValueMatches.length === 1) return titledValueMatches[0];
+
+    if (targetClueText && !targetTitle) {
+      const globalMatches = [];
       for (let categoryIndex = 0; categoryIndex < generatedGame.categories.length; categoryIndex += 1) {
         const category = generatedGame.categories[categoryIndex];
         const clues = Array.isArray(category?.clues) ? category.clues : [];
-        const clueIndex = clues.findIndex((clue) => Number(clue?.value || 0) === targetValue && coerceText(clue?.clue).toLowerCase() === targetClueText);
-        if (clueIndex >= 0) {
-          return { categoryIndex, clueIndex, category, clue: clues[clueIndex] };
-        }
+        clues.forEach((clue, clueIndex) => {
+          if (Number(clue?.value || 0) === targetValue && coerceText(clue?.clue).toLowerCase() === targetClueText) {
+            globalMatches.push({ categoryIndex, clueIndex, category, clue });
+          }
+        });
       }
+      if (globalMatches.length === 1) return globalMatches[0];
     }
 
     return null;
@@ -2071,7 +2112,9 @@
   function buildBereanBoardGroundingRepairTargets(generatedGame, invalidClues) {
     return (Array.isArray(invalidClues) ? invalidClues : []).map((invalidClue) => {
       const target = findBereanBoardGroundingTarget(generatedGame, invalidClue);
+      const targetId = target?.clue ? buildBereanBoardGroundingTargetId(target.categoryIndex, target.clue) : '';
       return {
+        targetId,
         categoryTitle: coerceText(target?.category?.title, invalidClue?.categoryTitle || 'Unknown category'),
         clueValue: Number(invalidClue?.clueValue || invalidClue?.value || target?.clue?.value || 0),
         verifierClue: coerceText(invalidClue?.clue, target?.clue?.clue || ''),
@@ -2122,7 +2165,11 @@
     }
 
     const expectedKeys = new Set(targetClues.map((target) => getResolvedBereanBoardGroundingTargetKey(generatedGame, target)));
-    const replacementKeys = new Set(replacementList.map((replacement) => getResolvedBereanBoardGroundingTargetKey(generatedGame, replacement)));
+    const replacementKeyList = replacementList.map((replacement) => getResolvedBereanBoardGroundingTargetKey(generatedGame, replacement));
+    const replacementKeys = new Set(replacementKeyList);
+    if (replacementKeys.size !== replacementKeyList.length) {
+      throw new Error('The NTW grounding repair returned duplicate replacements for the same flagged clue.');
+    }
     const missingTargets = [...expectedKeys].filter((key) => !replacementKeys.has(key));
     if (missingTargets.length > 0) {
       throw new Error('The NTW grounding repair did not replace every flagged clue.');
@@ -2990,7 +3037,7 @@
           'You are Navigate The Way ✝️ (NTW✝️), repairing only the Berean Board clue/answer pairs that failed grounded-answer verification.',
           'Make the game-board creation process self-healing: do not defend unsupported clues; replace the flagged clue/answer pairs with replacements that can pass the grounding verifier.',
           'Return ONLY a JSON object containing replacement clue/answer pairs for the flagged targets. Do not regenerate or return the entire board. Do not change clues that were not flagged.',
-          'Return exactly one replacement object for each flagged invalid clue. Use the same categoryTitle and clueValue from the flagged target so the replacement can be merged into the existing board.',
+          'Return exactly one replacement object for each flagged invalid clue. Echo the same targetId, categoryTitle, and clueValue from the flagged target so duplicate category titles still merge into the exact failed clue.',
           'If a flagged clue can be saved by replacing only the correctResponse, explanation, and sourceAnchor, do that. If the clue itself causes the ungrounded answer, replace the entire clue/answer pair for that same categoryTitle and clueValue.',
           'Use ONLY these factual grounds for repairs: (1) user supplied content, including uploaded files and leader-provided lesson topic or summary, and/or (2) Bible content NTW has access to through the configured Bible source.',
           TOPIC_ONLY_GROUNDING_INSTRUCTION,
@@ -3023,7 +3070,7 @@
           '<<<LESSON_CONTENT_END>>>',
           '',
           'Return this exact JSON shape:',
-          '{ "replacements": [ { "categoryTitle": "same target category title", "clueValue": 100, "clue": "replacement clue", "correctResponse": "grounded answer", "explanation": "brief teaching explanation", "sourceAnchor": "Bible content: Romans 8:15" } ], "reason": "short repair summary" }',
+          '{ "replacements": [ { "targetId": "category-1-value-100", "categoryTitle": "same target category title", "clueValue": 100, "clue": "replacement clue", "correctResponse": "grounded answer", "explanation": "brief teaching explanation", "sourceAnchor": "Bible content: Romans 8:15" } ], "reason": "short repair summary" }',
         ].join('\n'),
       },
     ];
@@ -3293,12 +3340,16 @@
     if (!rawReplacement || typeof rawReplacement !== 'object') {
       throw new Error(`Replacement ${replacementIndex + 1} did not include a clue/answer object.`);
     }
+    const targetId = pickText(rawReplacement, ['targetId', 'target_id', 'id'], '');
     const categoryTitle = pickText(rawReplacement, ['categoryTitle', 'category', 'categoryName'], '');
     const clueValue = Number(rawReplacement?.clueValue ?? rawReplacement?.value ?? 0);
     const clue = pickText(rawReplacement, ['clue', 'question', 'prompt']);
     const correctResponse = pickText(rawReplacement, ['correctResponse', 'correct_response', 'answer', 'response']);
     const explanation = pickText(rawReplacement, ['explanation', 'rationale', 'teachingNote'], 'No explanation supplied.');
     const sourceAnchor = pickText(rawReplacement, ['sourceAnchor', 'source_anchor', 'source', 'reference']);
+    if (!targetId) {
+      throw new Error(`Replacement ${replacementIndex + 1} is missing the targetId for the flagged clue.`);
+    }
     if (!categoryTitle) {
       throw new Error(`Replacement ${replacementIndex + 1} is missing the target categoryTitle.`);
     }
@@ -3314,7 +3365,7 @@
     if (!hasApprovedClueGroundingSourceAnchor(sourceAnchor)) {
       throw new Error(buildClueGroundingSourceAnchorError({ title: categoryTitle, clueIndex: BOARD_VALUES.indexOf(clueValue) }));
     }
-    return { categoryTitle, clueValue, clue, correctResponse, explanation, sourceAnchor };
+    return { targetId, categoryTitle, clueValue, clue, correctResponse, explanation, sourceAnchor };
   }
 
   function normalizeBereanBoardGroundingRepair(rawRepair) {
