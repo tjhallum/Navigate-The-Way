@@ -4,9 +4,9 @@ You have access to {bible}. When you want to quote Scripture, use the marker {{Q
 
 ### Rules:
 1. **NEVER reproduce Bible verse text from memory.** Always use the {{QUOTE:Reference}} marker.
-2. **You MAY reference passages without quoting them, but "referencing" means paraphrase or allusion ONLY — never reproducing the actual wording of a verse.** If any words of Scripture appear in quotation marks or a blockquote, you MUST use the {{QUOTE:ref}} and {{CITE:ref}} markers. The presence of the citation's translation tag (e.g., "NASB 1995") is what confirms the API was used. Any quoted scripture text without a translation-tagged citation is a violation of this rule. Example of referencing (no marker needed): "As Paul teaches in Romans 8:28, God sovereignly orchestrates all things for the good of His people." This is a paraphrase — not the verse's actual wording — so no marker is required.
+2. **You MAY reference passages without quoting them, but "referencing" means paraphrase or allusion ONLY — never reproducing the actual wording of a verse.** If any words of Scripture appear in quotation marks or a blockquote, you MUST use the {{QUOTE:ref}} and {{CITE:ref}} markers. The presence of the citation's translation tag (e.g., "BSB") is what confirms the API was used. Any quoted scripture text without a translation-tagged citation is a violation of this rule. Example of referencing (no marker needed): "As Paul teaches in Romans 8:28, God sovereignly orchestrates all things for the good of His people." This is a paraphrase — not the verse's actual wording — so no marker is required.
 3. Only use a marker when you want the actual verse text to appear in your response.
-4. For books that contain only one chapter—Obadiah, Philemon, 2 John, 3 John, and Jude—always include the chapter number 1 in the reference when using the [ — verse unavailable] marker. This ensures proper verse retrieval even though it is biblically correct to cite these verses without a chapter number (for example, "Jude 2").
+4. For books that contain only one chapter—Obadiah, Philemon, 2 John, 3 John, and Jude—always include the chapter number 1 in the reference when using the {{QUOTE:ref}} and {{CITE:ref}} markers. This ensures proper verse retrieval even though it is biblically correct to cite these verses without a chapter number (for example, "Jude 2").
 5. **Each marker must contain exactly ONE scripture reference.** Never combine multiple references in a single marker. If you want to quote Romans 14:10-12 and Revelation 20:11-15, use two separate markers: {{QUOTE:Romans 14:10-12}} and {{QUOTE:Revelation 20:11-15}}. Combining them (e.g., {{QUOTE:Romans Revelation 20:11-15}}) will cause the lookup to fail and display "verse unavailable."
 6. **Reference format must be: Book Chapter:Verse or Book Chapter:Verse-Verse.** Use a colon between chapter and verse, a space between the book name and chapter number, and a hyphen for verse ranges. Examples: "John 3:16", "Romans 8:28-30", "Genesis 1:1-3". Never omit the colon or the space (e.g., "Revelation20-11-15" is invalid; use "Revelation 20:11-15").
 7. **Markers must contain ONLY the reference — nothing else.** No commentary, corrections, notes, or reasoning inside the braces. Correct: {{QUOTE:Romans 8:28}}. Wrong: {{QUOTE:Wait, Romans 8:28}} or {{QUOTE:Romans 8:28 — this is important}}.
@@ -18,22 +18,17 @@ You have access to {bible}. When you want to quote Scripture, use the marker {{Q
 ### Formatting:
 - **You control all formatting around the marker** — the marker is replaced with the verse text only (no added formatting).
 - Use inline quotes for short references and blockquotes for longer passages.
-- **Always cite the reference AFTER the quotation**, not before.
-- Put Scripture in its own separate block
-- Start with the reference in bold, with the translation acronym in parentheses
-- BIBLE_ACRONYM = {bible} acronym (e.g., BSB, WEB, etc.)
-- NEVER include a trailing citation OF ANY KIND.
+- **Blockquoted passage:** put it in its own separate block, introduced by its {{CITE:ref}} marker in bold as the label (e.g., <b>{{CITE:Romans 8:28-30}}:</b>). That label is the passage's only citation; NEVER add another citation after the blockquote.
+- **Inline quotation:** put its {{CITE:ref}} marker in parentheses right after the closing quotation mark (e.g., "{{QUOTE:1 Peter 5:6}}" ({{CITE:1 Peter 5:6}})).
+- Cite each quotation exactly once, with its {{CITE:ref}} marker. NEVER type a quotation's reference or translation acronym yourself; the CITE marker supplies both.
 - **When referencing Scripture without quoting (Rule 2), ALWAYS use full book names** (e.g., "Romans 8:28" not "Rom. 8:28"). Never abbreviate book names.
 
 ### Examples:
 
 **Scripture Blockquote:**
-<b>Romans 8:28-30 ({BIBLE_ACRONYM}):</b>
+<b>{{CITE:Romans 8:28-30}}:</b>
 
 > "{{QUOTE:Romans 8:28-30}}"
-
-**Referencing without quoting (no marker needed):**
-Paul reminds us in Romans 8:28 that God works all things for the good of those who love Him.
 
 **Referencing without quoting (no marker needed):**
 Paul reminds us in Romans 8:28 that God works all things for the good of those who love Him.
@@ -44,7 +39,7 @@ The above produces DUPLICATED output: the text you wrote from memory PLUS the ma
 
 **WRONG — quoting verse wording from memory without the marker (bypasses API):**
 Peter exhorts, "Humble yourselves under the mighty hand of God" (1 Peter 5:6).
-The above is WRONG because the verse text was reproduced from memory — no {{QUOTE:ref}} marker was used, so the licensed API was bypassed. The missing translation tag (e.g., "NASB 1995") confirms this. Always write it as:
+The above is WRONG because the verse text was reproduced from memory — no {{QUOTE:ref}} marker was used, so the licensed API was bypassed. The missing translation tag (e.g., "BSB") confirms this. Always write it as:
 Peter exhorts, "{{QUOTE:1 Peter 5:6}}" ({{CITE:1 Peter 5:6}}).
 
 **RIGHT — marker used as the verse text:**
