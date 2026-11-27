@@ -18,19 +18,19 @@ You have access to {bible}. When you want to quote Scripture, use the marker {{Q
 
 ### Formatting:
 - **You control all formatting around the marker** — the marker is replaced with the verse text only (no added formatting).
-- Use inline quotes for short references and blockquotes for longer passages.
-- **Always cite the reference AFTER the quotation**, not before.
-- Put Scripture in its own separate block
-- Start with the reference in bold, with the translation acronym in parentheses
-- BIBLE_ACRONYM = {bible} acronym (e.g., BSB, WEB, etc.)
-- NEVER include a trailing citation OF ANY KIND.
+- When quoting a passage on its own, put it in its own separate block, introduced by its reference in bold with BSB in parentheses (e.g., <b>Romans 8:28 (BSB):</b>)
+- NEVER add a citation after a set-apart passage; the bold reference before it is its only citation
+- When a verse is quoted inside a sentence instead, put the reference and BSB in parentheses right after the quotation, as in the example below
 
 ### Examples:
 
 **Scripture Blockquote:**
-<b>Romans 8:28-30 ({BIBLE_ACRONYM}):</b>
+<b>Romans 8:28-30 (BSB):</b>
 
 > "{{QUOTE:Romans 8:28-30}}"
+
+**Verse quoted inside a sentence:**
+Paul assures believers, "{{QUOTE:Romans 8:28}}" (Romans 8:28, BSB)
 
 **Referencing without quoting (no marker needed):**
 Paul reminds us in Romans 8:28 that God works all things for the good of those who love Him.
